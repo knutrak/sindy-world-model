@@ -1,4 +1,5 @@
 """Play one random episode of 3s5z and save per-unit snapshots."""
+
 from pathlib import Path
 
 import gymnasium as gym

@@ -35,4 +35,11 @@ dev = [
     "ipykernel>=7.4.0",
     "nbstripout>=0.9.1",
     "pytest>=9.1.1",
+    "ruff>=0.16.10",
 ]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

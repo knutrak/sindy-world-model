@@ -3,6 +3,7 @@
 SMAClite removes dead units from env.unwrapped.agents / .enemies, so we
 record the full roster at reset and fill in dead units with hp = 0.
 """
+
 import pandas as pd
 
 
@@ -35,13 +36,18 @@ class SnapshotLogger:
         for (team, uid), static in self.roster.items():
             u = live.get((team, uid))
             alive = u is not None and u.hp > 0
-            rows.append({
-                "step": step, "team": team, "unit_id": uid, **static,
-                "alive": alive,
-                "x": float(u.pos[0]) if u is not None else float("nan"),
-                "y": float(u.pos[1]) if u is not None else float("nan"),
-                "hp": float(u.hp) if alive else 0.0,
-                "shield": float(u.shield) if alive else 0.0,
-                "cooldown": float(u.cooldown) if alive else float("nan"),
-            })
+            rows.append(
+                {
+                    "step": step,
+                    "team": team,
+                    "unit_id": uid,
+                    **static,
+                    "alive": alive,
+                    "x": float(u.pos[0]) if u is not None else float("nan"),
+                    "y": float(u.pos[1]) if u is not None else float("nan"),
+                    "hp": float(u.hp) if alive else 0.0,
+                    "shield": float(u.shield) if alive else 0.0,
+                    "cooldown": float(u.cooldown) if alive else float("nan"),
+                }
+            )
         return pd.DataFrame(rows)
