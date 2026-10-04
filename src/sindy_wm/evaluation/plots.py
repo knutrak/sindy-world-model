@@ -26,6 +26,43 @@ def plot_level_a(states: pd.DataFrame, title: str = "") -> plt.Figure:
     return fig
 
 
+def plot_many_episodes(
+    states_list: list[pd.DataFrame], title: str = "", alpha: float = 0.3
+) -> plt.Figure:
+    """Overlay the Level A states of many episodes, to see how varied the data is.
+
+    Each episode is drawn as a thin, semi-transparent line, so regions where
+    many episodes overlap appear darker.
+
+    Args:
+        states_list: Level A states of several episodes, as returned by `level_a()`.
+            Use `normalize=True` there to compare scenarios of different sizes.
+        title: Title of the figure.
+        alpha: Transparency of each line (lower for many episodes).
+    """
+    fig, axes = plt.subplots(3, 1, figsize=(8, 6), sharex=True)
+    line = {"alpha": alpha, "linewidth": 1}
+    for states in states_list:
+        for team, color in TEAM_COLORS.items():
+            axes[0].plot(states.index, states[f"health_{team}"], color=color, **line)
+            axes[1].plot(states.index, states[f"alive_{team}"], color=color, **line)
+        axes[2].plot(states.index, states["distance"], color="k", **line)
+
+    axes[0].set_ylabel("total hp")
+    axes[1].set_ylabel("alive units")
+    axes[2].set_ylabel("centroid distance")
+    axes[2].set_xlabel("step")
+    axes[0].set_title(f"{title} ({len(states_list)} episodes)".strip())
+    # One legend entry per team instead of one per line
+    for team, color in TEAM_COLORS.items():
+        axes[0].plot([], [], color=color, label=team)
+    axes[0].legend(loc="upper right")
+    for ax in axes:
+        ax.grid(True)
+    fig.tight_layout()
+    return fig
+
+
 def _setup_map(snapshots: pd.DataFrame, figsize=(6, 6)):
     """Figure with fixed axis limits covering all positions in the episode."""
     fig, ax = plt.subplots(figsize=figsize)
@@ -59,7 +96,7 @@ def plot_positions(snapshots: pd.DataFrame, step: int, title: str = "") -> plt.F
 
 
 def animate_positions(
-    snapshots: pd.DataFrame, interval: int = 300, title: str = ""
+    snapshots: pd.DataFrame, interval: int = 200, title: str = ""
 ) -> FuncAnimation:
     """Animate the positions of all alive units over an episode.
 
