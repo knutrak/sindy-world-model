@@ -54,8 +54,7 @@ def play_episode(env: gym.Env, policy: Policy, seed: int, max_steps: int = 200) 
             break
         actions = policy.act(env)
         action_rows += [
-            {"step": step, "unit_id": uid, "action": a}
-            for uid, a in zip(blue_ids, actions, strict=True)
+            {"step": step, "unit_id": uid, "action": a} for uid, a in zip(blue_ids, actions, strict=True)
         ]
         _, _, terminated, env_truncated, info = env.step(actions)
         step += 1

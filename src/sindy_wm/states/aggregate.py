@@ -4,9 +4,7 @@ import numpy as np
 import pandas as pd
 
 
-def level_a(
-    snapshots: pd.DataFrame, include_shields: bool = True, normalize: bool = False
-) -> pd.DataFrame:
+def level_a(snapshots: pd.DataFrame, include_shields: bool = True, normalize: bool = False) -> pd.DataFrame:
     """Level A state of one episode: one row per step, indexed by step.
 
     Columns:
@@ -30,11 +28,7 @@ def level_a(
     # Sums over all units (dead units add 0), centroids over alive units only
     totals = df.groupby(["step", "team"])[["health", "alive"]].sum().unstack("team")
     centroids = (
-        df[df["alive"]]
-        .groupby(["step", "team"])[["x", "y"]]
-        .mean()
-        .unstack("team")
-        .reindex(totals.index)
+        df[df["alive"]].groupby(["step", "team"])[["x", "y"]].mean().unstack("team").reindex(totals.index)
     )
 
     states = pd.DataFrame(

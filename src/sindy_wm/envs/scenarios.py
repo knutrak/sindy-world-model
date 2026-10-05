@@ -47,9 +47,7 @@ class StepMulWrapper(gym.Wrapper):
         return self.env.step(action)
 
 
-def make_env(
-    scenario: str, step_mul: int = 8, use_cpp_rvo2: bool = False, **kwargs
-) -> StepMulWrapper:
+def make_env(scenario: str, step_mul: int = 8, use_cpp_rvo2: bool = False, **kwargs) -> StepMulWrapper:
     """Create a SMAClite environment for a scenario.
 
     Args:
@@ -72,9 +70,7 @@ def _make_smaclite_env(scenario: str, use_cpp_rvo2: bool, **kwargs) -> gym.Env:
     if path.suffix == ".json":
         if not path.exists():
             raise FileNotFoundError(f"Scenario file not found: {path}")
-        return gym.make(
-            "smaclite/custom-v0", map_file=str(path), use_cpp_rvo2=use_cpp_rvo2, **kwargs
-        )
+        return gym.make("smaclite/custom-v0", map_file=str(path), use_cpp_rvo2=use_cpp_rvo2, **kwargs)
 
     is_builtin = scenario in builtin_scenarios()
     is_custom = scenario in custom_scenarios()
@@ -88,12 +84,8 @@ def _make_smaclite_env(scenario: str, use_cpp_rvo2: bool, **kwargs) -> gym.Env:
         return gym.make(f"smaclite/{scenario}-v0", use_cpp_rvo2=use_cpp_rvo2, **kwargs)
     if is_custom:
         map_file = SCENARIO_DIR / f"{scenario}.json"
-        return gym.make(
-            "smaclite/custom-v0", map_file=str(map_file), use_cpp_rvo2=use_cpp_rvo2, **kwargs
-        )
+        return gym.make("smaclite/custom-v0", map_file=str(map_file), use_cpp_rvo2=use_cpp_rvo2, **kwargs)
 
     raise ValueError(
-        f"Unknown scenario '{scenario}'.\n"
-        f"Built-in: {builtin_scenarios()}\n"
-        f"Custom: {custom_scenarios()}"
+        f"Unknown scenario '{scenario}'.\nBuilt-in: {builtin_scenarios()}\nCustom: {custom_scenarios()}"
     )

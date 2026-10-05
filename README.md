@@ -59,10 +59,10 @@ from sindy_wm.envs.scenarios import make_env
 from sindy_wm.evaluation.plots import plot_level_a
 from sindy_wm.states.aggregate import level_a
 
-env = make_env("5m_vs_5m")                      # built-in name or file in configs/scenarios/
+env = make_env("5m_vs_5m")  # built-in name or file in configs/scenarios/
 episode = play_episode(env, AttackNearestPolicy(aggression=0.8), seed=0)
 
-states = level_a(episode.snapshots)             # one row per step
+states = level_a(episode.snapshots)  # one row per step
 plot_level_a(states, title="5m_vs_5m, seed 0")
 ```
 

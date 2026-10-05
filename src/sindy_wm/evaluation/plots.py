@@ -26,9 +26,7 @@ def plot_level_a(states: pd.DataFrame, title: str = "") -> plt.Figure:
     return fig
 
 
-def plot_many_episodes(
-    states_list: list[pd.DataFrame], title: str = "", alpha: float = 0.3
-) -> plt.Figure:
+def plot_many_episodes(states_list: list[pd.DataFrame], title: str = "", alpha: float = 0.3) -> plt.Figure:
     """Overlay the Level A states of many episodes, to see how varied the data is.
 
     Each episode is drawn as a thin, semi-transparent line, so regions where
@@ -95,9 +93,7 @@ def plot_positions(snapshots: pd.DataFrame, step: int, title: str = "") -> plt.F
     return fig
 
 
-def animate_positions(
-    snapshots: pd.DataFrame, interval: int = 200, title: str = ""
-) -> FuncAnimation:
+def animate_positions(snapshots: pd.DataFrame, interval: int = 200, title: str = "") -> FuncAnimation:
     """Animate the positions of all alive units over an episode.
 
     Args:
@@ -115,9 +111,7 @@ def animate_positions(
     by_step = {step: frame for step, frame in snapshots.groupby("step")}
 
     # One scatter per team; each frame only moves the points
-    scatters = {
-        team: ax.scatter([], [], color=color, label=team) for team, color in TEAM_COLORS.items()
-    }
+    scatters = {team: ax.scatter([], [], color=color, label=team) for team, color in TEAM_COLORS.items()}
     ax.legend(loc="upper right")
 
     def update(step):
