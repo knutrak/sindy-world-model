@@ -18,6 +18,14 @@ import numpy as np
 class Policy(ABC):
     """Base class for all policies."""
 
+    def config(self) -> dict:
+        """Return a JSON-serializable dictionary describing the policy."""
+        return {"class": type(self).__name__, "params": self.params()}
+
+    def params(self) -> dict:
+        """Parameters that change the policy's behaviour. Override if there are any."""
+        return {}
+
     def reset(self, seed: int | None = None) -> None:
         """Prepare for a new episode. Seeds the policy's random generator."""
         self.rng = np.random.default_rng(seed)
@@ -52,6 +60,9 @@ class AttackNearestPolicy(Policy):
         if not 0.0 <= aggression <= 1.0:
             raise ValueError(f"aggression must be between 0 and 1, got {aggression}")
         self.aggression = aggression
+
+    def params(self) -> dict:
+        return {"aggression": self.aggression}
 
     def act(self, env: gym.Env) -> list[int]:
         game = env.unwrapped
