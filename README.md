@@ -68,10 +68,10 @@ from sindy_wm.envs.scenarios import make_env
 from sindy_wm.evaluation.plots import plot_level_a
 from sindy_wm.states.aggregate import level_a
 
-env = make_env("5m_vs_5m", step_mul=8)          # built-in name or file in configs/scenarios/
+env = make_env("5m_vs_5m", step_mul=8)  # built-in name or file in configs/scenarios/
 episode = play_episode(env, AttackNearestPolicy(aggression=0.8), seed=0)
 
-states = level_a(episode.snapshots)             # one row per step
+states = level_a(episode.snapshots)  # one row per step
 plot_level_a(states, title="5m_vs_5m, seed 0")
 ```
 
@@ -112,8 +112,8 @@ from sindy_wm.data import storage
 
 manifest = storage.load_manifest(dataset_dir)
 dt = manifest["config"]["env"]["seconds_per_step"]
-index = storage.load_episode_index(dataset_dir)      # one row per episode
-snaps = storage.load_snapshots(dataset_dir)          # all episodes, with episode_idx
+index = storage.load_episode_index(dataset_dir)  # one row per episode
+snaps = storage.load_snapshots(dataset_dir)  # all episodes, with episode_idx
 states = snaps.groupby("episode_idx").apply(level_a, include_groups=False)
 ```
 
