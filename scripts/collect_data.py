@@ -7,12 +7,8 @@ from sindy_wm.data.collect import collect
 from sindy_wm.envs.policies import AttackNearestPolicy
 from sindy_wm.paths import RAW_DIR
 
-EXPERIMENT = "exp02_5m_random_position_aggression_stepmul"
-EXPERIMENT_DESCRIPTION = (
-    "How Blue's aggression and decision interval (step_mul) affect outcomes and "
-    "battle dynamics in 5m_vs_5m, with AttackNearestPolicy against Red's built-in AI. "
-    "I am also randomizing the initial positions of the units to get more varied battles."
-)
+EXPERIMENT = "exp01_5m_aggression_stepmul"
+EXPERIMENT_DESCRIPTION = "How Blue's aggression and decision interval (step_mul) affect outcomes and battle dynamics in 5m_vs_5m, with AttackNearestPolicy against Red's built-in AI."
 
 EXPERIMENT_DIR = RAW_DIR / EXPERIMENT
 
@@ -20,9 +16,12 @@ SCENARIO = "5m_vs_5m"
 STEP_MULS = [1, 2, 4, 8]
 AGGRESSIONS = [0.5, 0.7, 0.9, 1.0]
 MAX_SECONDS = 100  # battle time limit in game seconds, converted to steps per step_mul
-N_EPISODES = 100
+N_EPISODES = 500
 FIRST_SEED = 0
 ALLOW_DIRTY = True  # fine while exploring; set False for thesis datasets
+
+RANDOMIZE_SPAWN = False
+SPAWN_DISTANCE_RANGE = (8.0, 16.0)  # map units; original 5m_vs_5m distance is 14
 
 DATASETS = [
     {
@@ -57,6 +56,8 @@ def write_experiment_readme() -> None:
         f"- Scenario: {SCENARIO}\n"
         f"- step_mul: {STEP_MULS}\n"
         f"- aggression: {AGGRESSIONS}\n"
+        f"- randomized spawn: distance {SPAWN_DISTANCE_RANGE[0]}-{SPAWN_DISTANCE_RANGE[1]} "
+        f"map units, random bearing, resampled per episode\n"
         f"- {N_EPISODES} episodes per dataset, seeds from {FIRST_SEED}\n",
         encoding="utf-8",
     )
@@ -69,6 +70,7 @@ def main() -> None:
         if dataset_exists(dataset_dir):
             print(f"Skipping {ds['name']}: already exists")
             continue
+
         collect(
             dataset_dir=dataset_dir,
             policy=ds["policy"],
@@ -79,6 +81,8 @@ def main() -> None:
             n_episodes=N_EPISODES,
             first_seed=FIRST_SEED,
             allow_dirty=ALLOW_DIRTY,
+            randomize_spawn=RANDOMIZE_SPAWN,
+            spawn_distance_range=SPAWN_DISTANCE_RANGE,
         )
 
 

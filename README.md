@@ -35,26 +35,35 @@ src/sindy_wm/            reusable code, imported by notebooks and scripts
 ├── paths.py             standard project paths (PROJECT_ROOT, RAW_DIR, SCENARIO_DIR, ...)
 ├── provenance.py        code_info(), file_sha256(): which code and inputs produced a result
 ├── envs/                everything that talks to SMAClite
-│   ├── scenarios.py     make_env(): create environments by scenario name
+│   ├── scenarios.py     make_env(): create environments by scenario name, optionally with
+│   │                    a randomized spawn; walkable_bounds(), load_map_info()
+│   ├── spawn_sampling.py   sample_opposing_spawns(): random distance/bearing between two groups
 │   ├── policies.py      RandomPolicy, AttackNearestPolicy (each describes itself via config())
 │   ├── episode.py       play_episode(): play and record one episode
 │   └── smaclite_snapshot.py   SnapshotLogger: per-unit state tables
 ├── data/
 │   ├── storage.py       datasets: create, save episodes, finalize, load
-│   └── collect.py       collect(): play episodes with a policy and save them as a dataset
+│   └── collect.py       collect(): play episodes with a policy and save them as a dataset,
+│                        optionally with a randomized spawn (see Collecting datasets below)
 ├── states/
 │   └── aggregate.py     level_a(): team-level state from snapshots
 ├── models/              (SINDy code moves here from notebooks when it settles)
 └── evaluation/
-    └── plots.py         plot_level_a, plot_many_episodes, plot_positions, animate_positions
+    ├── plots.py         plot_level_a, plot_many_episodes, plot_positions, animate_positions
+    └── sweep.py         load_all_indexes, summarize, heatmap: condense an experiment folder
+                         (many datasets) into one table and compare win rates/duration
 notebooks/               exploration (01_ingestion, 02_analysis, 03_model_exploration,
-                         04_sweep_and_first_sindy)
+                         04_sweep_and_first_sindy, 05_compare_exp01_exp02)
 scripts/
-└── collect_data.py      collect the datasets listed in DATASETS; existing ones are skipped
+├── step_aggression_sweep.py   collect exp01: fixed spawn, aggression x step_mul grid
+└── collect_data.py            collect another experiment's datasets; existing ones are skipped
 configs/scenarios/       custom SMAClite scenarios (e.g. 5m_vs_5m.json)
 data/                    datasets (not in git): raw/ is read-only, processed/ is disposable
 runs/                    experiment outputs, e.g. SINDy fits (not in git: back it up)
-tests/                   tests (to be written)
+docs/                    session notes on larger additions (not code documentation; see src/
+                         docstrings for that)
+tests/                   pytest suite: storage, reproducibility, snapshot logging, spawn
+                         sampling, sweep summaries (`uv run pytest`)
 ```
 
 ## Quick start
@@ -80,11 +89,13 @@ In notebooks, set `plt.rcParams["animation.html"] = "jshtml"` so that
 
 ## Collecting datasets
 
-List the datasets to collect in `DATASETS` at the top of `scripts/collect_data.py`
-(grids of parameters can be generated with `itertools.product`), then run:
+Each experiment gets its own script in `scripts/` (e.g. `step_aggression_sweep.py` for exp01),
+listing its datasets in `DATASETS` at the top (grids of parameters can be generated with
+`itertools.product`). `collect_data.py` is the one currently being edited for the next
+experiment. Run with:
 
 ```bash
-uv run scripts/collect_data.py
+uv run scripts/step_aggression_sweep.py   # or whichever experiment script
 ```
 
 Datasets that already exist are skipped, so the script can be rerun after adding
@@ -104,6 +115,31 @@ data/raw/5m_attack_a070_s1_v1/
     snapshots/episode_00000.parquet ...   per-unit state at every step
     actions/episode_00000.parquet ...     Blue's action per unit at every step
 ```
+
+### Randomized starting positions
+
+By default, a dataset uses the scenario's fixed group positions (every episode starts from the
+same state). Pass `randomize_spawn=True` to `collect()` to instead sample a new distance and
+bearing between the two groups every episode:
+
+```python
+collect(
+    dataset_dir=...,
+    policy=AttackNearestPolicy(aggression=0.8),
+    description=...,
+    randomize_spawn=True,
+    spawn_distance_range=(8.0, 16.0),  # map units; the fixed 5m_vs_5m distance is 14
+)
+```
+
+Both teams keep their own formation; only the distance and the direction between the two group
+centers vary (see `envs.spawn_sampling.sample_opposing_spawns`). This needs a scenario with
+exactly one ALLY and one ENEMY group (true for `5m_vs_5m`). The spawn sampler uses the episode's
+own `seed` (same as the env and the policy), so one seed still describes the whole episode; the
+realized positions end up in each episode's step-0 snapshot, nothing extra is recorded.
+Individual units are *not* scattered independently (no formation at all) — that would need
+reaching past SMAClite's supported placement API and would break `trim_to_engagement`
+preprocessing (see Findings below); considered but intentionally not implemented.
 
 Reading a dataset back:
 
@@ -181,8 +217,12 @@ Runs are never overwritten. `runs/` is not in git, so keep it in a backed-up loc
 - **step_mul** (game ticks per step, 16 ticks = 1 s) is a global constant in SMAClite.
   `make_env(..., step_mul=k)` wraps the environment so each one keeps its own value.
   Default 8 = 0.5 s per step, as in SMAC.
-- **Starting positions do not depend on the seed**: every episode of a scenario
-  starts from the same state.
+- **Starting positions do not depend on the seed by default**: every episode of a scenario
+  starts from the same state, unless `randomize_spawn=True` (see Collecting datasets above).
+  Positions are baked into the environment at construction time, not at `reset()`, so a
+  randomized-spawn dataset builds one environment per episode instead of one per dataset
+  (harmless: ~0.4 ms each, but it does mean SMAClite's own "Using the numpy RVO2 port" print
+  shows up once per episode instead of once per dataset).
 - **Units do not fire back on their own**: policies must choose attack actions explicitly.
 - **Copying the game with `deepcopy` diverges**; replaying from seed plus action log
   reproduces episodes exactly.
@@ -213,6 +253,38 @@ Blue win rate by aggression and step_mul:
   points; smaller differences are not meaningful.
 - **Balanced settings** (both teams win sometimes): `a070_s1`, `a070_s2`, `a090_s2`, `a090_s4`.
 
+### From comparing exp01 (fixed spawn) vs exp02 (randomized spawn, 500 episodes per setting)
+
+- **Randomizing spawn distance fixes the `aggression=1.0` column.** In exp01 it was ~1-2 distinct
+  outcomes per dataset (one game repeated, not a rate: see above). In exp02, `distinct_outcomes`
+  jumps to 300-450 across the whole grid, since initial separation is now a real source of
+  variety even when the policy itself has none.
+- **Blue's win rate is generally lower in exp02**, but not uniformly: the drop is concentrated at
+  `step_mul` 1-2 (exp01: 25-100% → exp02: 13-60% across aggressions), which was also exp01's
+  *best* regime for Blue. At `step_mul` 4-8, where exp01 was already near a floor, exp02's rates
+  are flat or higher.
+  - Checked and ruled out as the explanation: distance alone. Even exp02 episodes that happen to
+    spawn at ~14-15 (matching exp01 exactly) only win ~60-64%, well below exp01's 86% at that
+    setting (`a090_s1`).
+  - Checked and inconclusive: approach bearing (Blue can only move in 4 cardinal directions per
+    decision; Red's built-in AI moves continuously via RVO2). Correlation with win rate is
+    essentially zero overall; a small near-distance-matched subsample hints it might matter
+    (22% vs. 60% win rate, aligned vs. diagonal bearing) but n=9, too small to trust.
+  - Best current read: the fixed `(9,16)`/`(23,16)` layout — same y, attack_point exactly on
+    Blue's spawn, dead-on approach — was an atypically Blue-favorable corner of the configuration
+    space, not a neutral baseline. exp02's numbers are probably the more representative picture.
+    Not fully isolated; a dataset that randomizes bearing only, at a fixed distance, would cleanly
+    separate the angle effect from distance (they're confounded in exp02 as collected).
+- **x, y (or plain `distance`) should not be added as a SINDy-fit state.** `trim_to_engagement`
+  collapses almost all of the variation `randomize_spawn` introduces before a trajectory ever
+  reaches SINDy: spawn distance has std 2.19 across episodes, but distance at the trimmed
+  engagement start has std only 0.46, and barely moves after that (mean range ~2.3 units for the
+  rest of the trajectory). The information about initial separation ends up almost entirely in
+  *when* engagement starts (`corr(spawn_distance, trim_start_step) = 0.97`), which trimming
+  discards by re-zeroing every trajectory's clock. Raw `x, y` would be worse again: the dynamics
+  are translation-invariant (open terrain), so only the relative configuration matters, not
+  absolute position.
+
 ### About modelling
 
 - **Health changes in discrete chunks** (one shot at a time). At fine time resolution
@@ -229,11 +301,21 @@ Blue win rate by aggression and step_mul:
 ## Next steps
 
 - Interpret the first SINDy results (notebook 04) and record them here.
-- Tests for snapshot logging, reproducibility and storage (needs a `replay_episode()`
-  function in `envs/episode.py`).
-- Move `save_run` and `load_all_indexes` from notebook 04 to `src/`.
+- Move `save_run` from notebook 04 to `src/` (`load_all_indexes` and friends already moved,
+  to `evaluation/sweep.py`); update notebook 04 to import from there instead of defining them
+  inline, once it's not mid-edit.
+- Tag `run_config["dataset"]` with the source `EXPERIMENT` in notebook 04's `save_run` call:
+  exp01 and exp02 reuse identical dataset names, so a saved run currently can't be traced back
+  to which experiment produced it except by timestamp.
+- Isolate the exp01 vs exp02 win-rate drop: a dataset that randomizes bearing only, at the fixed
+  distance of 14, would separate the angle effect from distance (see Findings above).
 - Starting states that differ: scenario variants (e.g. 3v3, 5v3, 8v5).
-- Richer state for SINDy: add `distance` or alive counts; consider separate models for
-  the approach and the fight.
+- A richer state for SINDy: *not* `x, y` or `distance` (see Findings above); maybe a model per
+  phase (approach, then fight) instead, now that `randomize_spawn` gives real variation in the
+  approach phase to model.
+- Intra-team jitter (looser formations, still two clustered sides) considered as a follow-up to
+  `randomize_spawn`; deferred for now. Fully independent per-unit scatter (no team clustering at
+  all) would need bypassing SMAClite's `Group`/`MapInfo` placement API and would break
+  `trim_to_engagement`; treat as a deliberate stress test later, not a mainline dataset.
 - A held-out dataset with new seeds for final evaluation.
 - Later: retreating policies, and models with control (actions as input).
