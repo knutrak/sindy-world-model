@@ -4,6 +4,8 @@ A scenario is either one of SMAClite's built-in maps (e.g. "3s5z") or one of
 our own JSON files in configs/scenarios/ (e.g. "5m_vs_5m").
 """
 
+import contextlib
+import io
 from dataclasses import replace
 from pathlib import Path
 
@@ -83,10 +85,36 @@ def make_env(
     """
     if spawn is not None:
         map_info = _with_spawn(load_map_info(scenario), spawn)
-        env = gym.make("smaclite/custom-v0", map_info=map_info, use_cpp_rvo2=use_cpp_rvo2, **kwargs)
+        env = _make_quietly(
+            lambda: gym.make("smaclite/custom-v0", map_info=map_info, use_cpp_rvo2=use_cpp_rvo2, **kwargs)
+        )
     else:
-        env = _make_smaclite_env(scenario, use_cpp_rvo2=use_cpp_rvo2, **kwargs)
+        env = _make_quietly(lambda: _make_smaclite_env(scenario, use_cpp_rvo2=use_cpp_rvo2, **kwargs))
     return StepMulWrapper(env, step_mul)
+
+
+# SMAClite prints this unconditionally every time an environment is constructed
+# (NumpyVelocityUpdater.__init__), with no way to silence it from the outside.
+# With randomize_spawn=True, collect() builds one env per episode instead of one
+# per dataset, so this would otherwise print thousands of times per run.
+_SMACLITE_CONSTRUCTION_NOISE = "Using the numpy RVO2 port"
+
+
+def _make_quietly(build) -> gym.Env:
+    """Call build(), swallowing SMAClite's own construction-time print (see above).
+
+    Anything else printed during construction is not swallowed, so a genuine
+    warning from a future SMAClite version would still surface.
+    """
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        env = build()
+    leftover = "\n".join(
+        line for line in buf.getvalue().splitlines() if line.strip() != _SMACLITE_CONSTRUCTION_NOISE
+    )
+    if leftover:
+        print(leftover)
+    return env
 
 
 def load_map_info(scenario: str) -> MapInfo:

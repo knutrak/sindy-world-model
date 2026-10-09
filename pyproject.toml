@@ -34,6 +34,7 @@ smaclite = { git = "https://github.com/uoe-agents/smaclite", rev = "0d6abbea1334
 [dependency-groups]
 dev = [
     "ipykernel>=7.4.0",
+    "ipywidgets>=8.1.9",
     "jinja2>=3.1.6",
     "nbstripout>=0.9.1",
     "pytest>=9.1.1",

@@ -1,0 +1,110 @@
+"""
+Does to_trajectory trim/downsample correctly, and does the fit/eval/save pipeline round-trip?
+"""
+
+import json
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from sindy_wm.models.sindy import evaluate, fit_sindy, save_run, simulate, summarize_eval, to_trajectory
+
+STATE_COLUMNS = ["health_blue", "health_red"]
+
+
+def test_to_trajectory_trims_to_one_step_before_first_damage():
+    ep = pd.DataFrame(
+        {
+            "t": [0.0, 0.25, 0.5, 0.75, 1.0],
+            "health_blue": [100.0, 100.0, 100.0, 90.0, 80.0],
+            "health_red": [100.0, 100.0, 100.0, 100.0, 95.0],
+        }
+    )
+    trimmed = to_trajectory(ep, STATE_COLUMNS, trim_to_engagement=True, downsample=1)
+    # First damage is at index 3 (health_blue drops); trim starts one step before, at index 2
+    assert len(trimmed) == 3
+    assert trimmed["health_blue"].tolist() == [100.0, 90.0, 80.0]
+    assert trimmed["t"].iloc[0] == 0.0  # time reset to start at 0
+
+
+def test_to_trajectory_downsamples():
+    ep = pd.DataFrame({"t": np.arange(6) * 0.1, "health_blue": range(6), "health_red": range(6)})
+    trimmed = to_trajectory(ep, STATE_COLUMNS, trim_to_engagement=False, downsample=2)
+    assert trimmed["health_blue"].tolist() == [0, 2, 4]
+
+
+def _synthetic_episode(seed, n=40, dt=0.25):
+    # A simple linear decay, like a toy Lanchester law, with a short no-damage lead-in
+    rng = np.random.default_rng(seed)
+    t = np.arange(n) * dt
+    blue = np.clip(100 - 2 * t + rng.normal(0, 0.5, n), 0, None)
+    red = np.clip(100 - 3 * t + rng.normal(0, 0.5, n), 0, None)
+    blue[:3], red[:3] = 100.0, 100.0
+    return pd.DataFrame({"t": t, "health_blue": blue, "health_red": red})
+
+
+@pytest.fixture
+def fitted():
+    states = {i: _synthetic_episode(i) for i in range(10)}
+    battle_won = pd.Series(
+        {i: states[i]["health_blue"].iloc[-1] > states[i]["health_red"].iloc[-1] for i in range(10)}
+    )
+    trajectories = {
+        i: to_trajectory(states[i], STATE_COLUMNS, trim_to_engagement=True, downsample=1) for i in range(10)
+    }
+    train_ids, test_ids = list(range(8)), list(range(8, 10))
+    model = fit_sindy(
+        trajectories, train_ids, STATE_COLUMNS, dt=0.25, smooth_window=5, degree=1, threshold=0.01
+    )
+    return model, trajectories, test_ids, battle_won
+
+
+def test_simulate_matches_trajectory_length(fitted):
+    model, trajectories, test_ids, _ = fitted
+    traj = trajectories[test_ids[0]]
+    sim = simulate(model, traj, STATE_COLUMNS)
+    assert sim is not None
+    assert sim.shape == (len(traj), len(STATE_COLUMNS))
+    assert np.all(np.isfinite(sim))
+
+
+def test_evaluate_and_summarize_eval(fitted):
+    model, trajectories, test_ids, battle_won = fitted
+    per_episode = evaluate(model, test_ids, trajectories, STATE_COLUMNS, battle_won)
+    assert list(per_episode.index) == test_ids
+    assert {"rmse_start", "rmse_midway", "winner_correct_start", "winner_correct_midway"} <= set(
+        per_episode.columns
+    )
+
+    metrics = summarize_eval(model, test_ids, trajectories, STATE_COLUMNS, battle_won)
+    assert 0.0 <= metrics["majority_baseline"] <= 1.0
+    assert metrics["n_terms"] > 0
+    assert metrics["failed_simulations"] == 0
+
+
+def test_save_run_writes_expected_files_and_never_overwrites(tmp_path, fitted):
+    model, trajectories, test_ids, battle_won = fitted
+    metrics = summarize_eval(model, test_ids, trajectories, STATE_COLUMNS, battle_won)
+    per_episode = evaluate(model, test_ids, trajectories, STATE_COLUMNS, battle_won)
+
+    run_dir = save_run(
+        tmp_path, "unit_test", {"description": "test"}, model, STATE_COLUMNS, metrics, per_episode, {}
+    )
+
+    assert (run_dir / "config.json").exists()
+    assert (run_dir / "model.json").exists()
+    assert (run_dir / "equations.txt").exists()
+    assert (run_dir / "metrics.json").exists()
+    assert (run_dir / "per_episode.csv").exists()
+    assert (run_dir / "figures").is_dir()
+
+    model_json = json.loads((run_dir / "model.json").read_text())
+    assert model_json["state_names"] == STATE_COLUMNS
+    assert len(model_json["coefficients"]) == len(STATE_COLUMNS)
+
+    config = json.loads((run_dir / "config.json").read_text())
+    assert "code" in config  # code_info() was merged in
+
+    with pytest.raises(FileExistsError):
+        save_run(tmp_path, "unit_test", {}, model, STATE_COLUMNS, metrics, per_episode, {})

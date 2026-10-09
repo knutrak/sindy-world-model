@@ -26,6 +26,7 @@ Notes:
   `pyproject.toml` overrides this with `rtree>=1.1`.
 - Models use PySINDy 2.x. Notebooks that format tables with `DataFrame.style` need
   `jinja2` (`uv add --dev jinja2`).
+- Notebook 04's interactive slider (Part 5) needs `ipywidgets`, already a dev dependency.
 - In notebooks, select the project's `.venv` as the kernel.
 
 ## Project structure
@@ -47,7 +48,9 @@ src/sindy_wm/            reusable code, imported by notebooks and scripts
 │                        optionally with a randomized spawn (see Collecting datasets below)
 ├── states/
 │   └── aggregate.py     level_a(): team-level state from snapshots
-├── models/              (SINDy code moves here from notebooks when it settles)
+├── models/
+│   └── sindy.py         to_trajectory, fit_sindy, simulate, evaluate, summarize_eval,
+│                        plot_predictions, save_run: moved from notebook 04 once settled
 └── evaluation/
     ├── plots.py         plot_level_a, plot_many_episodes, plot_positions, animate_positions
     └── sweep.py         load_all_indexes, summarize, heatmap: condense an experiment folder
@@ -301,12 +304,6 @@ Blue win rate by aggression and step_mul:
 ## Next steps
 
 - Interpret the first SINDy results (notebook 04) and record them here.
-- Move `save_run` from notebook 04 to `src/` (`load_all_indexes` and friends already moved,
-  to `evaluation/sweep.py`); update notebook 04 to import from there instead of defining them
-  inline, once it's not mid-edit.
-- Tag `run_config["dataset"]` with the source `EXPERIMENT` in notebook 04's `save_run` call:
-  exp01 and exp02 reuse identical dataset names, so a saved run currently can't be traced back
-  to which experiment produced it except by timestamp.
 - Isolate the exp01 vs exp02 win-rate drop: a dataset that randomizes bearing only, at the fixed
   distance of 14, would separate the angle effect from distance (see Findings above).
 - Starting states that differ: scenario variants (e.g. 3v3, 5v3, 8v5).
