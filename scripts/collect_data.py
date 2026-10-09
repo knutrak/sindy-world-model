@@ -7,28 +7,28 @@ from sindy_wm.data.collect import collect
 from sindy_wm.envs.policies import AttackNearestPolicy
 from sindy_wm.paths import RAW_DIR
 
-EXPERIMENT = "exp01_5m_aggression_stepmul"
+EXPERIMENT = "exp03_10m_random_aggression_stepmul"
 EXPERIMENT_DESCRIPTION = (
     "How Blue's aggression and decision interval (step_mul) affect outcomes "
-    "and battle dynamics in 5m_vs_5m, with AttackNearestPolicy against Red's built-in AI."
+    "and battle dynamics in 10m_vs_10m, with AttackNearestPolicy against Red's built-in AI."
 )
 
 EXPERIMENT_DIR = RAW_DIR / EXPERIMENT
 
-SCENARIO = "5m_vs_5m"
+SCENARIO = "10m_vs_10m"
 STEP_MULS = [1, 2, 4, 8]
 AGGRESSIONS = [0.5, 0.7, 0.9, 1.0]
-MAX_SECONDS = 100  # battle time limit in game seconds, converted to steps per step_mul
+MAX_SECONDS = 500  # battle time limit in game seconds, converted to steps per step_mul
 N_EPISODES = 500
 FIRST_SEED = 0
 ALLOW_DIRTY = True  # fine while exploring; set False for thesis datasets
 
-RANDOMIZE_SPAWN = False
+RANDOMIZE_SPAWN = True
 SPAWN_DISTANCE_RANGE = (8.0, 16.0)  # map units; original 5m_vs_5m distance is 14
 
 DATASETS = [
     {
-        "name": f"5m_attack_a{round(a * 100):03d}_s{s}_v1",
+        "name": f"10m_attack_a{round(a * 100):03d}_s{s}_v1",
         "scenario": SCENARIO,
         "step_mul": s,
         "policy": AttackNearestPolicy(aggression=a),

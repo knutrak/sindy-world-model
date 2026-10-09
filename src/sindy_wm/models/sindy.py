@@ -82,6 +82,87 @@ def fit_sindy(
     return model
 
 
+class LanchesterModel:
+    """A classical Lanchester square-law model: dX1/dt = -a*X2, dX2/dt = -b*X1.
+
+    An explicit, 2-parameter alternative to a general SINDy fit: no constant
+    term, no self-coupling, only the opposing-side cross term the square law
+    predicts. Exposes just enough of `ps.SINDy`'s interface (`simulate`,
+    `coefficients`, `get_feature_names`, `equations`) to drop into the same
+    pipeline as a SINDy model -- `simulate`, `evaluate`, `summarize_eval`,
+    `plot_predictions`, `save_run` all work on either unchanged.
+    """
+
+    def __init__(self, state_columns: list[str], a: float, b: float):
+        self.state_columns = state_columns
+        self.a = a
+        self.b = b
+
+    def coefficients(self) -> np.ndarray:
+        # one row per state variable, one column per feature (the state variables themselves)
+        return np.array([[0.0, -self.a], [-self.b, 0.0]])
+
+    def get_feature_names(self) -> list[str]:
+        return list(self.state_columns)
+
+    def equations(self, precision: int = 3) -> list[str]:
+        x1, x2 = self.state_columns
+        return [f"{-self.a:.{precision}f} {x2}", f"{-self.b:.{precision}f} {x1}"]
+
+    def simulate(self, x0, t, integrator_kws: dict | None = None) -> np.ndarray:
+        from scipy.integrate import solve_ivp
+
+        def rhs(_t, x):
+            x1, x2 = x
+            return [-self.a * x2, -self.b * x1]
+
+        sol = solve_ivp(rhs, (t[0], t[-1]), x0, t_eval=t, **(integrator_kws or {}))
+        return sol.y.T
+
+
+def fit_lanchester(
+    trajectories: dict[int, pd.DataFrame],
+    train_ids,
+    state_columns: list[str],
+    dt: float,
+    smooth_window: int,
+) -> LanchesterModel:
+    """Fit the classical Lanchester square law: dX1/dt = -a*X2, dX2/dt = -b*X1.
+
+    Uses the same Savitzky-Golay derivative estimate as `fit_sindy` (so the two
+    are comparable), but regresses it onto a fixed model form instead of
+    searching a feature library: `a`/`b` are each a one-variable linear
+    regression through the origin (no intercept, no self-term), the exact
+    textbook square law -- not a SINDy fit that happened to sparsify to it.
+
+    Args:
+        trajectories: episode_idx -> trajectory, as returned by `to_trajectory`.
+        train_ids: Episode indices to fit on.
+        state_columns: The two state columns, Blue's quantity first and Red's
+            second, e.g. `["health_blue", "health_red"]`, `["alive_blue",
+            "alive_red"]`, or `["engaged_blue", "engaged_red"]`.
+        dt: Time step between rows of a trajectory, in seconds (after downsampling).
+        smooth_window: Savitzky-Golay window length for the derivative, in points.
+    """
+    diff = ps.SmoothedFiniteDifference(smoother_kws={"window_length": smooth_window, "polyorder": 2})
+    x1_parts, x2_parts, dx1_parts, dx2_parts = [], [], [], []
+    for i in train_ids:
+        traj = trajectories[i]
+        x = traj[state_columns].to_numpy()
+        dx = diff(x, t=traj["t"].to_numpy())
+        x1_parts.append(x[:, 0])
+        x2_parts.append(x[:, 1])
+        dx1_parts.append(dx[:, 0])
+        dx2_parts.append(dx[:, 1])
+    x1, x2 = np.concatenate(x1_parts), np.concatenate(x2_parts)
+    dx1, dx2 = np.concatenate(dx1_parts), np.concatenate(dx2_parts)
+
+    # dX1/dt = -a*X2, through the origin: a = -<X2, dX1/dt> / <X2, X2>, and symmetrically for b
+    a = -np.dot(x2, dx1) / np.dot(x2, x2)
+    b = -np.dot(x1, dx2) / np.dot(x1, x1)
+    return LanchesterModel(state_columns, float(a), float(b))
+
+
 def simulate(
     model: ps.SINDy, traj: pd.DataFrame, state_columns: list[str], start: int = 0
 ) -> np.ndarray | None:
@@ -112,10 +193,12 @@ def evaluate(
         model: A fitted SINDy model.
         ids: Episode indices to evaluate on.
         trajectories: episode_idx -> trajectory, as returned by `to_trajectory`.
-        state_columns: Level A columns used as the SINDy state.
+        state_columns: The two SINDy state columns, Blue's quantity first and
+            Red's second (e.g. `["health_blue", "health_red"]`, or
+            `["alive_blue", "alive_red"]`) -- order matters, name doesn't.
         battle_won: Whether Blue won, indexed by episode_idx (e.g. `index["battle_won"]`).
     """
-    blue, red = state_columns.index("health_blue"), state_columns.index("health_red")
+    blue, red = 0, 1  # by convention: state_columns is always [blue_quantity, red_quantity]
     rows = []
     for i in ids:
         traj = trajectories[i]

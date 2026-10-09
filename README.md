@@ -47,20 +47,24 @@ src/sindy_wm/            reusable code, imported by notebooks and scripts
 │   └── collect.py       collect(): play episodes with a policy and save them as a dataset,
 │                        optionally with a randomized spawn (see Collecting datasets below)
 ├── states/
-│   └── aggregate.py     level_a(): team-level state from snapshots
+│   └── aggregate.py     level_a(): team-level state from snapshots; engagement(): engaged/
+│                        targets/speed per team, needs snapshots with target_*/vx/vy columns
 ├── models/
 │   └── sindy.py         to_trajectory, fit_sindy, simulate, evaluate, summarize_eval,
-│                        plot_predictions, save_run: moved from notebook 04 once settled
+│                        plot_predictions, save_run: moved from notebook 04 once settled;
+│                        fit_lanchester, LanchesterModel: the classical 2-parameter square
+│                        law, as an explicit (not SINDy-sparsified) baseline
 └── evaluation/
     ├── plots.py         plot_level_a, plot_many_episodes, plot_positions, animate_positions
     └── sweep.py         load_all_indexes, summarize, heatmap: condense an experiment folder
                          (many datasets) into one table and compare win rates/duration
 notebooks/               exploration (01_ingestion, 02_analysis, 03_model_exploration,
-                         04_sweep_and_first_sindy, 05_compare_exp01_exp02)
+                         04_sweep_and_first_sindy, 05_compare_exp01_exp02,
+                         06_lanchester_drivers)
 scripts/
 ├── step_aggression_sweep.py   collect exp01: fixed spawn, aggression x step_mul grid
 └── collect_data.py            collect another experiment's datasets; existing ones are skipped
-configs/scenarios/       custom SMAClite scenarios (e.g. 5m_vs_5m.json)
+configs/scenarios/       custom SMAClite scenarios (5m_vs_5m.json, 10m_vs_10m.json)
 data/                    datasets (not in git): raw/ is read-only, processed/ is disposable
 runs/                    experiment outputs, e.g. SINDy fits (not in git: back it up)
 docs/                    session notes on larger additions (not code documentation; see src/
@@ -301,9 +305,37 @@ Blue win rate by aggression and step_mul:
   beat always guessing the more common outcome. Evaluation from midway, compared with
   the baseline "whoever has more health wins", is the more informative test.
 
+### Which quantity should a Lanchester fit use? (notebook 06, `10m_vs_10m`, `exp03`)
+
+Classical Lanchester theory models unit counts, not aggregate health — fit the *exact* square law
+(`fit_lanchester`, no constant, no self-term, not a SINDy fit that happened to sparsify to it) on
+`health`, `alive`, and the new `engaged` (from `engagement()`) as candidate drivers:
+
+- **`health` and `alive` both land exactly on their own `leader_baseline_midway`** (0.89 and 0.71
+  respectively) and are stable across a `SMOOTH_WINDOW` sweep (5-17): legitimate, trustworthy fits
+  of the classical form, just not ones that beat the naive "whoever's ahead wins" rule.
+- **This isn't a coincidence of these two drivers**: with `a, b > 0`, the square law's own
+  structure (both quantities only decrease, faster when the opponent is currently stronger) makes
+  a lead reversal from the midpoint rare by construction — matching `leader_baseline_midway` is
+  close to what *any* driver's classical fit can do, not evidence of a good or bad fit on its own.
+- **`engaged` behaves differently**: `b` comes out consistently *negative* across every window
+  tested, not just noisy. Likely not a smoothing problem but the wrong *kind* of variable for this
+  functional form — `engaged_*` can go up or down as units move in and out of range, so it's a
+  fluctuating activity measure, not a monotonically depleting stock like health or alive count.
+- **The general SINDy fit on health (degree 2, notebook 04) does beat `leader_baseline_midway`**
+  (0.84 vs. 0.73, a different dataset) precisely because it isn't restricted to pure cross-coupling
+  — it can pick up self-terms and quadratic terms the classical law excludes by construction. That
+  comparison, not "does it look like Lanchester," is the real test of whether SINDy finds something
+  beyond classical theory here.
+
 ## Next steps
 
 - Interpret the first SINDy results (notebook 04) and record them here.
+- Run notebook 06's driver comparison on more `exp03` settings, not just one dataset, to see if
+  the `health`/`alive`/`engaged` ranking holds generally or is specific to that aggression/step_mul.
+- Re-collect a 5v5 dataset with the new `vx`/`vy`/`target_*` snapshot columns, to compare driver
+  behavior across scenario sizes — classical theory predicts `a`/`b` should be roughly invariant to
+  force size under the square law; notebook 06 only has one scale (`10m_vs_10m`) to check so far.
 - Isolate the exp01 vs exp02 win-rate drop: a dataset that randomizes bearing only, at the fixed
   distance of 14, would separate the angle effect from distance (see Findings above).
 - Starting states that differ: scenario variants (e.g. 3v3, 5v3, 8v5).

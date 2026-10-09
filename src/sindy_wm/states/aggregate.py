@@ -48,3 +48,44 @@ def level_a(snapshots: pd.DataFrame, include_shields: bool = True, normalize: bo
         cols = ["health_blue", "health_red", "alive_blue", "alive_red"]
         states[cols] = states[cols] / states[cols].iloc[0]
     return states
+
+
+def engagement(snapshots: pd.DataFrame) -> pd.DataFrame:
+    """Team-level engagement of one episode: one row per step, indexed by step.
+
+    Needs snapshots recorded with target columns (target_team, target_id,
+    target_in_range);
+
+    Columns, per team (suffix _blue / _red):
+        engaged:  number of alive units with a target in attack range, i.e. the
+                  firepower actually being applied (compare alive_*)
+        targets:  number of distinct enemy units being shot at by engaged units.
+                  1 = all fire focused on one unit; equal to engaged = fully spread
+        speed:    mean speed of alive units (map units per second)
+    """
+    required = {"target_team", "target_id", "target_in_range", "vx", "vy"}
+    if missing := required - set(snapshots.columns):
+        raise ValueError(f"Snapshots lack {sorted(missing)}: recorded before target/velocity logging?")
+
+    alive = snapshots[snapshots["alive"]]
+    engaged = alive[alive["target_in_range"]]
+    by = ["step", "team"]
+    steps = pd.Index(sorted(snapshots["step"].unique()), name="step")
+
+    def per_team(series: pd.Series) -> pd.DataFrame:
+        return series.unstack("team").reindex(index=steps, columns=["blue", "red"]).fillna(0)
+
+    n_engaged = per_team(engaged.groupby(by).size())
+    n_targets = per_team(engaged.groupby(by)["target_id"].nunique())
+    speed = per_team(alive.assign(speed=np.hypot(alive["vx"], alive["vy"])).groupby(by)["speed"].mean())
+
+    return pd.DataFrame(
+        {
+            "engaged_blue": n_engaged["blue"],
+            "engaged_red": n_engaged["red"],
+            "targets_blue": n_targets["blue"],
+            "targets_red": n_targets["red"],
+            "speed_blue": speed["blue"],
+            "speed_red": speed["red"],
+        }
+    )
