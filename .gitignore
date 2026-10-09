@@ -14,8 +14,8 @@ wheels/
 
 
 # Data and experiment outputs (too large for git)
-data/
-runs/
+/data/
+/runs/
 
 # Jupyter
 .ipynb_checkpoints/
