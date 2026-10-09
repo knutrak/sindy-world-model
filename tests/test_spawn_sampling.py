@@ -32,3 +32,20 @@ def test_reproducible():
 def test_too_tight_margin_raises():
     with pytest.raises(ValueError):
         sample_opposing_spawns(np.random.default_rng(0), BOUNDS, 8.0, 16.0, margin=20.0)
+
+
+def test_min_distance_too_large_for_bounds_raises():
+    # BOUNDS is 32x16 after the default margin; min_distance can't exceed twice the short axis
+    with pytest.raises(ValueError):
+        sample_opposing_spawns(np.random.default_rng(0), BOUNDS, min_distance=13.0, max_distance=16.0)
+
+
+def test_bearing_is_not_restricted_to_one_side():
+    rng = np.random.default_rng(1)
+    deltas = []
+    for _ in range(200):
+        spawn = sample_opposing_spawns(rng, BOUNDS, 8.0, 10.0)
+        deltas.append(np.array(spawn.enemy_pos) - np.array(spawn.ally_pos))
+    deltas = np.array(deltas)
+    assert (deltas[:, 0] > 0).any() and (deltas[:, 0] < 0).any()
+    assert (deltas[:, 1] > 0).any() and (deltas[:, 1] < 0).any()

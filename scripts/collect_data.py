@@ -8,7 +8,10 @@ from sindy_wm.envs.policies import AttackNearestPolicy
 from sindy_wm.paths import RAW_DIR
 
 EXPERIMENT = "exp01_5m_aggression_stepmul"
-EXPERIMENT_DESCRIPTION = "How Blue's aggression and decision interval (step_mul) affect outcomes and battle dynamics in 5m_vs_5m, with AttackNearestPolicy against Red's built-in AI."
+EXPERIMENT_DESCRIPTION = (
+    "How Blue's aggression and decision interval (step_mul) affect outcomes "
+    "and battle dynamics in 5m_vs_5m, with AttackNearestPolicy against Red's built-in AI."
+)
 
 EXPERIMENT_DIR = RAW_DIR / EXPERIMENT
 

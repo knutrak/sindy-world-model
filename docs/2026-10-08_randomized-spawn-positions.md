@@ -16,18 +16,24 @@ Pure geometry, no SMAClite import — easy to unit-test on its own.
   `attack_point` is included because SMAClite's built-in Red AI attack-moves toward a fixed point
   before it sees any Blue unit; it has to track the sampled Blue position or Red would walk
   toward the scenario's original, now-stale spawn instead.
-- **`sample_opposing_spawns(rng, bounds, min_distance, max_distance, margin=1.5, max_tries=1000) -> SpawnSample`**
-  Samples a random distance and bearing between two group centers, rejection-sampling until both
-  land inside `bounds` (shrunk by `margin`). Both teams keep their own formation — only the
-  separation and direction between them vary. Raises `RuntimeError` if it can't place both groups
-  within `max_tries` (lower `max_distance` or shrink `margin` if this happens) and `ValueError` if
-  `margin` alone already leaves no room in `bounds`.
+- **`sample_opposing_spawns(rng, bounds, min_distance, max_distance, margin=1.5) -> SpawnSample`**
+  Samples a random bearing, then a distance between the two group centers along it — both teams
+  keep their own formation, only the separation and direction between them vary. Both group
+  centers are placed around the fixed middle of `bounds` (never randomized itself — the terrain
+  is open, so only the relative configuration affects the dynamics, not absolute position). This
+  means the longest distance that fits a given bearing is computed directly with trig, so there's
+  no search/rejection loop: *(simplified 2026-10-09 — it originally guessed a random center too
+  and retried up to `max_tries` times until both groups landed in bounds; replaced once it became
+  clear the center didn't need to vary at all)*. Raises `ValueError` up front if `margin` alone
+  leaves no room in `bounds`, or if `min_distance` can't fit at every bearing.
 
   ```python
   from sindy_wm.envs.spawn_sampling import sample_opposing_spawns
   import numpy as np
 
-  spawn = sample_opposing_spawns(np.random.default_rng(0), bounds=(0, 31, 8, 23), min_distance=8, max_distance=16)
+  spawn = sample_opposing_spawns(
+      np.random.default_rng(0), bounds=(0, 31, 8, 23), min_distance=8, max_distance=16
+  )
   spawn.ally_pos, spawn.enemy_pos, spawn.attack_point
   ```
 
