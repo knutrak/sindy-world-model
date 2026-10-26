@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import pandas as pd
 import pytest
 
-from sindy_wm.data import storage
+from sindy_wm.io import storage
 
 
 @dataclass

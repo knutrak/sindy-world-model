@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from sindy_wm.data import storage
+from sindy_wm.io import storage
 
 
 def load_all_indexes(experiment_dir: str | Path) -> pd.DataFrame:

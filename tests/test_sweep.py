@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from sindy_wm.data import storage
 from sindy_wm.evaluation.sweep import load_all_indexes, summarize, wilson_interval
+from sindy_wm.io import storage
 
 
 def _dataset(tmp_path, name, step_mul, aggression, outcomes):

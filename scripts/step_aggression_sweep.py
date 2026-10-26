@@ -3,8 +3,8 @@
 from itertools import product
 from pathlib import Path
 
-from sindy_wm.data.collect import collect
 from sindy_wm.envs.policies import AttackNearestPolicy
+from sindy_wm.io.collect import collect
 from sindy_wm.paths import RAW_DIR
 
 EXPERIMENT = "exp01_5m_aggression_stepmul"

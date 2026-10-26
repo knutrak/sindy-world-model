@@ -4,11 +4,11 @@ from pathlib import Path
 
 import numpy as np
 
-from sindy_wm.data import storage
 from sindy_wm.envs.episode import play_episode
 from sindy_wm.envs.policies import Policy
 from sindy_wm.envs.scenarios import load_map_info, make_env, seconds_per_step, walkable_bounds
 from sindy_wm.envs.spawn_sampling import sample_opposing_spawns
+from sindy_wm.io import storage
 from sindy_wm.paths import SCENARIO_DIR
 from sindy_wm.provenance import file_sha256
 

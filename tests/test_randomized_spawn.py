@@ -4,9 +4,9 @@ Does randomize_spawn actually move the units, and keep each episode reproducible
 
 import pandas as pd
 
-from sindy_wm.data import storage
-from sindy_wm.data.collect import collect
 from sindy_wm.envs.policies import AttackNearestPolicy
+from sindy_wm.io import storage
+from sindy_wm.io.collect import collect
 
 
 def test_randomize_spawn_varies_start_positions_and_is_reproducible(tmp_path):

@@ -1,7 +1,7 @@
-from sindy_wm.data import storage
 from sindy_wm.envs.episode import play_episode
 from sindy_wm.envs.policies import AttackNearestPolicy
 from sindy_wm.envs.scenarios import SCENARIO_DIR, make_env
+from sindy_wm.io import storage
 from sindy_wm.paths import RAW_DIR
 from sindy_wm.provenance import file_sha256
 
