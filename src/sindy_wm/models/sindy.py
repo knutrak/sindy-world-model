@@ -180,14 +180,70 @@ def simulate(
     return sim if len(sim) == len(t) and np.all(np.isfinite(sim)) else None
 
 
+def simulate_to_elimination(
+    model: ps.SINDy,
+    x0: np.ndarray,
+    dt: float,
+    t_max: float,
+    threshold: float = 0.02,
+) -> tuple[bool | None, float | None]:
+    """Integrate the model from `x0` until one side is eliminated, without using the real end time.
+
+    A side counts as eliminated once its quantity drops to `threshold` or below
+    (a smooth model may approach 0 only slowly). Blue is `x0[0]`, Red is `x0[1]`.
+
+    Args:
+        model: A fitted SINDy model (or anything with the same `simulate`).
+        x0: Starting state, e.g. the real state at engagement or at midway.
+        dt: Output time step in seconds (only sets how precisely the
+            elimination time is found; the integrator chooses its own steps).
+        t_max: Give up after this many seconds.
+        threshold: Value at or below which a side counts as eliminated.
+
+    Returns:
+        `(blue_won, t_elimination)`, or `(None, None)` if neither side is
+        eliminated within `t_max` or the integration fails or blows up.
+    """
+    t = np.arange(0.0, t_max + dt / 2, dt)
+    try:
+        sim = model.simulate(x0, t, integrator_kws={"method": "LSODA", "rtol": 1e-6, "atol": 1e-8})
+    except Exception:  # integration can fail if the model blows up
+        return None, None
+    sim = np.asarray(sim)
+    finite = np.all(np.isfinite(sim), axis=1)
+    if not finite.all():  # only trust the part before the blow-up
+        sim = sim[: np.argmin(finite)]
+    dead = (sim[:, 0] <= threshold) | (sim[:, 1] <= threshold)
+    if not dead.any():
+        return None, None
+    k = int(np.argmax(dead))  # first step where a side is eliminated
+    blue, red = sim[k, 0], sim[k, 1]
+    blue_won = bool(red <= threshold and (blue > threshold or blue > red))
+    return blue_won, float(t[k])
+
+
 def evaluate(
     model: ps.SINDy,
     ids,
     trajectories: dict[int, pd.DataFrame],
     state_columns: list[str],
     battle_won: pd.Series,
+    threshold: float = 0.02,
+    horizon_factor: float = 3.0,
 ) -> pd.DataFrame:
     """Metrics per episode, simulating from the start and from midway.
+
+    Two kinds of winner prediction are computed:
+
+    - `winner_correct_*`: simulate over the real trajectory's time points and
+      call the side with more health at the real end time the winner (uses the
+      real battle length).
+    - `winner_correct_*_elim`: simulate until one side drops to `threshold`
+      (see `simulate_to_elimination`), so the model must also predict when the
+      battle ends. `t_elim_*` is that predicted remaining time and
+      `duration_actual_*` the real one; `no_elim_*` is True if neither side was
+      eliminated within `horizon_factor` times the longest trajectory in `ids`
+      (counted as a wrong prediction).
 
     Args:
         model: A fitted SINDy model.
@@ -199,9 +255,12 @@ def evaluate(
         battle_won: Whether Blue won, indexed by episode_idx (e.g. `index["battle_won"]`).
     """
     blue, red = 0, 1  # by convention: state_columns is always [blue_quantity, red_quantity]
+    t_max = horizon_factor * max(float(trajectories[i]["t"].iloc[-1]) for i in ids)
     rows = []
     for i in ids:
         traj = trajectories[i]
+        t_all = traj["t"].to_numpy()
+        dt = float(np.median(np.diff(t_all)))
         actual = traj[state_columns].to_numpy()
         blue_won = bool(battle_won.loc[i])
         mid = len(traj) // 2
@@ -212,6 +271,13 @@ def evaluate(
             "leader_correct_midway": bool((actual[mid, blue] > actual[mid, red]) == blue_won),
         }
         for label, start in [("start", 0), ("midway", mid)]:
+            won_elim, t_elim = simulate_to_elimination(model, actual[start], dt, t_max, threshold)
+            row |= {
+                f"winner_correct_{label}_elim": won_elim is not None and won_elim == blue_won,
+                f"no_elim_{label}": won_elim is None,
+                f"t_elim_{label}": np.nan if t_elim is None else t_elim,
+                f"duration_actual_{label}": float(t_all[-1] - t_all[start]),
+            }
             sim = simulate(model, traj, state_columns, start)
             if sim is None:
                 row |= {f"rmse_{label}": np.nan, f"winner_correct_{label}": False, f"failed_{label}": True}
@@ -231,9 +297,16 @@ def summarize_eval(
     trajectories: dict[int, pd.DataFrame],
     state_columns: list[str],
     battle_won: pd.Series,
+    threshold: float = 0.02,
+    horizon_factor: float = 3.0,
 ) -> dict:
-    """RMSE and winner accuracy (vs. their naive baselines), averaged over `ids`."""
-    ev = evaluate(model, ids, trajectories, state_columns, battle_won)
+    """RMSE and winner accuracy (vs. their naive baselines), averaged over `ids`.
+
+    `*_elim` metrics simulate until a side is eliminated (see `evaluate`).
+    `duration_mae_*` is the mean absolute error of the predicted remaining
+    battle time in seconds, over episodes where the model eliminated a side.
+    """
+    ev = evaluate(model, ids, trajectories, state_columns, battle_won, threshold, horizon_factor)
     blue_share = ev["blue_won"].mean()
     return {
         "rmse_start": float(ev["rmse_start"].mean()),
@@ -242,6 +315,11 @@ def summarize_eval(
         "winner_acc_midway": float(ev["winner_correct_midway"].mean()),
         "majority_baseline": float(max(blue_share, 1 - blue_share)),
         "leader_baseline_midway": float(ev["leader_correct_midway"].mean()),
+        "winner_acc_start_elim": float(ev["winner_correct_start_elim"].mean()),
+        "winner_acc_midway_elim": float(ev["winner_correct_midway_elim"].mean()),
+        "no_elimination": int(ev["no_elim_start"].sum() + ev["no_elim_midway"].sum()),
+        "duration_mae_start": float((ev["t_elim_start"] - ev["duration_actual_start"]).abs().mean()),
+        "duration_mae_midway": float((ev["t_elim_midway"] - ev["duration_actual_midway"]).abs().mean()),
         "failed_simulations": int(ev["failed_start"].sum() + ev["failed_midway"].sum()),
         "n_terms": int(np.count_nonzero(model.coefficients())),
     }
