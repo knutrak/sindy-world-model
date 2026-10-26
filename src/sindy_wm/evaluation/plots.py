@@ -1,8 +1,17 @@
 """Plotting functions for analysing data and evaluating models."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.animation import FuncAnimation
+
+from sindy_wm.models.simulation import simulate
+
+if TYPE_CHECKING:
+    import pysindy as ps
 
 TEAM_COLORS = {"blue": "tab:blue", "red": "tab:red"}
 
@@ -127,3 +136,42 @@ def animate_positions(snapshots: pd.DataFrame, interval: int = 200, title: str =
     anim = FuncAnimation(fig, update, frames=steps, interval=interval)
     plt.close(fig)  # stop notebooks from also showing an empty static figure
     return anim
+
+
+def plot_predictions(
+    model: ps.SINDy,
+    ids,
+    trajectories: dict[int, pd.DataFrame],
+    state_columns: list[str],
+    battle_won: pd.Series,
+    title: str = "",
+) -> plt.Figure:
+    """Plot a few episodes: actual (solid), simulated from the start (dashed) and midway (dotted)."""
+    fig, axes = plt.subplots(1, len(ids), figsize=(4 * len(ids), 3.5), sharey=True, squeeze=False)
+    for ax, i in zip(axes[0], ids, strict=True):
+        traj = trajectories[i]
+        mid = len(traj) // 2
+        sim_start = simulate(model, traj, state_columns)
+        sim_mid = simulate(model, traj, state_columns, mid)
+        for k, col in enumerate(state_columns):
+            color = TEAM_COLORS.get(col.split("_")[-1], "k")
+            ax.plot(traj["t"], traj[col], color=color, label=f"{col} actual")
+            if sim_start is not None:
+                ax.plot(traj["t"], sim_start[:, k], "--", color=color, label="model from start")
+            if sim_mid is not None:
+                ax.plot(
+                    traj["t"].iloc[mid:],
+                    sim_mid[:, k],
+                    ":",
+                    color=color,
+                    linewidth=2,
+                    label="model from midway",
+                )
+        outcome = "Blue won" if bool(battle_won.loc[i]) else "Blue lost"
+        ax.set(title=f"episode {i} ({outcome})", xlabel="time since engagement (s)")
+        ax.grid(True, alpha=0.3)
+    axes[0][0].set_ylabel("health (normalized)")
+    axes[0][-1].legend(fontsize=7)
+    fig.suptitle(title)
+    fig.tight_layout()
+    return fig

@@ -42,25 +42,34 @@ src/sindy_wm/            reusable code, imported by notebooks and scripts
 │   ├── policies.py      RandomPolicy, AttackNearestPolicy (each describes itself via config())
 │   ├── episode.py       play_episode(): play and record one episode
 │   └── smaclite_snapshot.py   SnapshotLogger: per-unit state tables
-├── data/
+├── io/
 │   ├── storage.py       datasets: create, save episodes, finalize, load
 │   └── collect.py       collect(): play episodes with a policy and save them as a dataset,
 │                        optionally with a randomized spawn (see Collecting datasets below)
 ├── states/
 │   └── aggregate.py     level_a(): team-level state from snapshots; engagement(): engaged/
 │                        targets/speed per team, needs snapshots with target_*/vx/vy columns
-├── models/
-│   └── sindy.py         to_trajectory, fit_sindy, simulate, evaluate, summarize_eval,
-│                        plot_predictions, save_run: moved from notebook 04 once settled;
-│                        fit_lanchester, LanchesterModel: the classical 2-parameter square
-│                        law, as an explicit (not SINDy-sparsified) baseline
+├── models/              team-level combat models (see models/__init__.py for the overview);
+│   │                    all three model types share one interface, so everything below works
+│   │                    on any of them
+│   ├── trajectories.py  to_trajectory (trim, downsample), derivative_data (smoothed derivatives)
+│   ├── sindy.py         fit_sindy: polynomial SINDy with STLSQ
+│   ├── lanchester.py    LanchesterModel, fit_lanchester: the classical square law, as an
+│   │                    explicit (not SINDy-sparsified) baseline
+│   ├── gated.py         GatedModel, fit_gated: SINDy on a library where every term is multiplied
+│   │                    by the opponent (no healing once a side is gone)
+│   ├── simulation.py    simulate, simulate_to_elimination
+│   ├── metrics.py       evaluate, summarize_eval (winner/duration), evaluate_horizons (error a
+│   │                    fixed time ahead vs. persistence/last-slope baselines), healing_share
+│   └── runs.py          save_run
 └── evaluation/
-    ├── plots.py         plot_level_a, plot_many_episodes, plot_positions, animate_positions
+    ├── plots.py         plot_level_a, plot_many_episodes, plot_positions, animate_positions,
+    │                    plot_predictions (model vs. data)
     └── sweep.py         load_all_indexes, summarize, heatmap: condense an experiment folder
                          (many datasets) into one table and compare win rates/duration
-notebooks/               exploration (01_ingestion, 02_analysis, 03_model_exploration,
-                         04_sweep_and_first_sindy, 05_compare_exp01_exp02,
-                         06_lanchester_drivers)
+notebooks/               00_recap (tour of the whole project), 01_models_explained (how the
+                         model code works), 02_analysis/ (04_sweep_and_first_sindy,
+                         05_compare_exp01_exp02, 06_lanchester_drivers)
 scripts/
 ├── step_aggression_sweep.py   collect exp01: fixed spawn, aggression x step_mul grid
 └── collect_data.py            collect another experiment's datasets; existing ones are skipped
@@ -151,7 +160,7 @@ preprocessing (see Findings below); considered but intentionally not implemented
 Reading a dataset back:
 
 ```python
-from sindy_wm.data import storage
+from sindy_wm.io import storage
 
 manifest = storage.load_manifest(dataset_dir)
 dt = manifest["config"]["env"]["seconds_per_step"]
