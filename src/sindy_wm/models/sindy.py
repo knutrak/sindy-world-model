@@ -109,6 +109,11 @@ class LanchesterModel:
         x1, x2 = self.state_columns
         return [f"{-self.a:.{precision}f} {x2}", f"{-self.b:.{precision}f} {x1}"]
 
+    def predict(self, x: np.ndarray) -> np.ndarray:
+        """Time derivatives at the rows of `x`, like `ps.SINDy.predict`."""
+        x = np.atleast_2d(x)
+        return np.column_stack([-self.a * x[:, 1], -self.b * x[:, 0]])
+
     def simulate(self, x0, t, integrator_kws: dict | None = None) -> np.ndarray:
         from scipy.integrate import solve_ivp
 
@@ -183,43 +188,60 @@ def simulate(
 def simulate_to_elimination(
     model: ps.SINDy,
     x0: np.ndarray,
-    dt: float,
     t_max: float,
     threshold: float = 0.02,
+    blow_up: float = 1e3,
 ) -> tuple[bool | None, float | None]:
     """Integrate the model from `x0` until one side is eliminated, without using the real end time.
 
-    A side counts as eliminated once its quantity drops to `threshold` or below
-    (a smooth model may approach 0 only slowly). Blue is `x0[0]`, Red is `x0[1]`.
+    A side counts as eliminated once its quantity drops to `threshold` (a
+    smooth model may approach 0 only slowly). Blue is `x0[0]`, Red is `x0[1]`.
+    Integration stops at that moment (a solver event), so the elimination time
+    is exact and a model that blows up is not integrated all the way to `t_max`.
 
     Args:
-        model: A fitted SINDy model (or anything with the same `simulate`).
+        model: A fitted SINDy model (or anything with the same `predict`).
         x0: Starting state, e.g. the real state at engagement or at midway.
-        dt: Output time step in seconds (only sets how precisely the
-            elimination time is found; the integrator chooses its own steps).
         t_max: Give up after this many seconds.
-        threshold: Value at or below which a side counts as eliminated.
+        threshold: Value at which a side counts as eliminated.
+        blow_up: Give up once any state's magnitude exceeds this.
 
     Returns:
         `(blue_won, t_elimination)`, or `(None, None)` if neither side is
         eliminated within `t_max` or the integration fails or blows up.
     """
-    t = np.arange(0.0, t_max + dt / 2, dt)
+    from scipy.integrate import solve_ivp
+
+    x0 = np.asarray(x0, dtype=float)
+    if min(x0[0], x0[1]) <= threshold:  # already eliminated: no crossing for the event to find
+        return bool(x0[1] < x0[0]), 0.0
+
+    def rhs(_t, x):
+        return model.predict(x[np.newaxis, :])[0]
+
+    def eliminated(_t, x):
+        return min(x[0], x[1]) - threshold
+
+    def blown_up(_t, x):
+        return blow_up - np.max(np.abs(x))
+
+    eliminated.terminal = blown_up.terminal = True
     try:
-        sim = model.simulate(x0, t, integrator_kws={"method": "LSODA", "rtol": 1e-6, "atol": 1e-8})
+        sol = solve_ivp(
+            rhs,
+            (0.0, t_max),
+            x0,
+            method="LSODA",
+            rtol=1e-6,
+            atol=1e-8,
+            events=[eliminated, blown_up],
+        )
     except Exception:  # integration can fail if the model blows up
         return None, None
-    sim = np.asarray(sim)
-    finite = np.all(np.isfinite(sim), axis=1)
-    if not finite.all():  # only trust the part before the blow-up
-        sim = sim[: np.argmin(finite)]
-    dead = (sim[:, 0] <= threshold) | (sim[:, 1] <= threshold)
-    if not dead.any():
+    if sol.status != 1 or len(sol.t_events[0]) == 0:  # no event, or blew up first
         return None, None
-    k = int(np.argmax(dead))  # first step where a side is eliminated
-    blue, red = sim[k, 0], sim[k, 1]
-    blue_won = bool(red <= threshold and (blue > threshold or blue > red))
-    return blue_won, float(t[k])
+    blue, red = sol.y_events[0][0][:2]
+    return bool(red < blue), float(sol.t_events[0][0])
 
 
 def evaluate(
@@ -260,7 +282,6 @@ def evaluate(
     for i in ids:
         traj = trajectories[i]
         t_all = traj["t"].to_numpy()
-        dt = float(np.median(np.diff(t_all)))
         actual = traj[state_columns].to_numpy()
         blue_won = bool(battle_won.loc[i])
         mid = len(traj) // 2
@@ -271,7 +292,7 @@ def evaluate(
             "leader_correct_midway": bool((actual[mid, blue] > actual[mid, red]) == blue_won),
         }
         for label, start in [("start", 0), ("midway", mid)]:
-            won_elim, t_elim = simulate_to_elimination(model, actual[start], dt, t_max, threshold)
+            won_elim, t_elim = simulate_to_elimination(model, actual[start], t_max, threshold)
             row |= {
                 f"winner_correct_{label}_elim": won_elim is not None and won_elim == blue_won,
                 f"no_elim_{label}": won_elim is None,

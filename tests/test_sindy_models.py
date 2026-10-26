@@ -14,6 +14,7 @@ from sindy_wm.models.sindy import (
     fit_sindy,
     save_run,
     simulate,
+    simulate_to_elimination,
     summarize_eval,
     to_trajectory,
 )
@@ -143,3 +144,31 @@ def test_lanchester_model_interface_matches_sindy_shape():
     assert len(eqns) == 2 and "x2" in eqns[0] and "x1" in eqns[1]
     sim = m.simulate(np.array([1.0, 1.0]), np.array([0.0, 0.1, 0.2]))
     assert sim.shape == (3, 2)
+
+
+def test_simulate_to_elimination_matches_square_law_solution():
+    from scipy.optimize import brentq
+
+    from sindy_wm.models.sindy import LanchesterModel
+
+    # With a = b = k, the square law has Red(t) = R0*cosh(kt) - B0*sinh(kt) in closed form
+    k, b0, r0, threshold = 0.5, 1.0, 0.6, 0.02
+    model = LanchesterModel(["x1", "x2"], a=k, b=k)
+    expected_t = brentq(lambda t: r0 * np.cosh(k * t) - b0 * np.sinh(k * t) - threshold, 0, 20)
+
+    blue_won, t_elim = simulate_to_elimination(model, np.array([b0, r0]), t_max=60, threshold=threshold)
+    assert blue_won is True
+    assert t_elim == pytest.approx(expected_t, rel=1e-4)
+
+    red_won, _ = simulate_to_elimination(model, np.array([r0, b0]), t_max=60, threshold=threshold)
+    assert red_won is False
+
+
+def test_simulate_to_elimination_gives_up_without_elimination_or_on_blow_up():
+    from sindy_wm.models.sindy import LanchesterModel
+
+    still = LanchesterModel(["x1", "x2"], a=0.0, b=0.0)
+    assert simulate_to_elimination(still, np.array([1.0, 1.0]), t_max=10) == (None, None)
+
+    growing = LanchesterModel(["x1", "x2"], a=-1.0, b=-1.0)  # both sides grow without bound
+    assert simulate_to_elimination(growing, np.array([1.0, 1.0]), t_max=1e6) == (None, None)

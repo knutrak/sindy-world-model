@@ -234,15 +234,32 @@ Runs are never overwritten. `runs/` is not in git, so keep it in a backed-up loc
 - **Copying the game with `deepcopy` diverges**; replaying from seed plus action log
   reproduces episodes exactly.
 
-### From the 5m_vs_5m sweep (AttackNearestPolicy, 100 episodes per setting)
+### What is on disk
+
+Read from each dataset's `manifest.json` (and checked against the step-0 snapshots):
+
+| experiment | scenario | spawn | episodes per setting | target/velocity columns | collected |
+|---|---|---|---|---|---|
+| exp01_5m_aggression_stepmul | 5m_vs_5m | fixed (groups 14.2 apart) | 500 | no | 2026-10-08, commit 7a605fa (dirty) |
+| exp02_5m_random_aggression_stepmul | 5m_vs_5m | randomized, 8–16 | 100 | yes | 2026-10-09, commit 590a3ab (dirty) |
+| exp03_10m_random_aggression_stepmul | 10m_vs_10m | randomized, 8–16 | 500 | yes | 2026-10-09, commit 590a3ab (dirty) |
+
+All three use AttackNearestPolicy over aggression {0.5, 0.7, 0.9, 1.0} × step_mul {1, 2, 4, 8},
+seeds from 0, and a 100 s (exp01, exp02) or 500 s (exp03) time limit.
+
+Both 5m experiments were collected again after their first findings were written: the first
+exp01 had 100 episodes per setting, and the first exp02 more than the 100 now on disk. The
+numbers below are recomputed on the data now on disk (2026-10-26), except where marked.
+
+### From the 5m_vs_5m sweep (exp01: fixed spawn, 500 episodes per setting)
 
 Blue win rate by aggression and step_mul:
 
 | aggression | step_mul 1 | step_mul 2 | step_mul 4 | step_mul 8 |
 |---|---|---|---|---|
-| 0.5 | 25% | 8% | 1% | 0% |
-| 0.7 | 65% | 38% | 12% | 3% |
-| 0.9 | 89% | 71% | 35% | 3% |
+| 0.5 | 18% | 8% | 1% | 0% |
+| 0.7 | 64% | 40% | 14% | 1% |
+| 0.9 | 86% | 65% | 31% | 4% |
 | 1.0 | 100%* | 0%* | 0%* | 0%* |
 
 \* Essentially one game repeated (see below), so not a rate.
@@ -251,32 +268,33 @@ Blue win rate by aggression and step_mul:
   tick, while Blue decides every step_mul ticks. A likely reason the effect is larger at
   low aggression: Blue's random actions (probability 1 − aggression) last a whole step,
   1/16 s at step_mul 1 but 0.5 s at step_mul 8.
-- **Battles last about 8–9 s at every step_mul.** step_mul changes how finely a battle is
+- **Battles last about 7.5–9.5 s at every step_mul.** step_mul changes how finely a battle is
   recorded and how often Blue decides, not the battle itself. At step_mul 8 a battle is
   only about 17 points long; at step_mul 1 about 140.
 - **Aggression 1.0 gives (nearly) identical episodes**: the policy uses no randomness and
   every episode starts from the same state. Use aggression below 1 for varied data.
-- With 100 episodes, a win rate near 50% has a 95% interval of about ±10 percentage
-  points; smaller differences are not meaningful.
+- A win rate near 50% has a 95% interval of about ±4 percentage points with 500 episodes
+  (exp01, exp03) and about ±10 with 100 (exp02); smaller differences are not meaningful.
 - **Balanced settings** (both teams win sometimes): `a070_s1`, `a070_s2`, `a090_s2`, `a090_s4`.
 
-### From comparing exp01 (fixed spawn) vs exp02 (randomized spawn, 500 episodes per setting)
+### From comparing exp01 (fixed spawn, 500 episodes) vs exp02 (randomized spawn, 100 episodes)
 
-- **Randomizing spawn distance fixes the `aggression=1.0` column.** In exp01 it was ~1-2 distinct
+- **Randomizing spawn distance fixes the `aggression=1.0` column.** In exp01 it has 1-2 distinct
   outcomes per dataset (one game repeated, not a rate: see above). In exp02, `distinct_outcomes`
-  jumps to 300-450 across the whole grid, since initial separation is now a real source of
-  variety even when the policy itself has none.
+  is 74-98 out of 100 episodes across the whole grid, aggression 1.0 included, since initial
+  separation is now a real source of variety even when the policy itself has none.
 - **Blue's win rate is generally lower in exp02**, but not uniformly: the drop is concentrated at
-  `step_mul` 1-2 (exp01: 25-100% → exp02: 13-60% across aggressions), which was also exp01's
+  `step_mul` 1-2 (exp01: 8-100% → exp02: 3-53% across aggressions), which was also exp01's
   *best* regime for Blue. At `step_mul` 4-8, where exp01 was already near a floor, exp02's rates
-  are flat or higher.
-  - Checked and ruled out as the explanation: distance alone. Even exp02 episodes that happen to
-    spawn at ~14-15 (matching exp01 exactly) only win ~60-64%, well below exp01's 86% at that
-    setting (`a090_s1`).
-  - Checked and inconclusive: approach bearing (Blue can only move in 4 cardinal directions per
-    decision; Red's built-in AI moves continuously via RVO2). Correlation with win rate is
-    essentially zero overall; a small near-distance-matched subsample hints it might matter
-    (22% vs. 60% win rate, aligned vs. diagonal bearing) but n=9, too small to trust.
+  are mostly flat or higher.
+  - Checked and ruled out as the explanation: distance alone. The 22 exp02 episodes that spawn
+    13.5-15.5 apart (close to exp01's 14.2) win 45%, well below exp01's 86% at that setting
+    (`a090_s1`).
+  - Checked and inconclusive (on the earlier exp02 collection, not rechecked): approach bearing
+    (Blue can only move in 4 cardinal directions per decision; Red's built-in AI moves
+    continuously via RVO2). Correlation with win rate was essentially zero overall; a small
+    near-distance-matched subsample hinted it might matter (22% vs. 60% win rate, aligned vs.
+    diagonal bearing) but n=9, too small to trust.
   - Best current read: the fixed `(9,16)`/`(23,16)` layout — same y, attack_point exactly on
     Blue's spawn, dead-on approach — was an atypically Blue-favorable corner of the configuration
     space, not a neutral baseline. exp02's numbers are probably the more representative picture.
@@ -284,10 +302,11 @@ Blue win rate by aggression and step_mul:
     separate the angle effect from distance (they're confounded in exp02 as collected).
 - **x, y (or plain `distance`) should not be added as a SINDy-fit state.** `trim_to_engagement`
   collapses almost all of the variation `randomize_spawn` introduces before a trajectory ever
-  reaches SINDy: spawn distance has std 2.19 across episodes, but distance at the trimmed
-  engagement start has std only 0.46, and barely moves after that (mean range ~2.3 units for the
-  rest of the trajectory). The information about initial separation ends up almost entirely in
-  *when* engagement starts (`corr(spawn_distance, trim_start_step) = 0.97`), which trimming
+  reaches SINDy: in exp02 `a090_s1`, spawn distance has std 2.10 across episodes, but distance at
+  the trimmed engagement start has std only 0.43, and barely moves after that (mean range ~2.3
+  units for the rest of the trajectory, measured on the earlier exp02 collection). The information
+  about initial separation ends up almost entirely in *when* engagement starts
+  (`corr(spawn_distance, trim_start_step) = 0.98`), which trimming
   discards by re-zeroing every trajectory's clock. Raw `x, y` would be worse again: the dynamics
   are translation-invariant (open terrain), so only the relative configuration matters, not
   absolute position.
@@ -333,8 +352,8 @@ Classical Lanchester theory models unit counts, not aggregate health — fit the
 - Interpret the first SINDy results (notebook 04) and record them here.
 - Run notebook 06's driver comparison on more `exp03` settings, not just one dataset, to see if
   the `health`/`alive`/`engaged` ranking holds generally or is specific to that aggression/step_mul.
-- Re-collect a 5v5 dataset with the new `vx`/`vy`/`target_*` snapshot columns, to compare driver
-  behavior across scenario sizes — classical theory predicts `a`/`b` should be roughly invariant to
+- Run notebook 06 on exp02 too (5v5, already recorded with the `vx`/`vy`/`target_*` columns, but
+  only 100 episodes per setting), to compare driver behavior across scenario sizes — classical theory predicts `a`/`b` should be roughly invariant to
   force size under the square law; notebook 06 only has one scale (`10m_vs_10m`) to check so far.
 - Isolate the exp01 vs exp02 win-rate drop: a dataset that randomizes bearing only, at the fixed
   distance of 14, would separate the angle effect from distance (see Findings above).
