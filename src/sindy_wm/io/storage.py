@@ -12,6 +12,9 @@ per episode for snapshots and for actions:
         actions/
             episode_00000.parquet
             ...
+        controls/               the policy's setting at every step (datasets from 2026-10-27 on)
+            episode_00000.parquet
+            ...
 
 Typical use, once per dataset:
 
@@ -45,6 +48,8 @@ MANIFEST_FILE = "manifest.json"
 EPISODES_FILE = "episodes.jsonl"
 SNAPSHOT_DIR = "snapshots"
 ACTION_DIR = "actions"
+CONTROL_DIR = "controls"
+TABLE_DIRS = (SNAPSHOT_DIR, ACTION_DIR, CONTROL_DIR)
 
 
 # ---------------------------------------------------------------------------
@@ -58,10 +63,10 @@ def episode_path(dataset_dir: str | Path, episode_idx: int, kind: str = SNAPSHOT
     Args:
         dataset_dir: Folder of the dataset.
         episode_idx: Episode number, used in the file name.
-        kind: "snapshots" or "actions".
+        kind: "snapshots", "actions" or "controls".
     """
-    if kind not in (SNAPSHOT_DIR, ACTION_DIR):
-        raise ValueError(f"kind must be '{SNAPSHOT_DIR}' or '{ACTION_DIR}', got '{kind}'")
+    if kind not in TABLE_DIRS:
+        raise ValueError(f"kind must be one of {TABLE_DIRS}, got '{kind}'")
     return Path(dataset_dir) / kind / f"episode_{episode_idx:05d}.parquet"
 
 
@@ -121,12 +126,21 @@ def create_dataset(
     return _write_manifest(dataset_dir, manifest)
 
 
-def save_episode(dataset_dir: str | Path, episode_idx: int, episode: Episode) -> dict[str, Any]:
-    """Save one episode's snapshots and actions, and add it to the episode index.
+def save_episode(
+    dataset_dir: str | Path, episode_idx: int, episode: Episode, extra: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Save one episode's snapshots, actions and controls, and add it to the episode index.
 
-    Both tables get an `episode_idx` column, so that the tables of many episodes
+    Every table gets an `episode_idx` column, so that the tables of many episodes
     can be loaded and concatenated in one go. The index line is written last,
     so the index only lists episodes whose files are completely saved.
+
+    Args:
+        dataset_dir: Folder of the dataset.
+        episode_idx: Episode number.
+        episode: The recorded episode. Its controls are saved if it has any.
+        extra: More fields for the episode's index line, e.g. the starting
+            conditions drawn for it (`EpisodeSettings.record()`).
 
     Returns:
         The record added to the episode index.
@@ -135,14 +149,18 @@ def save_episode(dataset_dir: str | Path, episode_idx: int, episode: Episode) ->
     if not (dataset_dir / MANIFEST_FILE).exists():
         raise FileNotFoundError(f"No manifest in {dataset_dir}. Call create_dataset first.")
 
-    snap_path = episode_path(dataset_dir, episode_idx, SNAPSHOT_DIR)
-    act_path = episode_path(dataset_dir, episode_idx, ACTION_DIR)
-    for path in (snap_path, act_path):
+    tables = {SNAPSHOT_DIR: episode.snapshots, ACTION_DIR: episode.actions}
+    controls = getattr(episode, "controls", None)
+    if controls is not None:
+        tables[CONTROL_DIR] = controls
+    paths = {kind: episode_path(dataset_dir, episode_idx, kind) for kind in tables}
+    for path in paths.values():
         if path.exists():
             raise FileExistsError(f"{path} already exists. Raw data is never overwritten.")
 
-    _with_episode_idx(episode.snapshots, episode_idx).to_parquet(snap_path, index=False)
-    _with_episode_idx(episode.actions, episode_idx).to_parquet(act_path, index=False)
+    for kind, table in tables.items():
+        paths[kind].parent.mkdir(exist_ok=True)
+        _with_episode_idx(table, episode_idx).to_parquet(paths[kind], index=False)
 
     record = {
         "episode_idx": int(episode_idx),
@@ -151,6 +169,7 @@ def save_episode(dataset_dir: str | Path, episode_idx: int, episode: Episode) ->
         "battle_won": bool(episode.battle_won),
         "truncated": bool(episode.truncated),
         **_final_summary(episode.snapshots),
+        **(extra or {}),
     }
     with open(dataset_dir / EPISODES_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(record) + "\n")
@@ -230,6 +249,14 @@ def load_snapshots(dataset_dir: str | Path, episode_idx: int | list[int] | None 
 def load_actions(dataset_dir: str | Path, episode_idx: int | list[int] | None = None) -> pd.DataFrame:
     """Load actions of one episode, a list of episodes, or (None) all episodes."""
     return _load_tables(dataset_dir, ACTION_DIR, episode_idx)
+
+
+def load_controls(dataset_dir: str | Path, episode_idx: int | list[int] | None = None) -> pd.DataFrame:
+    """Load the policy's per-step settings of one episode, a list of episodes, or (None) all episodes.
+
+    Datasets collected before controls were logged have none: FileNotFoundError.
+    """
+    return _load_tables(dataset_dir, CONTROL_DIR, episode_idx)
 
 
 # ---------------------------------------------------------------------------

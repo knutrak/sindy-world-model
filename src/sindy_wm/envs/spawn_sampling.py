@@ -89,3 +89,15 @@ def sample_opposing_spawns(
     half = direction * distance / 2
     ally, enemy = center - half, center + half
     return SpawnSample(tuple(ally), tuple(enemy), tuple(ally))
+
+
+def formation_half_width(n_units: int, unit_size: float = 0.75, buffer: float = 0.05) -> float:
+    """Half the width of a group's starting formation, from its center.
+
+    SMAClite lays a group out as a square grid, ceil(sqrt(n)) units a side,
+    `buffer` apart (smaclite.env.smaclite.GROUP_BUFFER). `unit_size` is a
+    unit's diameter, 0.75 for marines. Use it to choose `margin` and the
+    smallest spawn distance at which two groups don't overlap.
+    """
+    side = int(np.ceil(np.sqrt(n_units)))
+    return (side * unit_size + (side - 1) * buffer) / 2

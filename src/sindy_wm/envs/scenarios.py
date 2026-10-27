@@ -65,6 +65,7 @@ def make_env(
     step_mul: int = 8,
     use_cpp_rvo2: bool = False,
     spawn: SpawnSample | None = None,
+    unit_counts: tuple[int, int] | None = None,
     **kwargs,
 ) -> StepMulWrapper:
     """Create a SMAClite environment for a scenario.
@@ -81,10 +82,17 @@ def make_env(
             built-in Red AI's attack point), e.g. from `sample_opposing_spawns()`.
             Only scenarios with exactly one ALLY group and one ENEMY group
             support this (true for 5m_vs_5m); ignored for built-in maps.
+        unit_counts: Override the number of units as (Blue, Red), keeping each
+            group's unit type, e.g. (8, 10) on 10m_vs_10m. Same scenario
+            requirement as `spawn`, and each group must have one unit type.
         **kwargs: Passed on to gym.make.
     """
-    if spawn is not None:
-        map_info = _with_spawn(load_map_info(scenario), spawn)
+    if spawn is not None or unit_counts is not None:
+        map_info = load_map_info(scenario)
+        if unit_counts is not None:
+            map_info = _with_unit_counts(map_info, *unit_counts)
+        if spawn is not None:
+            map_info = _with_spawn(map_info, spawn)
         env = _make_quietly(
             lambda: gym.make("smaclite/custom-v0", map_info=map_info, use_cpp_rvo2=use_cpp_rvo2, **kwargs)
         )
@@ -139,15 +147,32 @@ def walkable_bounds(map_info: MapInfo) -> tuple[float, float, float, float]:
     return float(xs.min()), float(xs.max()), float(ys.min()), float(ys.max())
 
 
+def _check_one_group_per_side(map_info: MapInfo) -> None:
+    factions = [g.faction for g in map_info.groups]
+    if factions.count(Faction.ALLY) != 1 or factions.count(Faction.ENEMY) != 1:
+        raise NotImplementedError(
+            "Randomized spawns and unit counts need a scenario with exactly one ALLY group "
+            "and one ENEMY group."
+        )
+
+
+def _with_unit_counts(map_info: MapInfo, n_ally: int, n_enemy: int) -> MapInfo:
+    """Copy of map_info with n_ally units in the ALLY group and n_enemy in the ENEMY group."""
+    _check_one_group_per_side(map_info)
+    if n_ally < 1 or n_enemy < 1:
+        raise ValueError(f"Each side needs at least one unit, got {n_ally} and {n_enemy}")
+    groups = []
+    for g in map_info.groups:
+        if len(g.units) != 1:
+            raise NotImplementedError("Unit counts can only be set for groups with a single unit type.")
+        unit_type = g.units[0][0]
+        groups.append(replace(g, units=[(unit_type, n_ally if g.faction == Faction.ALLY else n_enemy)]))
+    return replace(map_info, groups=groups, num_allied_units=n_ally, num_enemy_units=n_enemy)
+
+
 def _with_spawn(map_info: MapInfo, spawn: SpawnSample) -> MapInfo:
     """Copy of map_info with its ally/enemy group centers and attack_point overridden."""
-    by_faction = {}
-    for g in map_info.groups:
-        by_faction.setdefault(g.faction, []).append(g)
-    if len(by_faction.get(Faction.ALLY, [])) != 1 or len(by_faction.get(Faction.ENEMY, [])) != 1:
-        raise NotImplementedError(
-            "Randomized spawns need a scenario with exactly one ALLY group and one ENEMY group."
-        )
+    _check_one_group_per_side(map_info)
     groups = [
         replace(g, x=spawn.ally_pos[0], y=spawn.ally_pos[1])
         if g.faction == Faction.ALLY

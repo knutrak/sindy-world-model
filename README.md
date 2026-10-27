@@ -39,7 +39,10 @@ src/sindy_wm/            reusable code, imported by notebooks and scripts
 │   ├── scenarios.py     make_env(): create environments by scenario name, optionally with
 │   │                    a randomized spawn; walkable_bounds(), load_map_info()
 │   ├── spawn_sampling.py   sample_opposing_spawns(): random distance/bearing between two groups
-│   ├── policies.py      RandomPolicy, AttackNearestPolicy (each describes itself via config())
+│   ├── episode_sampling.py EpisodeSampler: per-episode unit counts, starting health and spawn
+│   ├── policies.py      RandomPolicy, AttackNearestPolicy, TargetChoicePolicy (nearest/weakest/
+│   │                    focus targeting), RetreatPolicy (weak units or a losing team pull
+│   │                    back); each describes itself via config()
 │   ├── episode.py       play_episode(): play and record one episode
 │   └── smaclite_snapshot.py   SnapshotLogger: per-unit state tables
 ├── io/
@@ -72,7 +75,8 @@ notebooks/               00_recap (tour of the whole project), 01_models_explain
                          05_compare_exp01_exp02, 06_lanchester_drivers)
 scripts/
 ├── step_aggression_sweep.py   collect exp01: fixed spawn, aggression x step_mul grid
-└── collect_data.py            collect another experiment's datasets; existing ones are skipped
+├── collect_data.py            collect another experiment's datasets; existing ones are skipped
+└── collect_pilot.py           pilot of the sampled dataset (exp04), then prints coverage checks
 configs/scenarios/       custom SMAClite scenarios (5m_vs_5m.json, 10m_vs_10m.json)
 data/                    datasets (not in git): raw/ is read-only, processed/ is disposable
 runs/                    experiment outputs, e.g. SINDy fits (not in git: back it up)
@@ -130,6 +134,7 @@ data/raw/5m_attack_a070_s1_v1/
                          final alive units and hp per team
     snapshots/episode_00000.parquet ...   per-unit state at every step
     actions/episode_00000.parquet ...     Blue's action per unit at every step
+    controls/episode_00000.parquet ...    the policy's setting at every step (newer datasets)
 ```
 
 ### Randomized starting positions
@@ -156,6 +161,36 @@ realized positions end up in each episode's step-0 snapshot, nothing extra is re
 Individual units are *not* scattered independently (no formation at all) — that would need
 reaching past SMAClite's supported placement API and would break `trim_to_engagement`
 preprocessing (see Findings below); considered but intentionally not implemented.
+
+### Sampling every episode's conditions, and switching policies mid-battle
+
+For data that covers many situations in one dataset, pass an `EpisodeSampler` and a
+`SwitchingPolicy`:
+
+```python
+from sindy_wm.envs.episode_sampling import EpisodeSampler
+from sindy_wm.envs.policies import PolicySpace, SwitchingPolicy
+
+collect(
+    dataset_dir=...,
+    policy=SwitchingPolicy(PolicySpace(), segment_seconds=(1.0, 3.0)),
+    description=...,
+    scenario="10m_vs_10m",
+    step_mul=2,
+    sampler=EpisodeSampler(red_units=(6, 14), force_ratio=(0.75, 1.33), start_health=(0.4, 1.0)),
+)
+```
+
+- `EpisodeSampler` draws each episode's Red unit count and force ratio (Blue / Red), starting health
+  (a side starts damaged with probability `damaged_start_share`) and spawn distance/bearing. The
+  draws go into the episode's line in `episodes.jsonl` (`n_blue`, `n_red`, `start_health_*`,
+  `spawn_distance`, `spawn_bearing_deg`).
+- `SwitchingPolicy` draws a new `RetreatPolicy` setting (target rule, aggression, retreat
+  thresholds) from a `PolicySpace` every few seconds. The setting in use at every step is saved in
+  `controls/` (`storage.load_controls`): the control input for models with control.
+- Every policy logs its setting per step, so `controls/` exists for any dataset collected from now on.
+- Starting health and uneven sides mean per-team normalization in `level_a(normalize=True)` no
+  longer makes sense (every side would start at 1): normalize by a common reference instead.
 
 Reading a dataset back:
 

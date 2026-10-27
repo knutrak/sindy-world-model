@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 
 from sindy_wm.envs.episode import play_episode
+from sindy_wm.envs.episode_sampling import EpisodeSampler
 from sindy_wm.envs.policies import Policy
 from sindy_wm.envs.scenarios import load_map_info, make_env, seconds_per_step, walkable_bounds
 from sindy_wm.envs.spawn_sampling import sample_opposing_spawns
@@ -25,6 +26,7 @@ def collect(
     allow_dirty: bool = False,
     randomize_spawn: bool = False,
     spawn_distance_range: tuple[float, float] = (8.0, 16.0),
+    sampler: EpisodeSampler | None = None,
 ) -> None:
     """Play n_episodes with consecutive seeds and save them as a new dataset in dataset_dir.
 
@@ -48,16 +50,34 @@ def collect(
             to be recorded per episode.
         spawn_distance_range: (min, max) distance sampled between the two
             group centers, in map units, when randomize_spawn is True.
+        sampler: If given, every episode draws its own unit counts, starting
+            health and spawn from it (see `envs.episode_sampling`), and the
+            draws are added to its line in the episode index. Replaces
+            `randomize_spawn`/`spawn_distance_range`, which must be left at
+            their defaults. Same scenario requirement as `randomize_spawn`.
     """
+    if sampler is not None and randomize_spawn:
+        raise ValueError("Pass either sampler or randomize_spawn: the sampler draws the spawn itself.")
     seeds = list(range(first_seed, first_seed + n_episodes))
-    env = None if randomize_spawn else make_env(scenario, step_mul=step_mul)
-    bounds = walkable_bounds(load_map_info(scenario)) if randomize_spawn else None
+    per_episode_env = randomize_spawn or sampler is not None
+    env = None if per_episode_env else make_env(scenario, step_mul=step_mul)
+    bounds = walkable_bounds(load_map_info(scenario)) if per_episode_env else None
 
     config = dataset_config(
-        scenario, step_mul, policy, seeds, max_steps, randomize_spawn, spawn_distance_range
+        scenario, step_mul, policy, seeds, max_steps, randomize_spawn, spawn_distance_range, sampler
     )
     storage.create_dataset(dataset_dir, config=config, description=description, allow_dirty=allow_dirty)
     for idx, seed in enumerate(seeds):
+        if sampler is not None:
+            settings = sampler.sample(seed, bounds)
+            episode_env = make_env(
+                scenario, step_mul=step_mul, spawn=settings.spawn, unit_counts=settings.unit_counts
+            )
+            episode = play_episode(
+                episode_env, policy, seed=seed, max_steps=max_steps, start_health=settings.start_health
+            )
+            storage.save_episode(dataset_dir, idx, episode, extra=settings.record())
+            continue
         if randomize_spawn:
             # Same seed as the env and the policy, so one number still describes
             # the whole episode (see the docstring above).
@@ -78,6 +98,7 @@ def dataset_config(
     max_steps,
     randomize_spawn: bool = False,
     spawn_distance_range: tuple[float, float] | None = None,
+    sampler: EpisodeSampler | None = None,
 ) -> dict:
     """Everything needed to regenerate a dataset, for its manifest."""
     scenario_info = {"name": scenario}
@@ -91,6 +112,14 @@ def dataset_config(
                 "ally/enemy group centers resampled per episode from "
                 "np.random.default_rng(seed), the same seed as the env and the "
                 "policy; realized positions are in each episode's step-0 snapshot"
+            ),
+        }
+    if sampler is not None:
+        scenario_info["episode_sampler"] = {
+            **sampler.config(),
+            "note": (
+                "unit counts, starting health and spawn drawn per episode from "
+                "np.random.default_rng([seed, 2]); each episode's draws are in episodes.jsonl"
             ),
         }
     return {
