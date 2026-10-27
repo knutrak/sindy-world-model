@@ -277,9 +277,9 @@ class PolicySpace:
 
     rules: tuple[str, ...] = TARGET_RULES
     aggression: tuple[float, float] = (0.7, 1.0)
-    unit_retreat_share: float = 0.3
+    unit_retreat_share: float = 0.08
     unit_below: tuple[float, float] = (0.2, 0.5)
-    team_retreat_share: float = 0.2
+    team_retreat_share: float = 0.05
     team_below: tuple[float, float] = (0.5, 0.9)
     danger_radius: float = 6.0
 
@@ -301,13 +301,16 @@ class PolicySpace:
 
 
 class SwitchingPolicy(Policy):
-    """Switches to a new random setting from `space` every few seconds of a battle.
+    """Plays random settings from `space`: one per battle, or a new one every few seconds.
 
     Each segment of the episode uses one `RetreatPolicy` drawn from `space`,
-    for a duration drawn from `segment_seconds`. So actions change *within*
-    an episode, which a model with control inputs needs (a setting fixed for
-    the whole episode is just a constant). `setting()` returns the current
-    segment's index and parameters; `play_episode` logs it at every step.
+    for a duration drawn from `segment_seconds`. Switching within an episode
+    is what a model with control inputs needs (a setting fixed for the whole
+    episode is just a constant). With `segment_seconds=None` the first setting
+    is kept for the whole episode instead: every battle is then one consistent
+    system, as a model without control inputs assumes, and the setting still
+    varies across battles. `setting()` returns the current segment's index and
+    parameters; `play_episode` logs it at every step.
 
     Randomness: the units' actions use `default_rng(seed)`, as every policy;
     the schedule (which settings, how long) uses its own stream,
@@ -318,14 +321,17 @@ class SwitchingPolicy(Policy):
     segment durations to steps.
     """
 
-    def __init__(self, space: PolicySpace | None = None, segment_seconds: tuple[float, float] = (1.0, 3.0)):
-        if not 0 < segment_seconds[0] <= segment_seconds[1]:
+    def __init__(
+        self, space: PolicySpace | None = None, segment_seconds: tuple[float, float] | None = (1.0, 3.0)
+    ):
+        if segment_seconds is not None and not 0 < segment_seconds[0] <= segment_seconds[1]:
             raise ValueError(f"segment_seconds must be (min, max) with 0 < min <= max, got {segment_seconds}")
         self.space = space or PolicySpace()
         self.segment_seconds = segment_seconds
 
     def params(self) -> dict:
-        return {"space": asdict(self.space), "segment_seconds": list(self.segment_seconds)}
+        segments = None if self.segment_seconds is None else list(self.segment_seconds)
+        return {"space": asdict(self.space), "segment_seconds": segments}
 
     def reset(self, seed: int | None = None) -> None:
         super().reset(seed)
@@ -339,8 +345,11 @@ class SwitchingPolicy(Policy):
         if self._step >= self._next_switch:
             self._current = self.space.sample(self._schedule_rng)
             self._current.rng = self.rng  # the units' random actions keep using the episode's stream
-            seconds = self._schedule_rng.uniform(*self.segment_seconds)
-            self._next_switch = self._step + max(1, round(seconds / env.seconds_per_step))
+            if self.segment_seconds is None:  # one setting for the whole episode
+                self._next_switch = np.inf
+            else:
+                seconds = self._schedule_rng.uniform(*self.segment_seconds)
+                self._next_switch = self._step + max(1, round(seconds / env.seconds_per_step))
             self._segment += 1
         self._step += 1
         return self._current.act(env)

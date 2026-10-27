@@ -54,6 +54,13 @@ def test_switching_policy_logs_a_setting_per_step_and_switches_within_its_durati
     pd.testing.assert_frame_equal(episode.actions, again.actions)
 
 
+def test_switching_policy_without_segments_keeps_one_setting_per_episode():
+    env = make_env("10m_vs_10m", step_mul=2)
+    episode = play_episode(env, SwitchingPolicy(segment_seconds=None), seed=4, max_steps=200)
+    assert (episode.controls["segment"] == 0).all()
+    assert episode.controls.drop(columns="step").nunique().max() == 1
+
+
 def test_episode_sampler_is_deterministic_and_keeps_formations_apart():
     sampler = EpisodeSampler(red_units=(4, 16), force_ratio=(0.75, 1.33), spawn_distance=(2.0, 16.0))
     assert sampler.sample(3, BOUNDS) == sampler.sample(3, BOUNDS)

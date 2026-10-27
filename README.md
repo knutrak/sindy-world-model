@@ -76,7 +76,9 @@ notebooks/               00_recap (tour of the whole project), 01_models_explain
 scripts/
 ├── step_aggression_sweep.py   collect exp01: fixed spawn, aggression x step_mul grid
 ├── collect_data.py            collect another experiment's datasets; existing ones are skipped
-└── collect_pilot.py           pilot of the sampled dataset (exp04), then prints coverage checks
+├── collect_pilot.py           pilot of the sampled dataset (exp04), then prints coverage checks
+└── collect_sampled.py         exp05: 20,000 sampled battles + 5,000 held-out, one policy setting
+                               per battle; run from committed code
 configs/scenarios/       custom SMAClite scenarios (5m_vs_5m.json, 10m_vs_10m.json)
 data/                    datasets (not in git): raw/ is read-only, processed/ is disposable
 runs/                    experiment outputs, e.g. SINDy fits (not in git: back it up)
