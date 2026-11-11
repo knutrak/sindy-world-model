@@ -1,0 +1,14 @@
+{
+    "name": "10s_vs_10s",
+    "num_allied_units": 10,
+    "num_enemy_units": 10,
+    "groups": [
+        {"x": 9, "y": 16, "faction": "ALLY", "units": {"STALKER": 10}},
+        {"x": 23, "y": 16, "faction": "ENEMY", "units": {"STALKER": 10}}
+    ],
+    "attack_point": [9, 16],
+    "terrain_preset": "SIMPLE",
+    "num_unit_types": 0,
+    "ally_has_shields": true,
+    "enemy_has_shields": true
+}

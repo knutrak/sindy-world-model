@@ -83,3 +83,23 @@ on the validation set, nothing reviewed by you yet. Stopped early; see "Not done
 - The learned choice rule is not played in the game (would need a policy wrapper and an
   `eval_planners.py` run).
 - Oracle with perturbed copies (is the 94% planning or foresight?) not run.
+
+## Added 11 Nov: SINDy-chosen switches and transfer to stalkers
+
+`notebooks/sindyc_04_switches_and_transfer.ipynb`, `models/switch_library.py`, exp07 (stalkers,
+1,500 + 300 battles, `scripts/collect_stalkers.py`; `load_team_states` now takes `reach` and
+`unit_health`).
+
+- **Switches as library candidates.** Plain STLSQ over a grid of reach switches fails (37 terms,
+  opposite-sign pairs, val R² 0.44). With physical signs: 4 terms at 5.9-6.9, R² 0.76. Best subset
+  (one switch per mechanism): fire switch 6.4 for both sides (1.11 x reach).
+- **Accuracy:** health at 4 s 0.058 vs 0.057 with hand closures; distance worse (0.56 vs 0.49).
+  Parameters fitted outside SINDy: 10 grid choices instead of about 40 curve_fit parameters.
+- **Dimensionless coefficients, marines vs stalkers (switch model):** firepower x tau 0.56 / 0.53
+  and 0.67 / 0.63; fire switch / reach 1.11 / 0.94-0.97; hold and withdraw closing 1.0-1.1 / 0.96
+  walking speeds; hold / withdraw switch 1.4-1.5 reach in both. **Differs:** advance closing 1.9 vs
+  0.9 walking speeds; alive exponent 0.5 vs 0.37-0.40 (shields); the withdraw fire term is not
+  selected for stalkers.
+- **Transfer, no refit (stalker validation, health at 4 s):** marine model as is 0.090, scaled by
+  reach / tau / speed **0.030**, refit on stalkers 0.025, persistence 0.074. Scaling closes 93% of
+  the gap (82% with hand closures).

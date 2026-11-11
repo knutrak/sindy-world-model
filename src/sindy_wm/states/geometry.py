@@ -105,12 +105,17 @@ def geometry(snapshots: pd.DataFrame, reach: float = REACH) -> pd.DataFrame:
 
 
 def load_team_states(
-    dataset_dir: str | Path, episode_ids: list[int] | None = None, n_chunks: int = 10
+    dataset_dir: str | Path,
+    episode_ids: list[int] | None = None,
+    n_chunks: int = 10,
+    reach: float = REACH,
+    unit_health: float = MARINE_HP,
 ) -> pd.DataFrame:
     """Team-level states of a dataset on the common scale, indexed by (episode_idx, step).
 
     Columns: health_*, alive_*, distance (`level_a`), the `GEOMETRY` columns, and t in
-    seconds. Built chunk by chunk to keep memory down.
+    seconds. Built chunk by chunk to keep memory down. `reach` (attack range plus two unit
+    radii) and `unit_health` (hp plus shield of one unit) default to marines.
     """
     dt = storage.load_manifest(dataset_dir)["config"]["env"]["seconds_per_step"]
     if episode_ids is None:
@@ -120,11 +125,11 @@ def load_team_states(
         by_episode = storage.load_snapshots(dataset_dir, chunk.tolist()).groupby("episode_idx")
         parts.append(
             by_episode.apply(level_a, include_groups=False).join(
-                by_episode.apply(geometry, include_groups=False)
+                by_episode.apply(geometry, reach=reach, include_groups=False)
             )
         )
     states = pd.concat(parts)
-    states[["health_blue", "health_red"]] /= REF_UNITS * MARINE_HP
+    states[["health_blue", "health_red"]] /= REF_UNITS * unit_health
     states[["alive_blue", "alive_red", "reach_blue", "reach_red"]] /= REF_UNITS
     states["t"] = states.index.get_level_values("step") * dt
     return states
