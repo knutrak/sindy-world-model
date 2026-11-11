@@ -91,3 +91,46 @@ class EpisodeSampler:
             rng, bounds, min_distance, max(min_distance, self.spawn_distance[1]), margin
         )
         return EpisodeSettings((n_blue, n_red), (float(health[0]), float(health[1])), spawn)
+
+
+@dataclass(frozen=True)
+class CloseBattleSampler:
+    """Like `EpisodeSampler`, but draws the *strength ratio* directly, so most battles are close.
+
+    Strength is units x starting health fraction. `EpisodeSampler` draws the force
+    ratio and each side's health independently, which makes most battles lopsided
+    (decided at the start). Here the strength ratio Blue / Red is drawn
+    log-uniformly from `strength_ratio`; the unit counts come from `force_ratio`
+    as before, and the two health fractions are set to give the drawn strength
+    ratio (the stronger-per-unit side gets a fraction drawn from `top_health`).
+
+    Same interface as `EpisodeSampler` (`sample`, `config`), so `collect` accepts it.
+    """
+
+    red_units: tuple[int, int] = (6, 14)
+    force_ratio: tuple[float, float] = (0.75, 1.33)
+    strength_ratio: tuple[float, float] = (0.85, 1.18)
+    top_health: tuple[float, float] = (0.6, 1.0)
+    spawn_distance: tuple[float, float] = (4.0, 16.0)
+    unit_size: float = 0.75
+
+    def config(self) -> dict:
+        return {"class": type(self).__name__, **asdict(self)}
+
+    def sample(self, seed: int, bounds: tuple[float, float, float, float]) -> EpisodeSettings:
+        """Draw one episode's settings from `default_rng([seed, 2])` (see `EpisodeSampler.sample`)."""
+        rng = np.random.default_rng([seed, 2])
+        n_red = int(rng.integers(self.red_units[0], self.red_units[1] + 1))
+        n_blue = max(1, round(n_red * np.exp(rng.uniform(*np.log(self.force_ratio)))))
+        strength = np.exp(rng.uniform(*np.log(self.strength_ratio)))
+        health_ratio = strength * n_red / n_blue  # Blue's health fraction / Red's
+        top = rng.uniform(*self.top_health)
+        health = (top, top / health_ratio) if health_ratio >= 1 else (top * health_ratio, top)
+
+        half_blue, half_red = (formation_half_width(n, self.unit_size) for n in (n_blue, n_red))
+        margin = max(half_blue, half_red) + 0.3
+        min_distance = max(self.spawn_distance[0], half_blue + half_red + 0.5)
+        spawn = sample_opposing_spawns(
+            rng, bounds, min_distance, max(min_distance, self.spawn_distance[1]), margin
+        )
+        return EpisodeSettings((n_blue, n_red), (float(health[0]), float(health[1])), spawn)
