@@ -17,8 +17,12 @@ Replaces `2026-10-30_where-i-left-off.md` as the place to start. Details:
   unscaled. Firepower and switch distances match across unit types; advance closing speed and the
   alive exponent don't.
 - **Limits.** The accuracy limit is the team-level reach closure (real reach halves the error). The
-  model predicts well on average but can't rank intents state by state. The planner's small gain
-  over "always advance/focus" (+2.8 points) is mostly focus fire.
+  model predicts well on average but can't rank intents state by state.
+- **Update 12 Nov: hold the line.** `hold` was fixed (it left half the team out of the fight) and
+  all exp06 / exp07 data re-collected. Holding the line is now the best fixed intent (hold/focus
+  70.2% against advance/focus 67.0%), and the model planner (67.2%) no longer beats always
+  advance/focus nor always hold/focus: the team-level model can't see why waiting wins. Details
+  at the end of `2026-11-10_sindyc-intents-exploration.md`.
 - **All of exp06 / exp07 is exploratory:** collected with uncommitted code (`allow_dirty`), models
   chosen while looking at validation numbers, no intervals.
 
@@ -55,8 +59,8 @@ Replaces `2026-10-30_where-i-left-off.md` as the place to start. Details:
 3. **Intervals.** Bootstrap by battle on the horizon errors and the transfer table.
 4. **Write the preparation thesis** around RQ1-RQ4 once 1-3 are in.
 
-Fix `hold` (units out of range stand still) before it becomes an option for the LLM. Leave phases,
-MPPI and new intents for now.
+`hold` is fixed (hold the line, 12 Nov). New open question: why does waiting win, and what would
+the state need to contain for the model to see it (RQ2)? Leave phases, MPPI and new intents for now.
 
 ## For the supervisors
 

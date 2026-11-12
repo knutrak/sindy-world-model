@@ -3,7 +3,8 @@
 An intent is a (movement, target) pair that the whole Blue team follows:
 
     movement   advance   attack what is in range, otherwise walk towards the enemy
-               hold      attack what is in range, otherwise stand still
+               hold      hold the line: don't approach the enemy; once any Blue unit has an
+                         enemy in range, every unit closes in and fights (as advance)
                withdraw  walk away from any enemy closer than `withdraw_radius`
                          (and so don't shoot); stand still once out of danger
     target     nearest   each unit shoots its nearest enemy in range
@@ -56,6 +57,10 @@ class IntentPolicy(TargetChoicePolicy):
         game = env.unwrapped
         masks = game.get_avail_actions()
         focus = self._focus_target(game, masks) if self.rule == "focus" else None
+        # hold the line: the team is in contact once any alive Blue unit has a target in range
+        self._contact = any(
+            mask[FIRST_TARGET:].any() for agent_id, mask in enumerate(masks) if agent_id in game.agents
+        )
         actions = []
         for agent_id, mask in enumerate(masks):
             unit = game.agents.get(agent_id)
@@ -77,9 +82,9 @@ class IntentPolicy(TargetChoicePolicy):
                     return move
                 # cornered: fight (falls through to the shooting rule)
         in_range = mask[FIRST_TARGET:].any()
-        if in_range or self.movement == "advance":
+        if in_range or self.movement == "advance" or (self.movement == "hold" and self._contact):
             return self._unit_action(game, unit, mask, focus)
-        return STOP  # hold, or withdrawn far enough: nothing in range, stand still
+        return STOP  # hold before contact, or withdrawn far enough: stand still
 
 
 class IntentSchedule(Policy):

@@ -1,6 +1,7 @@
 """Execute a percent-format .py script ("# %%" cells) and save it as an .ipynb with outputs.
 
-Usage: python scripts/run_notebook.py source.py out.ipynb [working_dir]
+Usage: python scripts/run_notebook.py source.py|source.ipynb out.ipynb [working_dir]
+An .ipynb source is re-executed (its old outputs are replaced).
 Uses jupyter_client only (nbconvert / nbclient are not installed).
 """
 
@@ -102,7 +103,13 @@ def run(cells: list[dict], cwd: str, timeout: int = 3600) -> bool:
 if __name__ == "__main__":
     src, out = sys.argv[1:3]
     cwd = sys.argv[3] if len(sys.argv) > 3 else "."
-    cells = parse(open(src).read())
+    if src.endswith(".ipynb"):
+        with open(src) as f:
+            cells = json.load(f)["cells"]
+        for cell in cells:
+            cell.pop("id", None)
+    else:
+        cells = parse(open(src).read())
     ok = run(cells, cwd)
     for k, cell in enumerate(cells):
         cell["id"] = str(k)

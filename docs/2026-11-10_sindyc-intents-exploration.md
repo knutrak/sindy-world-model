@@ -103,3 +103,34 @@ on the validation set, nothing reviewed by you yet. Stopped early; see "Not done
 - **Transfer, no refit (stalker validation, health at 4 s):** marine model as is 0.090, scaled by
   reach / tau / speed **0.030**, refit on stalkers 0.025, persistence 0.074. Scaling closes 93% of
   the gap (82% with hand closures).
+
+## Added 12 Nov: hold the line, and everything re-collected
+
+`hold` used to mean "units with nothing in range stand still", so half the team never fought
+(fixed hold/nearest won 11.5%). It now means **hold the line**: don't approach; once any Blue unit
+has an enemy in range, every unit closes in and fights as under advance (`envs/intents.py`).
+exp06 and exp07 were re-collected with it (same seeds and sizes); the first collection is kept in
+`data/*/exp06_intents_oldhold` and `exp07_stalkers_oldhold`. The sparse model now leaves out the
+control x alive candidates (`exclude=ALIVE_CONTROL_TERMS`). All notebooks re-run.
+
+- **Hold the line is the best fixed intent**: planner test (400 battles) hold/focus 70.2%,
+  advance/focus 67.0%, hold/nearest 61.5%, advance/nearest 59.8%. Pilot: hold/nearest 59.7%
+  against 55.3%; from 12-17 apart hold 55% against advance 35%.
+- **The model is unchanged**: `(health_red)' = -0.186 Rb + 0.163 Rb*wd`, `close*hold` -3.29;
+  health error at 4 s 0.057 (persistence 0.23, no control 0.080, generic SINDYc 0.053 with 138
+  terms, real reach 0.028).
+- **Correction:** the withdraw term does not need 6,000 battles. With the restricted library it
+  is found with 30 battles (coefficient 0.141, 0.161 from 100 on). The earlier result came from
+  `Rb*wd` and `Ab*wd` competing.
+- **The planner's gain is gone:** sparse planner 67.2%, the same as always advance/focus (+0.3,
+  interval -0.7 to +1.3) and below always hold/focus (-3.0, interval -6.5 to +0.5). It plays
+  advance/focus 61%, hold/focus 38%. Oracle 94.8%.
+- **Why the model can't use hold:** hold and advance differ only before contact, and the model
+  sees that difference only as slower closing (-3.3 against -6.0). That holding wins more must
+  come from something the team state doesn't carry (how Red arrives: stretched out, a few at a
+  time). In the counterfactual sets (branch mostly in contact) hold and advance give the same
+  outcome in 91% of states.
+- **Counterfactual ranking:** best fixed 58%, hindsight 74%, SINDYc picks 58%, learned from
+  cftrain 63.6% (team) / 64.9% (team + units).
+- **Transfer to stalkers holds:** health at 4 s as is 0.095, scaled 0.029, refit 0.026 (95% of
+  the gap closed). The hold switch doesn't transfer (stalker `close*hold` nearly 0).
