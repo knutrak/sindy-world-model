@@ -156,3 +156,55 @@ def state_from_game(game) -> dict:
         "width_blue": geom["width_blue"],
         "width_red": geom["width_red"],
     }
+
+
+def _quantile(q: float):
+    return lambda s: np.quantile(s, q)
+
+
+def formation_numbers(snap: pd.DataFrame) -> pd.DataFrame:
+    """Formation numbers per (episode_idx, step), one column per number and side (exploratory).
+
+    Each alive unit is projected on the line between the team centres (positive = towards the
+    enemy): p = how far ahead of its own centre it stands. Columns: front (the front unit's p),
+    near1 / near2 (share of units within 1 / 2 of the front unit), q90, depth (std of p),
+    width (std across the line), dec1..dec10 (deciles of p).
+    """
+    a = snap.loc[snap["alive"], ["episode_idx", "step", "team", "x", "y"]].copy()
+    key = ["episode_idx", "step"]
+    c = a.groupby(key + ["team"])[["x", "y"]].mean().unstack("team")
+    ax = np.column_stack([c[("x", "red")] - c[("x", "blue")], c[("y", "red")] - c[("y", "blue")]])
+    dist = np.linalg.norm(ax, axis=1)
+    ax = ax / np.maximum(dist, 1e-9)[:, None]
+    geo = pd.DataFrame(
+        {
+            "ax": ax[:, 0],
+            "ay": ax[:, 1],
+            "cbx": c[("x", "blue")],
+            "cby": c[("y", "blue")],
+            "crx": c[("x", "red")],
+            "cry": c[("y", "red")],
+            "dist": dist,
+        },
+        index=c.index,
+    ).reset_index()
+    a = a.merge(geo, on=key)
+    sign = np.where(a["team"] == "blue", 1.0, -1.0)
+    cx = np.where(a["team"] == "blue", a["cbx"], a["crx"])
+    cy = np.where(a["team"] == "blue", a["cby"], a["cry"])
+    a["p"] = sign * ((a["x"] - cx) * a["ax"] + (a["y"] - cy) * a["ay"])
+    a["q"] = (a["x"] - cx) * -a["ay"] + (a["y"] - cy) * a["ax"]
+    g = a.groupby(key + ["team"])["p"]
+    a["front"] = g.transform("max")
+    out = a.groupby(key + ["team"]).agg(
+        front=("p", "max"),
+        near1=("p", lambda s: np.mean(s >= s.max() - 1)),
+        near2=("p", lambda s: np.mean(s >= s.max() - 2)),
+        q90=("p", lambda s: np.quantile(s, 0.9)),
+        depth=("p", "std"),
+        width=("q", "std"),
+        **{f"dec{k}": ("p", _quantile(k / 10)) for k in range(1, 11)},
+    )
+    out = out.fillna(0).unstack("team")
+    out.columns = [f"{n}_{t}" for n, t in out.columns]
+    return out

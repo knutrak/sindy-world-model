@@ -116,6 +116,45 @@ def share(d, own, opp, w_own, w_opp, c, b_own, b_opp, w0, a, k):
     return ndtr((c + b_own * own + b_opp * opp - d_eff) / np.sqrt(w0**2 + (a * own) ** 2 + 1e-4))
 
 
+RHO = 5 + 2 * 0.375  # marine reach: attack range plus two unit radii
+
+
+def derived_share(d, own, opp, w_own, w_opp, n_opp, lam, beta, g, rho=RHO):
+    """Share of a side's units in reach, derived from the geometry (alternative to `share`).
+
+    A unit is in reach when the enemy's front unit is within `rho`. Own units spread around
+    their centre with std `own` (depth); the enemy front stands about beta * opp * m(n_opp)
+    ahead of its centre, with m(n) = sqrt(2 ln n) the typical maximum of n spread positions;
+    a width mismatch lengthens the distance (lam). Fitted: lam, beta, g; `rho` is the game's.
+    """
+    m = np.sqrt(2 * np.log(np.maximum(n_opp, 1.0)))
+    d_eff = np.sqrt(d**2 + lam * (w_own - w_opp) ** 2)
+    return ndtr((rho - d_eff + beta * opp * m) / np.sqrt(0.05**2 + (g * own) ** 2 + 1e-4))
+
+
+def team_shares(X, S, P):
+    """(share of Blue in reach, share of Red in reach) from state X (N, 5) and shape S (N, 4)."""
+    d, db, dr, wb, wr = X[:, 4], *S.T
+    if P.get("form") == "derived":
+        return (
+            derived_share(d, db, dr, wb, wr, 10 * X[:, 3], *P["share_blue"]),
+            derived_share(d, dr, db, wr, wb, 10 * X[:, 2], *P["share_red"]),
+        )
+    return share(d, db, dr, wb, wr, *P["share_blue"]), share(d, dr, db, wr, wb, *P["share_red"])
+
+
+def fit_derived_share(rows: pd.DataFrame, side: str, rho: float = RHO, n: int = 200_000):
+    """Fit lam, beta, g of `derived_share` for one side. Returns (parameters incl. rho, R²)."""
+    a = rows[rows[f"alive_{side}"] > 0]
+    a = a.sample(min(n, len(a)), random_state=0)
+    opp = "red" if side == "blue" else "blue"
+    X = (*_share_inputs(a, side), 10 * a[f"alive_{opp}"].to_numpy())
+    y = (a[f"reach_{side}"] / a[f"alive_{side}"]).to_numpy()
+    p, _ = curve_fit(lambda X, *p: derived_share(*X, *p, rho=rho), X, y, p0=(1.0, 1.0, 1.0), maxfev=20000)
+    p = np.append(p, rho)
+    return p, r2(a[f"reach_{side}"], a[f"alive_{side}"] * derived_share(*X, *p))
+
+
 def _share_inputs(rows, side):
     opp = "red" if side == "blue" else "blue"
     cols = ["distance", f"depth_{side}", f"depth_{opp}", f"width_{side}", f"width_{opp}"]
@@ -183,8 +222,7 @@ def library(X, U, shape, P, reach=None, ctrl=True) -> dict:
     Hb, Hr, Ab, Ar, d = X.T
     adv, hold, wd, focus = U.T
     db, dr, wb, wr = shape.T
-    sb = share(d, db, dr, wb, wr, *P["share_blue"])
-    sr = share(d, dr, db, wr, wb, *P["share_red"])
+    sb, sr = team_shares(X, shape, P)
     if reach is not None:
         sb = np.divide(reach[:, 0], Ab, out=np.zeros_like(Ab), where=Ab > 0)
         sr = np.divide(reach[:, 1], Ar, out=np.zeros_like(Ar), where=Ar > 0)
@@ -197,26 +235,35 @@ def library(X, U, shape, P, reach=None, ctrl=True) -> dict:
         for name, v in {"Rb": Rb, "Rr": Rr, "Ab": Ab, "Ar": Ar}.items():
             F[name + cn] = v * c
     p_danger = np.array(P["share_blue"], float)
-    p_danger[0] += 1.25  # the withdraw radius (7) instead of the reach (5.75)
+    p_danger[-1 if P.get("form") == "derived" else 0] += 1.25  # the withdraw radius (7), not the reach
     generic = {
         "gate": ndtr((d - FAR_GATE[0]) / FAR_GATE[1]),
         "near": 1 - ndtr((d - 5.4) / 0.2),
         "walk_r": 1 - sr,  # Red units with nobody in reach: walking
         "walk_b": 1 - sb,
-        "danger": share(d, db, dr, wb, wr, *p_danger),  # Blue units with an enemy within the withdraw radius
+        # Blue units with an enemy within the withdraw radius
+        "danger": team_shares(X, shape, P | {"share_blue": p_danger})[0],
     }
     for cn, c in {"": one, **move_ctrl}.items():
         for name, v in generic.items():
             F[name + cn] = v * c
     if ctrl:
+        gates = {}
         for short, u in (("adv", adv), ("hold", hold), ("wd", wd)):
             g = P["gates"][{"adv": "advance", "hold": "hold", "wd": "withdraw"}[short]]
             _, c, bb, br, eb, er, w, a = g[:8]
-            F[f"close*{short}"] = u * ndtr(
+            gates[short] = ndtr(
                 (d - c - bb * db - br * dr - eb * wb - er * wr) / np.sqrt(w**2 + (a * (db + dr)) ** 2 + 1e-4)
             )
+            F[f"close*{short}"] = u * gates[short]
         _, c2, w2, b2 = P["gates"]["withdraw"][8:]
         F["flee*wd"] = wd * ndtr((c2 + b2 * db - d) / w2)
+        # Hold the line, split by contact: before contact only Red walks (the hold gate); once any
+        # Blue unit has an enemy in reach, every Blue unit closes in (the advance gate). Fit with
+        # exclude=("close*hold",) to let SINDy choose between the two.
+        contact = 1 - (1 - np.clip(sb, 0, 1)) ** (10 * Ab)  # chance that at least one Blue unit is in reach
+        F["close*hold*far"] = hold * gates["hold"] * (1 - contact)
+        F["close*hold*contact"] = hold * gates["adv"] * contact
     F["1"] = one
     return F
 
@@ -374,13 +421,7 @@ class IntentModel:
         Ch = np.stack([self.coef["health_blue"], self.coef["health_red"]])
         offset = None
         if reach0 is not None:
-            d = X[:, 4]
-            s0 = np.column_stack(
-                [
-                    share(d, S[:, 0], S[:, 1], S[:, 2], S[:, 3], *self.P["share_blue"]),
-                    share(d, S[:, 1], S[:, 0], S[:, 3], S[:, 2], *self.P["share_red"]),
-                ]
-            )
+            s0 = np.column_stack(team_shares(X, S, self.P))
             offset = reach0 / np.maximum(X[:, 2:4], 1e-9) - s0
         for n in range(steps):
             u = U[:, n]
@@ -394,13 +435,7 @@ class IntentModel:
                 X[:, 2:4] = _carry(truth["alive"], n)
             reach = _carry(truth["reach"], n) if "reach" in truth else None
             if reach is None and offset is not None:
-                d = X[:, 4]
-                s = np.column_stack(
-                    [
-                        share(d, S[:, 0], S[:, 1], S[:, 2], S[:, 3], *self.P["share_blue"]),
-                        share(d, S[:, 1], S[:, 0], S[:, 3], S[:, 2], *self.P["share_red"]),
-                    ]
-                )
+                s = np.column_stack(team_shares(X, S, self.P))
                 reach = X[:, 2:4] * np.clip(s + offset * np.exp(-n * DT / tau), 0, 1)
             F = library(X, u, S, self.P, reach, self.ctrl)
             theta = np.column_stack([F[k] for k in self.names])

@@ -129,7 +129,10 @@ def scaled(model, source: str, target: str):
     m = copy.deepcopy(model)
     for side in ("share_blue", "share_red"):
         m.P[side] = np.array(m.P[side], float)
-        m.P[side][[0, 3]] *= s
+        if m.P.get("form") == "derived":
+            m.P[side][3] *= s  # rho; lam, beta, g are unit-free
+        else:
+            m.P[side][[0, 3]] *= s
     m.P["gates"] = {g: np.array(v, float) for g, v in m.P["gates"].items()}
     for v in m.P["gates"].values():
         v[[1, 6]] *= s

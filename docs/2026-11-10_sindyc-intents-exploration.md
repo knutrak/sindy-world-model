@@ -134,3 +134,85 @@ control x alive candidates (`exclude=ALIVE_CONTROL_TERMS`). All notebooks re-run
   cftrain 63.6% (team) / 64.9% (team + units).
 - **Transfer to stalkers holds:** health at 4 s as is 0.095, scaled 0.029, refit 0.026 (95% of
   the gap closed). The hold switch doesn't transfer (stalker `close*hold` nearly 0).
+
+## Added 12 Nov: why holding wins (`sindyc_05_why_hold_wins.ipynb`)
+
+2,000 starts played with always hold/focus and always advance/focus
+(`scripts/play_hold_advance_pairs.py`): hold 69.4%, advance 65.5%; they end differently in 51%.
+
+- **What differs at first contact:** not Red's formation (depth unchanged) and not weapon
+  readiness. Blue's own formation: advancing Blue gets deeper and narrower (a column), holding Blue
+  stays shallow and wide; in the first 2 s of contact Blue has +0.13 units in reach and Red -0.04.
+  The reach advantage correlates 0.43 with the difference in final margin.
+- **What the model misses:** with the real units in reach over the horizon the model predicts the
+  hold advantage (correlation 0.93, mean 0.022 against 0.023). Real shape (-0.01), real distance
+  (0.01) or the model alone (-0.08) don't. The closure from depth and width can't turn shape into
+  the right reach.
+- **Reach as a SINDYc state** (relax to the closure, units joining in contact, units leaving;
+  with and without depth / width terms): R² 0.18, hold and advance terms nearly equal, and the
+  model predicts no difference at all where hold and advance really differ.
+- So the decision-relevant information is the number of units in reach, and the team-level state
+  can't predict it at this resolution (RQ2). Options: a group or unit-level state, or accept that
+  hold vs advance is a small effect (3 points) here.
+- `intent_model.library` now always offers `close*hold*far` / `close*hold*contact`; fitted with
+  `exclude=ALIVE_CONTROL_TERMS + ("close*hold",)` SINDy finds -3.18 / -5.92 (advance -6.01)
+  (`model_split.pkl`). It removes the false cost of holding in contact (predicted -0.088 → -0.015,
+  real 0.002) but leaves the planner unchanged (67.2%, identical outcomes seed by seed).
+
+### Correction (12 Nov, later): the "real reach" test leaked, and formation numbers
+
+The test "the model with the real units in reach predicts the hold advantage (0.93)" leaked: the
+real reach also carries the real deaths. Redone with the model's own deaths and only the *share*
+of alive units in reach from outside (`sindyc_05`, section 4), correlation with the real
+hold - advance difference:
+
+| share in reach from | corr. | sign right |
+|---|---|---|
+| hand-fitted reach curve, real distance + shape | 0.10 | 51% |
+| flexible map from depth, width (today's numbers) | 0.34 | 65% |
+| + front unit / units near the front / deciles | 0.35-0.37 | 64-65% |
+| real share in reach | 0.36 | 67% |
+
+- **Better formation numbers don't help**: today's depth and width, with a flexible map, already
+  predict units in reach with R² 0.95 / 0.94 (hand curve 0.93 / 0.84); new numbers add about 0.01.
+- **The hand-fitted reach curve is the weak link** (0.10 against 0.34 with a better map of the same
+  numbers): a better reach equation from depth and width is worth having.
+- **Even the perfect share in reach explains only part** of the hold advantage (0.36). The rest
+  is in what the model can't express: most likely *who dies when* (deaths follow health through
+  one exponent), not the formation.
+- `states.geometry.formation_numbers` added; data in `data/processed/exp06_intents/`
+  (`formation_*.parquet`, `pairs_hold_advance_formation.parquet`).
+
+### Who dies when (12 Nov, `sindyc_05` section 5): rejected
+
+- At the same health lost, the share of units dead is the same under hold and advance (Red 0.246
+  vs 0.246 at 30%, Blue 0.194 vs 0.197), with no link to the outcome. Red's third death comes
+  0.07 s earlier under hold, but that follows from Blue dealing damage sooner.
+- Damage per unit in reach is also the same (Blue 0.193 vs 0.195, Red 0.189 vs 0.190): the
+  firepower law holds for both intents.
+- What differs is how many units are in reach in the first 4 s of contact: Blue +0.44
+  unit-seconds, Red -0.22; correlation with the outcome difference 0.55 / -0.47.
+- So the mechanism is units in reach early (formation: line vs column). It is small (0.023 of
+  final margin) next to the model's error at 12 s (about 0.1), which likely caps how well even
+  the real share in reach predicts it (0.36).
+
+### A reach curve derived from the geometry (12 Nov, `sindyc_05` section 6)
+
+`intent_model.derived_share`: s = Φ((ρ − d_eff + β·depth_opp·√(2 ln n_opp)) / (g·depth_own)),
+d_eff = √(d² + λ·Δwidth²), ρ = the game's reach (not fitted). Use with `P["form"] = "derived"`
+(`team_shares`, `fit_derived_share`; `switch_library.scaled` scales ρ).
+
+- **R² of units in reach (validation):** λ only 0.65 / 0.44; λ, β 0.92 / 0.80; λ, β, g 0.92 / 0.84
+  (hand curve, 6 parameters: 0.93 / 0.84; flexible ceiling 0.95 / 0.94). With ρ free it lands at
+  5.79 / 5.86 (game: 5.75). β = 0.5-0.7: the front stands less far ahead than a random cloud's.
+- **Hold vs advance (clean test):** correlation 0.26-0.28 against 0.10 for the hand curve (real
+  share 0.36).
+- **Full model** (`model_derived.pkl`, split hold, restricted library): health error at 4 s 0.057
+  (same), 8 s 0.099 (0.103).
+- **Planner (400 battles):** 69.8%, against 67.2% with the hand curve (+2.5, interval +0.2 to
+  +4.8; wins 16 / loses 6) and 70.2% for always hold/focus (-0.5, -4.0 to +3.2). The first model
+  planner that is level with the best fixed intent. Chooses hold 51%, advance 45%, withdraw 5%.
+- **Stalkers:** fitted separately β 0.61 / 0.53 (marines 0.69 / 0.54); marine model scaled 0.040
+  at 4 s against 0.036 with the hand curve (refit 0.024 both).
+- Adopted by the rule set beforehand (R² close to the hand curve, decision test at least as good).
+  Notebooks 2-4 and the summary still use the hand curve.
