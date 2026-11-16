@@ -98,9 +98,23 @@ def stlsq(theta: np.ndarray, y: np.ndarray, threshold: float, alpha: float = 1e-
     return coef / scale
 
 
+def format_terms(names, coef, digits: int = 3) -> str:
+    """Nonzero terms as readable math, e.g. "−0.186·Rb + 0.163·Rb·wd"; a term named "1" is a constant."""
+    out = []
+    for n, c in zip(names, coef, strict=True):
+        if c == 0:
+            continue
+        sign = "−" if c < 0 else "+"
+        body = f"{abs(c):.{digits}f}" + ("" if n == "1" else "·" + n.replace("*", "·"))
+        out.append((sign, body))
+    if not out:
+        return "0"
+    first = ("−" if out[0][0] == "−" else "") + out[0][1]
+    return " ".join([first] + [f"{sg} {b}" for sg, b in out[1:]])
+
+
 def equation(names, coef, lhs: str, digits: int = 3) -> str:
-    terms = [f"{c:+.{digits}f} {n}" for n, c in zip(names, coef, strict=True) if c != 0]
-    return f"({lhs})' = " + (" ".join(terms) if terms else "0")
+    return f"({lhs})' = " + format_terms(names, coef, digits)
 
 
 # ---------- closures ----------
@@ -264,6 +278,9 @@ def library(X, U, shape, P, reach=None, ctrl=True) -> dict:
         contact = 1 - (1 - np.clip(sb, 0, 1)) ** (10 * Ab)  # chance that at least one Blue unit is in reach
         F["close*hold*far"] = hold * gates["hold"] * (1 - contact)
         F["close*hold*contact"] = hold * gates["adv"] * contact
+        # Movement from the game's rules: a unit walks while it has no enemy in reach. Holding Blue
+        # walks only once in contact; withdrawing Blue walks away from enemies inside the radius.
+        F["walk_b*hold*contact"] = hold * contact * (1 - sb)
     F["1"] = one
     return F
 
@@ -271,6 +288,7 @@ def library(X, U, shape, P, reach=None, ctrl=True) -> dict:
 FIRE_FAMILY = ("Rb", "Rr", "Ab", "Ar")
 MOVE_FAMILY = ("close", "flee")
 GENERIC_MOVE_FAMILY = ("gate", "near", "walk_r", "walk_b", "danger")
+RULE_MOVE_FAMILY = ("walk_r", "walk_b", "danger")  # movement derived from the game's rules
 # control x alive candidates: excluding them says "an intent acts on the units in reach"
 ALIVE_CONTROL_TERMS = tuple(f"{a}*{c}" for a in ("Ab", "Ar") for c in ("hold", "wd", "focus"))
 
@@ -362,14 +380,16 @@ class IntentModel:
             self.print()
         return self
 
-    def print(self) -> None:
+    def print(self, shape: bool = True) -> None:
+        """The fitted equations as readable math (shape equations too unless shape=False)."""
         for eq in ["health_blue", "health_red", "distance"]:
             print(f"  {equation(self.names, self.coef[eq], eq)}      [R² {self.fit_r2[eq]:.2f}]")
         for side in ["blue", "red"]:
-            terms = " ".join(f"{v:+.3f} {k}" for k, v in self.p[side].items() if v != 0)
+            p = format_terms(list(self.p[side]), list(self.p[side].values()))
+            p = f"({p})" if any(v for k, v in self.p[side].items() if k != "1") else p
             fit = self.fit_r2[f"alive_{side}"]
-            print(f"  (log alive_{side})' = [{terms}] (log health_{side})'      [R² {fit:.2f}]")
-        if self.shape_coef is not None:
+            print(f"  (ln alive_{side})' = {p} · (ln health_{side})'      [R² {fit:.2f}]")
+        if shape and self.shape_coef is not None:
             for name in SHAPE:
                 names = [n.replace("a*", name + "*") for n in self.shape_names]
                 print(f"  {equation(names, self.shape_coef[name], name)}      [R² {self.fit_r2[name]:.2f}]")

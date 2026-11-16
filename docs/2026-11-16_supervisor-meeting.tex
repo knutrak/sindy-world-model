@@ -1,0 +1,215 @@
+% Supervisor meeting brief, 16 Nov 2026: the SINDYc world model, its accuracy over the horizon, RQ1-RQ3.
+% Compiles with pdflatex (e.g. on Overleaf). Needs the figures from docs/figures/ (made by section 10 of
+% notebooks/00_model_overview.ipynb): horizon_errors.pdf, example_predictions.pdf, rolling_forecasts.pdf.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.2cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,tabularx,array}
+\usepackage{enumitem}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{graphicx}
+\usepackage{float} % [H]: keep each figure exactly where it is written
+\graphicspath{{figures/}{./}}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{itemsep=2pt,topsep=4pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+% Who found each part of the model
+\definecolor{sindy}{HTML}{1F7A4D}
+\definecolor{designed}{HTML}{9A5B00}
+\definecolor{gamerule}{HTML}{2F5BD3}
+\newcommand{\tagbox}[2]{\colorbox{#1!12}{\textcolor{#1}{\footnotesize\textsf{#2}}}}
+\newcommand{\sindy}{\tagbox{sindy}{SINDy}}
+\newcommand{\designed}{\tagbox{designed}{designed, fitted outside SINDy}}
+\newcommand{\gamerule}{\tagbox{gamerule}{game rule}}
+
+\begin{document}
+
+{\small Master thesis \textperiodcentered{} supervisor meeting \textperiodcentered{} 16 November 2026}\\[2pt]
+{\LARGE\bfseries SINDYc world model: where it stands}
+
+A small model of marine battles in SMAClite, found with SINDy, with Blue's chosen intent (advance,
+hold the line, withdraw, focus fire) as input. It predicts the next few seconds well and every term has
+a physical meaning. It cannot see how the units are arranged.
+
+\section*{The model}
+
+\textbf{State:} each team's health $H_B, H_R$ and the distance $d$ between the team centres.
+Units alive $A$ and units in reach $R$ are worked out from them.
+\textbf{Control input:} what Blue is doing right now, as on/off switches
+$u = (u_{\text{adv}}, u_{\text{hold}}, u_{\text{wd}}, u_{\text{focus}})$. Exactly one of advance, hold the
+line and withdraw is 1, the others 0; focus fire is 1 or 0 on top. Example: Blue holds the line with
+focus fire $\Rightarrow u = (0, 1, 0, 1)$. In the equations a control multiplies a term, so it switches
+that term on or off: $u_{\text{wd}}$ switches on ``withdrawing stops Blue's fire'', $u_{\text{focus}}$
+switches on ``Red units die sooner''.
+Health is on a 0--1 scale, where 1 is a full team of ten full-health marines (a larger team starts
+above 1, e.g.\ 1.4 for 14 marines); units are divided by 10, so $R = 0.1$ is one unit in reach.
+
+\textbf{Units in reach} \hfill \gamerule\ $\rho = 5.75$ \quad \designed\ 3 factors
+\begin{align*}
+  R_B = A_B \cdot s_B, \qquad
+  s_B = \Phi\!\left( \frac{\rho - \text{gap}}{\text{spread}_B} \right)
+\end{align*}
+Units in reach = units alive $\times$ the share of them that can shoot. That share is an S-curve:
+0 when the teams are far apart, 1 when they are close, and in between while the front units are in
+range but the rear ones are not.
+\begin{itemize}
+  \item $\rho = 5.75$: the game's attack reach.
+  \item gap: distance from Blue's centre to Red's front units (Red's front sticks out ahead of its centre).
+  \item spread$_B$: how spread out Blue is towards the enemy; a more spread-out team gives a more
+        gradual S-curve, because its units come into range one by one.
+  \item $\Phi$: the S-curve itself (the standard normal CDF). Red's share is the same with the teams swapped.
+\end{itemize}
+{\footnotesize In full: gap $= \sqrt{d^2 + \lambda\,(\text{width}_B - \text{width}_R)^2} - \beta\,
+\text{depth}_R\sqrt{2\ln n_R}$ and spread$_B = g\,\text{depth}_B$, with three fitted factors
+$\lambda, \beta, g$.}
+
+\textbf{Health} \hfill \sindy
+\begin{align*}
+  \dot H_B &= -0.177\, R_R \\
+  \dot H_R &= -0.186\, R_B + 0.163\, R_B\, u_{\text{wd}}
+\end{align*}
+Each enemy unit in reach removes about 0.018 health per second, about 8\,hp (80\% of a marine's full
+damage).
+Withdrawing removes 88\% of Blue's fire. SINDy kept 1--2 of 10 candidate terms per equation.
+
+\textbf{Distance} \hfill \sindy\ coefficients \quad \designed\ switch shapes
+\begin{align*}
+  \dot d = {} & -6.01\, c_{\text{adv}}\, u_{\text{adv}}
+             - 5.92\, c_{\text{adv}}\, u_{\text{hold}}\, \kappa
+             - 3.18\, c_{\text{hold}}\, u_{\text{hold}}\, (1-\kappa) \\
+           & - 3.16\, c_{\text{wd}}\, u_{\text{wd}}
+             + 0.30\, f\, u_{\text{wd}}
+\end{align*}
+$\dot d$ is how fast the distance between the teams changes (negative = they get closer). Only one
+intent is 1 at a time, so only its terms are active. Three helper switches, each between 0 and 1:
+\begin{itemize}
+  \item $c$ (\emph{closing}): about 1 while the teams are still apart and walking towards each other,
+        falling to 0 once they are in contact and stop to shoot. One per intent, because each intent
+        stops closing at a slightly different distance.
+  \item $f$ (\emph{flee}): about 1 when a withdrawing Blue is close enough to the enemy to walk away.
+  \item $\kappa$ (\emph{contact}): the chance that at least one Blue unit is in reach.
+\end{itemize}
+What the equation becomes for each intent:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Blue does} & \textbf{Equation} & \textbf{Meaning} \\
+\midrule
+advance & $\dot d = -6.01\, c$ & both teams walk: they close at about $2 \times 3.15$ per second \\
+hold, before contact & $\dot d = -3.18\, c$ & only Red walks: about 3 per second \\
+hold, in contact & $\dot d = -5.92\, c$ & Blue's units move in to fight, as under advance \\
+withdraw & $\dot d = -3.16\, c + 0.30\, f$ & Red walks in; Blue walks away when Red gets close \\
+\bottomrule
+\end{tabular}
+\end{center}
+The numbers (6.01, 3.18, \dots) are found by SINDy; the shapes of $c$ and $f$ were fitted beforehand.
+
+\textbf{Units alive} \hfill form \designed \quad numbers \sindy
+\begin{align*}
+  \frac{d}{dt} \ln A_B &= 0.517\, \frac{d}{dt} \ln H_B \\
+  \frac{d}{dt} \ln A_R &= (0.509 + 0.136\, u_{\text{focus}})\, \frac{d}{dt} \ln H_R
+\end{align*}
+Units die in proportion to health lost: losing 10\% of health loses about 5\% of units. Focus fire
+makes Red lose units sooner.
+
+\section*{How far ahead can it predict?}
+
+Each curve is an average, not a single example: the model starts from every second of 1{,}000
+validation battles it never saw (8{,}946 start points), is given Blue's real intents, and its
+prediction is compared with what really happened. The real battle is the zero line: zero error.
+For scale: a battle lasts about 10\,s on average (median 9\,s; 80\% of battles last 6--16\,s), so a
+reliable horizon of about 3\,s is roughly a third of a battle.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{horizon_errors.pdf}
+  \caption{Average error against the real battle, 0.5 to 8 seconds ahead. Health on a 0--1 scale
+    (1 = a full team), units counted. Generic SINDy has no units-in-reach quantity.}
+\end{figure}
+
+\begin{itemize}
+  \item Health: about 0.055 off after 4\,s (5.5\% of a full team), against 0.23 when assuming nothing
+        changes.
+  \item Generic SINDy is just as accurate, but with 138 terms nobody can read.
+  \item Units in reach is the weakest part: about 1--1.4 units off. Most of that comes from getting the
+        distance slightly wrong.
+\end{itemize}
+
+\section*{Three example predictions}
+
+Each column is one moment from a validation battle: the model starts from the real state, is given
+Blue's real intents, and predicts 8\,s ahead. The three moments are not random. All 2{,}557 start
+points with at least 8\,s of battle left were ranked by the model's health error after 4\,s (averaged
+over both teams), and the moments at the best 25\%, the median and the worst 10\% were taken.
+Each panel shows exactly 8\,s after the start, so no team is wiped out within a panel. Because
+battles last about 10\,s, start points with 8\,s left come mostly from the longer battles.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{example_predictions.pdf}
+  \caption{Real battle (solid) and model prediction (dashed), 8\,s ahead from time 0. Blue: Blue team;
+    red: Red team; black: distance between the teams.}
+\end{figure}
+
+In the worst example neither team really loses health for 8\,s: the teams stay apart. The model
+predicts that they close in and fight, so both health lines fall.
+
+\section*{Rolling 4-second forecasts}
+
+This is what a planner sees. Every second, the model starts again from the real state and predicts each
+team's health 4\,s ahead. The three battles are not random either: all 807 validation battles with at
+least three full forecasts were ranked by their average health error after 4\,s, and the battles at the
+best 25\%, the median and the worst 10\% were taken.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{rolling_forecasts.pdf}
+  \caption{Thick lines: real health over the whole battle. Thin lines: one 4\,s forecast each, starting
+    at the dot. Blue: Blue team; red: Red team.}
+\end{figure}
+
+\section*{Research questions}
+
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Question} & \textbf{What works} & \textbf{Main limit} \\
+\midrule
+\textbf{RQ1} Can SINDy find a compact, interpretable model?
+  & Yes: 1--2 terms per health equation, each with a physical meaning. Offered health as an
+    alternative driver, SINDy drops it.
+  & The distance law's shape is hand-fitted; a version derived from the game's walking rule did not
+    work, because units behind their own front line are blocked. \\
+\addlinespace
+\textbf{RQ2} How does the state affect the model?
+  & Team totals (health, units, distance, spread) are enough for the physics.
+  & Team totals cannot tell a line from a column. That is why the model misses that holding the line
+    beats advancing. \\
+\addlinespace
+\textbf{RQ3} How accurate is it over horizons?
+  & Much better than ``nothing changes'' and than Lanchester (0.10 off at 4\,s).
+  & Reliable to about 3 seconds. Over a whole close battle, small errors can flip the winner. \\
+\bottomrule
+\end{tabularx}
+
+{\small All results are from exploratory data that still has to be re-collected from committed code.}
+
+\section*{Questions for the meeting}
+
+\begin{enumerate}
+  \item Is it enough that SINDy chooses terms within a library I designed, or should more of the model
+        be found by SINDy?
+  \item Next step: clean up and document this model, or extend the state to groups of units
+        (fighting / approaching) so it can see the formation?
+\end{enumerate}
+
+\end{document}

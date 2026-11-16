@@ -19,3 +19,6 @@ wheels/
 
 # Jupyter
 .ipynb_checkpoints/
+
+#Plots and figures
+/docs/figures/
