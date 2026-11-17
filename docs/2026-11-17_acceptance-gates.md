@@ -1,8 +1,8 @@
 # Acceptance gates for the Phase 1 world model (pre-registration)
 
-**Status: DRAFT, written 17 Nov 2026 before the final test data was collected. Thresholds marked
-[confirm] must be confirmed (or changed) by me before the final evaluation is run. After that,
-nothing in this file changes; the evaluation is run once and reported as it comes out.**
+**Status: FINAL (17 Nov 2026).** Drafted before the final test data was collected; all
+thresholds confirmed as written, before any evaluation on the final data. Nothing in this file
+changes from here on; the evaluation is run once and reported as it comes out.
 
 ## Why
 
@@ -49,13 +49,13 @@ least squares on the training battles); the physics library without control (`ct
 
 | gate | question | criterion | applies to |
 |---|---|---|---|
-| G1 sparsity | Is it readable? | ≤ 3 terms per health equation; ≤ 6 in the distance equation; ≤ 2 alive terms per side; S's share equations ≤ 7 terms per side [confirm] | all |
+| G1 sparsity | Is it readable? | ≤ 3 terms per health equation; ≤ 6 in the distance equation; ≤ 2 alive terms per side; S's share equations ≤ 7 terms per side | all |
 | G2 physical reading | Does every term mean something? | every kept term has the sign in the table below | all |
-| G3 robustness | Are the terms real? | (a) in 30 bootstrap refits on the training battles (resampled by battle), every kept term is kept in ≥ 90% of refits and its coefficient's 95% range stays on one side of 0; (b) rate-fitted models only: the same term set under derivative estimates SG 5, 9, 17 and weak form 1 and 2 s, health coefficients within ±10% of the median [confirm] | all (b: A, W) |
+| G3 robustness | Are the terms real? | (a) in 30 bootstrap refits on the training battles (resampled by battle), every kept term is kept in ≥ 90% of refits and its coefficient's 95% range stays on one side of 0; (b) rate-fitted models only: the same term set under derivative estimates SG 5, 9, 17 and weak form 1 and 2 s, health coefficients within ±10% of the median | all (b: A, W) |
 | G4 stability | Does it behave in rollouts? | every rollout up to 8 s is finite; health, alive, distance ≥ 0; alive never above its start value | all |
 | G5 accuracy | Does it predict? | on `final`: health error at 4 s lower than each baseline, paired interval of the difference entirely below 0 | all |
-| G6 horizon | How far does it reach? | **reported, not pass/fail**: the reliable horizon is the largest h in {1, 2, 3, 4, 6, 8} s with margin R² ≥ 0.3 and the lower interval bound > 0, on `final` and on `final_cf` [confirm 0.3] | all |
-| G7 no overfit | Was it tuned to the validation battles? | health error at 4 s on `final` ≤ 1.1 × on `val` [confirm 1.1] | all |
+| G6 horizon | How far does it reach? | **reported, not pass/fail**: the reliable horizon is the largest h in {1, 2, 3, 4, 6, 8} s with margin R² ≥ 0.3 and the lower interval bound > 0, on `final` and on `final_cf` | all |
+| G7 no overfit | Was it tuned to the validation battles? | health error at 4 s on `final` ≤ 1.1 × on `val` | all |
 | G8 transfer (RQ4) | Does it carry to another unit type? | on exp07 `final`, scaled to stalkers without refitting (`switch_library.scaled`; S's share rates scaled with reach / speed): health error at 4 s lower than persistence and than the scaled no-control model, paired interval below 0 | all |
 
 **Expected signs (G2):**
@@ -82,7 +82,7 @@ least squares on the training battles); the physics library without control (`ct
 
 ## Procedure
 
-1. Confirm or change every [confirm] above; commit this file with status FINAL.
+1. Confirm or change every above; commit this file with status FINAL.
 2. Write the evaluation as one committed script that only *reads* models and data
    (`scripts/evaluate_final.py`), and commit it **before** running it.
 3. Run it once. Commit its output table and these numbers into the status note unchanged.
