@@ -7,6 +7,7 @@ committed code only (allow_dirty=False). Builds the state tables afterwards.
 
     uv run scripts/collect_stalkers.py train
     uv run scripts/collect_stalkers.py val
+    uv run scripts/collect_stalkers.py final
     uv run scripts/collect_stalkers.py build
 """
 
@@ -25,7 +26,11 @@ RAW, OUT = RAW_DIR / "exp07_stalkers", DATA_DIR / "processed" / "exp07_stalkers"
 SCENARIO, STEP_MUL, MAX_SECONDS = "10s_vs_10s", 2, 90
 STALKER_REACH, STALKER_HEALTH = 6 + 2 * 0.625, 80 + 80
 WITHDRAW_RADIUS = 7.0 * STALKER_REACH / 5.75
-SETS = {"train": (7_000_000, 1500), "val": (7_500_000, 300)}
+SETS = {
+    "train": (7_000_000, 1500),
+    "val": (7_500_000, 300),
+    "final": (7_800_000, 300),  # final held-out test, docs/2026-11-17_acceptance-gates.md
+}
 
 
 def build(name: str) -> None:
