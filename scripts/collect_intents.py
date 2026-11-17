@@ -11,7 +11,7 @@ Blue follows a (movement, target) intent (`envs.intents`); battles are close
 - cf_<intent>      counterfactual test: a switching battle up to a drawn moment, then
                    <intent> for 4 s, then advance/nearest. Same seeds for every intent.
 
-Exploratory: collected with allow_dirty. Run one set per process, e.g.
+Collected from committed code only (allow_dirty=False). Run one set per process, e.g.
 
     uv run scripts/collect_intents.py pilot
     uv run scripts/collect_intents.py train --shard 0
@@ -47,7 +47,7 @@ def run(name: str, policy: IntentSchedule, first_seed: int, n: int, description:
         max_steps=MAX_SECONDS * 16 // STEP_MUL,
         n_episodes=max(1, round(n * scale)),
         first_seed=first_seed,
-        allow_dirty=True,
+        allow_dirty=False,
         sampler=SAMPLER,
     )
     print(f"done {name}", flush=True)

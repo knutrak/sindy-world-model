@@ -2,8 +2,8 @@
 
 Same intents, switching schedule and close-battle sampler as exp06 (`collect_intents.py`), on
 10 stalkers a side (`configs/scenarios/10s_vs_10s.json`). The withdraw radius is scaled with the
-reach (7.0 for marines, reach 5.75; stalkers reach 6 + 2 x 0.625 = 7.25). Exploratory
-(allow_dirty). Builds the state tables afterwards.
+reach (7.0 for marines, reach 5.75; stalkers reach 6 + 2 x 0.625 = 7.25). Collected from
+committed code only (allow_dirty=False). Builds the state tables afterwards.
 
     uv run scripts/collect_stalkers.py train
     uv run scripts/collect_stalkers.py val
@@ -62,7 +62,7 @@ def main() -> None:
         max_steps=MAX_SECONDS * 16 // STEP_MUL,
         n_episodes=max(1, round(n * args.scale)),
         first_seed=first_seed,
-        allow_dirty=True,
+        allow_dirty=False,
         sampler=CloseBattleSampler(),
     )
 
