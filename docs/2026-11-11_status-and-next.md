@@ -335,6 +335,16 @@ Leave phases, MPPI, unit-level targets and terrain until 1-4 are settled.
 - The old exploratory copies were deleted after the comparison (17 Nov). Logs:
   `data/logs/recollect_2026-11-17/`.
 
+## Final test set and acceptance gates (17 Nov)
+
+- Draft pre-registration: `docs/2026-11-17_acceptance-gates.md` (8 gates for models A, W, B, S;
+  thresholds marked [confirm] still to be settled).
+- Final held-out sets collected from commit `eb6ddb8`, clean and complete: exp06 `final` (1000
+  battles), `final_cf_<intent>` (6 x 600), exp07 `final` (300). Seeds used nowhere else. **Not
+  looked at**: only the manifests were checked.
+- `sindyc_07` re-run on the re-collected data to regenerate B and S (`sindyc_07_models.pkl`); its
+  outputs came out byte-identical to the committed notebook.
+
 ## What to do next (after 17 Nov)
 
 1. **Decide B / S / neither** (see the open questions above), before freezing the core model.
