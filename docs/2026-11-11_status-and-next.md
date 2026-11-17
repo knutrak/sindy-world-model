@@ -337,13 +337,51 @@ Leave phases, MPPI, unit-level targets and terrain until 1-4 are settled.
 
 ## Final test set and acceptance gates (17 Nov)
 
-- Draft pre-registration: `docs/2026-11-17_acceptance-gates.md` (8 gates for models A, W, B, S;
-  thresholds marked [confirm] still to be settled).
+- Pre-registration: `docs/2026-11-17_acceptance-gates.md` (8 gates for models A, W, B, S), status
+  FINAL from commit `900db91`.
 - Final held-out sets collected from commit `eb6ddb8`, clean and complete: exp06 `final` (1000
   battles), `final_cf_<intent>` (6 x 600), exp07 `final` (300). Seeds used nowhere else. **Not
   looked at**: only the manifests were checked.
 - `sindyc_07` re-run on the re-collected data to regenerate B and S (`sindyc_07_models.pkl`); its
   outputs came out byte-identical to the committed notebook.
+
+### Final evaluation result (17 Nov, run once)
+
+Script `scripts/evaluate_final.py` committed (`f1e496f`) before its single `--final` run (51 min).
+Full report: `docs/2026-11-17_final-evaluation.md`. Table copied unchanged:
+
+```
+                             A          W                          B                           S
+G1                        True       True                       True                        True
+G2                        True       True                       True                       False
+G3                       False      False                       True                        True
+G4                        True       True                       True                        True
+G5                        True       True                       True                        True
+G7                        True       True                       True                        True
+G8                        True       True                       True                        True
+G6 horizon final             2          2                          3                           4
+G6 horizon final_cf          2          2                          4                           4
+verdict              not valid  not valid  valid interpretable model  valid predictive extension
+transfers                False      False                       True                        True
+```
+
+Key numbers from the report (unchanged):
+
+| | A | W | B | S |
+|---|---|---|---|---|
+| health error 4 s, `final` | 0.0536 | 0.0529 | 0.0499 | 0.0484 |
+| G7 ratio final / val | 0.972 | 0.976 | 0.963 | 0.965 |
+| margin R² 4 s, `final` [95%] | 0.023 [-0.147, 0.158] | -0.028 [-0.190, 0.106] | 0.275 [0.216, 0.330] | 0.399 [0.355, 0.439] |
+| margin R² 4 s, `final_cf` [95%] | 0.166 [0.079, 0.245] | 0.127 [0.038, 0.210] | 0.358 [0.307, 0.405] | 0.475 [0.436, 0.510] |
+| margin R² 4 s, model − A [95%] | | [-0.063, -0.037] | [0.144, 0.412] | [0.258, 0.532] |
+
+- A and W fail G3 only through G3(b): health coefficients stay within ±10% (max deviation 4.5%,
+  4.7%, 9.3%), but the alive term sets change (SG 17 adds `wd` to Red's alive; weak 1 s / 2 s add
+  `focus` to Blue's). G3(a), the 30 bootstrap refits, passes for all four models.
+- S fails G2: Red's `sf_adv` = -0.184 and `sf_hold` = -0.159 (expected ≥ 0).
+- "transfers" is G8 on top of a valid verdict, so A and W pass G8 but are not counted.
+- Post-hoc (not part of the verdicts): the first dry run hung because forked workers deadlock in
+  Accelerate during the B/S refits; fixed by spawning workers before the script was committed.
 
 ## What to do next (after 17 Nov)
 
