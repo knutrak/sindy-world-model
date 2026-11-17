@@ -332,7 +332,7 @@ Leave phases, MPPI, unit-level targets and terrain until 1-4 are settled.
 - Not rebuilt (no recipe in the repo): `model_healthfit.pkl` and `planner_healthfit.csv`
   (negative result, no notebook reads them), and `pairs_hold_advance_formation.parquet`, which
   `sindyc_05` reads.
-- The old copies are in `data/raw/*_dirty` and `data/processed/*_dirty`. Logs:
+- The old exploratory copies were deleted after the comparison (17 Nov). Logs:
   `data/logs/recollect_2026-11-17/`.
 
 ## What to do next (after 17 Nov)
