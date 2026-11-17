@@ -61,11 +61,13 @@ Other places with details:
 - **Transfer to stalkers:** the scaled marine model gives a 4 s health error of 0.040, against
   0.024 refitted. This is in `sindyc_04`; it was left out of the meeting brief.
 - **All exp06 / exp07 data is exploratory.** It was collected with uncommitted code
-  (`allow_dirty`), and models were chosen while looking at validation numbers.
+  (`allow_dirty`), and models were chosen while looking at validation numbers. *(revised 17 Nov:
+  re-collected from committed code; see "Re-collection 17 Nov". The data is identical, so every
+  number in this note stands. Models were still chosen while looking at validation numbers.)*
 
 ## Results 16 Nov (afternoon): units in reach, and what limits the model
 
-All on exploratory exp06 / exp07 data. Validation = 1000 exp06 battles; **test** = the six `cf_*`
+All on exp06 / exp07 data (re-collected clean on 17 Nov, identical). Validation = 1000 exp06 battles; **test** = the six `cf_*`
 sets (600 battles, six branches each), used for no choice in `sindyc_07`. "Margin R²" = R² of the
 change in Blue − Red health over the horizon. "Trees" = gradient-boosted trees, used only as a
 benchmark of what an input set allows, never as a model.
@@ -207,7 +209,7 @@ Same scaling as `switch_library.scaled`; S's per-second share rates scaled with 
 | Step (project description, section 5) | Status |
 |---|---|
 | 1 Understand the environment | Done (F1-F3) |
-| 2 Collect and analyse data | Done for exp01-exp05; exp06 (intents) and exp07 (stalkers) are exploratory and must be re-collected |
+| 2 Collect and analyse data | Done. exp06 (intents) and exp07 (stalkers) re-collected from committed code on 17 Nov (commit `d0c2669`), identical to the exploratory data |
 | 3 First world model (Level A, SINDy) | Done |
 | 4 Refine states, libraries, methods | Largely done: reach curve (derived form), distance switches, control, hold split by contact. 16 Nov: R as a state tested (no memory), share as a state (S) and fitting on rollout error (B) tried, exploratory. No Level B (groups) |
 | 5 Validate on unseen data against baselines over horizons | Done, with bootstrap intervals (overview notebook, section 5). 16 Nov: a tree ceiling and an untouched test set (`sindyc_07`) |
@@ -315,14 +317,31 @@ Leave phases, MPPI, unit-level targets and terrain until 1-4 are settled.
   error 1.34 → 1.16 units at 4 s; margin R² at 4 s 0.25 → 0.49). It must be re-run after the
   re-collection in weeks 1-2. Not yet decided: whether B or S becomes the core model.
 
-## What to do next (after 16 Nov afternoon)
+## Re-collection 17 Nov
+
+- exp06 (25 sets) and exp07 (2 sets) re-collected from commit `d0c2669` with
+  `allow_dirty=False`: every manifest says complete, `git_dirty = False`. Same seeds as before.
+- Rebuilt with the committed pipeline (order in `scripts/build_models.py`): state tables, closures,
+  `model_rich/sparse/split/derived`, formation tables, firing counts, hold/advance pairs, planner
+  results (main, split, derived).
+- **Everything is identical to the exploratory data:** every state table (exp06 and exp07), the
+  closures and all four models' coefficients, the formation and firing tables, the pairs (the old
+  file had one extra, empty column), and every planner battle's winner. So the game and policy
+  code didn't change since the exploratory collection, and all results from `sindyc_01`-`08`
+  hold on the clean data without re-running.
+- Not rebuilt (no recipe in the repo): `model_healthfit.pkl` and `planner_healthfit.csv`
+  (negative result, no notebook reads them), and `pairs_hold_advance_formation.parquet`, which
+  `sindyc_05` reads.
+- The old copies are in `data/raw/*_dirty` and `data/processed/*_dirty`. Logs:
+  `data/logs/recollect_2026-11-17/`.
+
+## What to do next (after 17 Nov)
 
 1. **Decide B / S / neither** (see the open questions above), before freezing the core model.
-2. **Consolidate as planned:** re-collect exp06/exp07 with committed code, tests, F27+ in
-   `docs/findings.md` (including the 16 Nov results), commit `sindyc_06`, `sindyc_07` and
-   `sindyc_07_lab.py`.
-3. **Re-run `sindyc_06` and `sindyc_07` on the clean data** and check the numbers above hold.
-4. **Write the RQ1-RQ3 chapters**, plus RQ4 if transfer holds on clean data.
+2. **Finish consolidating:** tests for `intents`, `planner`, `intent_model`, `switch_library`,
+   `geometry`; F27+ in `docs/findings.md` (including the 16-17 Nov results); a recipe for
+   `pairs_hold_advance_formation.parquet`.
+3. **Write the RQ1-RQ3 chapters**, plus RQ4 (transfer holds on the clean data).
 
 ## Analysis plan: units in reach R as a state (done 16 Nov, see `sindyc_06` / `sindyc_07`)
 
