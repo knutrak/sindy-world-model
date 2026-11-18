@@ -8,6 +8,7 @@ committed code only (allow_dirty=False). Builds the state tables afterwards.
     uv run scripts/collect_stalkers.py train
     uv run scripts/collect_stalkers.py val
     uv run scripts/collect_stalkers.py final
+    uv run scripts/collect_stalkers.py test2
     uv run scripts/collect_stalkers.py build
 """
 
@@ -30,6 +31,7 @@ SETS = {
     "train": (7_000_000, 1500),
     "val": (7_500_000, 300),
     "final": (7_800_000, 300),  # final held-out test, docs/2026-11-17_acceptance-gates.md
+    "test2": (7_900_000, 300),  # second held-out test, final exploration Phase 3 only
 }
 
 
@@ -54,7 +56,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.what == "build":
         for name in SETS:
-            build(name)
+            if (RAW / name / "manifest.json").exists() and not (OUT / f"{name}.parquet").exists():
+                build(name)
         return
     first_seed, n = SETS[args.what]
     collect(

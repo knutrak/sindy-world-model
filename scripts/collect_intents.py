@@ -13,6 +13,10 @@ Blue follows a (movement, target) intent (`envs.intents`); battles are close
 - final, final_cf_<intent>
                    the final held-out test (17 Nov): like val and cf, new seeds. Used once,
                    for the pre-registered evaluation in docs/2026-11-17_acceptance-gates.md.
+- test2, test2_cf_<intent>
+                   a second held-out test (collected 18 Nov, after `final` was spent): like val
+                   and cf, new seeds. Not read until the final exploration's Phase 3
+                   (docs/final_exploration/).
 
 Collected from committed code only (allow_dirty=False). Run one set per process, e.g.
 
@@ -34,6 +38,7 @@ HOLD_SECONDS = 4.0  # how long a pilot / counterfactual intent is played before 
 
 N_PILOT, N_TRAIN_SHARD, N_SHARDS, N_VAL, N_CF, N_CFTRAIN = 300, 1000, 6, 1000, 600, 2000
 N_FINAL, N_FINAL_CF = 1000, 600
+N_TEST2, N_TEST2_CF = 1000, 600
 SEEDS = {
     "pilot": 2_000_000,
     "train": 0,
@@ -42,6 +47,8 @@ SEEDS = {
     "cftrain": 5_000_000,
     "final": 8_000_000,
     "final_cf": 8_500_000,
+    "test2": 9_000_000,
+    "test2_cf": 9_500_000,
 }
 
 
@@ -67,7 +74,9 @@ def run(name: str, policy: IntentSchedule, first_seed: int, n: int, description:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("what", choices=["pilot", "train", "val", "cf", "cftrain", "final", "final_cf"])
+    parser.add_argument(
+        "what", choices=["pilot", "train", "val", "cf", "cftrain", "final", "final_cf", "test2", "test2_cf"]
+    )
     parser.add_argument("--shard", type=int, default=0)
     parser.add_argument(
         "--intent", type=int, default=None, help="index into INTENTS (pilot, cf); default all"
@@ -87,7 +96,7 @@ def main() -> None:
                 f"Leverage pilot: {movement}/{target} for the first {HOLD_SECONDS} s, then advance/nearest.",
                 args.scale,
             )
-    elif args.what in ("cf", "final_cf"):
+    elif args.what in ("cf", "final_cf", "test2_cf"):
         for movement, target in intents:
             policy = IntentSchedule(
                 branch_intent=(movement, target), branch_seconds=(0.5, 8.0), branch_hold_seconds=HOLD_SECONDS
@@ -96,7 +105,7 @@ def main() -> None:
                 f"{args.what}_{movement}_{target}",
                 policy,
                 SEEDS[args.what],
-                N_CF if args.what == "cf" else N_FINAL_CF,
+                {"cf": N_CF, "final_cf": N_FINAL_CF, "test2_cf": N_TEST2_CF}[args.what],
                 f"Counterfactual test: switching, then {movement}/{target} for {HOLD_SECONDS} s, "
                 "then advance/nearest.",
                 args.scale,
@@ -131,6 +140,15 @@ def main() -> None:
             SEEDS["final"],
             N_FINAL,
             "Final held-out test (pre-registered evaluation): intents switch every 1-4 s.",
+            args.scale,
+        )
+    elif args.what == "test2":
+        run(
+            "test2",
+            IntentSchedule(),
+            SEEDS["test2"],
+            N_TEST2,
+            "Second held-out test (final exploration, Phase 3 only): intents switch every 1-4 s.",
             args.scale,
         )
     else:
