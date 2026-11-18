@@ -132,7 +132,13 @@ def horizon_batch(states: pd.DataFrame) -> dict:
     """Start points every 8th step with 8 s of truth (as in the gates)."""
     B = make_batch(states)
     B["group"] = B["ep"] % 10_000
+    B["n0"] = _sizes_of(states, B["ep"])
     return B
+
+
+def _sizes_of(states: pd.DataFrame, eps: np.ndarray) -> np.ndarray:
+    """Starting number of units (both sides) of each start point's battle."""
+    return battle_sizes(states).loc[eps].to_numpy().astype(float)
 
 
 def battle_batch(states: pd.DataFrame) -> dict:
@@ -142,6 +148,7 @@ def battle_batch(states: pd.DataFrame) -> dict:
     B["group"] = B["ep"] % 10_000
     won = states.groupby(level=0)["battle_won"].first()
     B["won"] = won.loc[B["ep"]].to_numpy().astype(bool)
+    B["n0"] = _sizes_of(states, B["ep"])
     valid = ~np.isnan(B["Y"][:, :, 0])
     B["end"] = valid.sum(1) - 1  # index of the last real step
     return B
