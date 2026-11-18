@@ -176,6 +176,35 @@ down to 0.003, with and without S's sign rules:
   fitting on trajectories. That is the strongest evidence so far for "trajectory refinement matters
   here". Queued on all splits as `deep/share-sindy` for the record.
 
+## Depth stage (`explore_deep.py`, 32 jobs, 18 Nov)
+
+- **A\*** = A + one firepower coefficient for both sides + the alive law fitted on R_enemy·A/H.
+  One-step fits only, 10 terms. Paired against A on cv, it is better in 5/5 folds on health 4 s
+  (−0.0019 ± 0.0002), alive 4 s (−0.055 ± 0.008) and battle nRMSE (−0.004 ± 0.001); margin R² ties.
+  On held-out size: health 4 s 0.070 vs 0.075. On stalkers, margin R² 4 s is *worse* (0.12 vs 0.21) and
+  alive is worse (0.65 vs 0.60).
+- **B\* and S\* (rollout refit started from A\*) end at exactly B's and S's coefficients** (fold
+  differences ~1e-5). Trajectory refinement has one optimum here, independent of the start. So B and
+  S go to Phase 3 as they are.
+- **One-step share SINDy on all splits:** margin R² 4 s 0.07 (cv) against S's 0.41. Confirmed negative.
+- **A\* coefficient intervals** (30 bootstrap refits by battle, closures fixed;
+  `final_Astar_bootstrap.csv`): k = −0.1819 [−0.1826, −0.1812], k_wd = +0.159 [0.158, 0.160],
+  p_B = 0.645 [0.642, 0.649], p_R = 0.552 [0.545, 0.557], p_R,focus = 0.244 [0.235, 0.254]. All
+  terms are kept in 30/30. These intervals cover data noise only, not the closure or the derivative
+  estimate.
+- **A\* against the derivative estimate (G3b-style, SG 5/9/17/33, scratch run):**
+
+  | | SG 5 | SG 9 | SG 17 | SG 33 |
+  |---|---|---|---|---|
+  | A: k_B / k_R | 0.186 / 0.193 | 0.177 / 0.186 | 0.174 / 0.183 | 0.137 / 0.139 (+ Ar, Ab terms) |
+  | A\*: k | 0.190 | 0.182 | 0.179 | 0.175 |
+  | A: p_B / p_R | 0.47 / 0.45 | 0.52 / 0.51 | 0.61 / 0.60 (+ wd) | 0.63 / 0.61 (+ focus_B) |
+  | A\*: p_B / p_R | 0.63 / 0.52 | 0.64 / 0.55 | 0.66 / 0.58 | 0.67 / 0.60 |
+
+  A\*'s term set is the same at every window, and k stays within ±4% of SG 9. Its alive exponents
+  move about 5% (p_B) and 10% (p_R), against A's 25-35%. Caveat: the alive law has no selection
+  step, so "same term set" is partly by design. The weak-form estimates of G3b were not re-run.
+
 ## Log
 
 - **18 Nov.** Harness, reference models and tests committed (`5fcd2ec`); reference rows run
