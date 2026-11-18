@@ -314,3 +314,189 @@ class MLPWorld:
 
     def coefficients(self):
         return {}
+
+
+# ---------------------------------------------------------------------------- other optimizers
+def _standardised_fit(opt, theta: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """Fit a PySINDy optimizer on standardised features and target (as `stlsq`), original units back."""
+    scale, ys = theta.std(axis=0) + 1e-12, y.std() + 1e-12
+    opt.fit(theta / scale, (y / ys)[:, None])
+    return np.asarray(opt.coef_).ravel() * ys / scale
+
+
+class OptimizerA(ModelA):
+    """A's library and alive law, with the health and distance equations fitted by another optimizer.
+
+    optimizer: "sr3" (L0, lam = thr^2 / 2 so the implied threshold matches STLSQ's), "ssr", "frols"
+    (both with an L0 penalty kappa on the path), on A's candidate columns.
+    """
+
+    def __init__(self, optimizer: str = "sr3", strength: float = 0.15, **kw):
+        super().__init__(**kw)
+        self.optimizer, self.strength = optimizer, strength
+
+    def _opt(self):
+        import pysindy as ps
+
+        s = self.strength
+        return {
+            "sr3": lambda: ps.SR3(reg_weight_lam=s**2 / 2, regularizer="L0", max_iter=100),
+            "sr3-unbiased": lambda: ps.SR3(
+                reg_weight_lam=s**2 / 2, regularizer="L0", max_iter=100, unbias=True
+            ),
+            "ssr": lambda: ps.SSR(criteria="model_residual", kappa=s),
+            "frols": lambda: ps.FROLS(kappa=s),
+        }[self.optimizer]()
+
+    def fit(self, data):
+        import warnings
+
+        from sindy_wm.models.intent_model import FIRE_FAMILY, MOVE_FAMILY, REACH_COLS, _family_cols, library
+
+        super().fit(data)
+        rows = data.rates
+        F = library(
+            rows[STATE].to_numpy(),
+            rows[CTRL].to_numpy(),
+            rows[SHAPE].to_numpy(),
+            self.P,
+            rows[REACH_COLS].to_numpy(),
+            True,
+        )
+        names = list(F)
+        theta = np.column_stack([F[n] for n in names])
+        for eq, family in (
+            ("health_blue", FIRE_FAMILY),
+            ("health_red", FIRE_FAMILY),
+            ("distance", MOVE_FAMILY),
+        ):
+            cols = [j for j in _family_cols(names, family) if names[j] not in self.exclude]
+            c = np.zeros(len(names))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                c[cols] = _standardised_fit(self._opt(), theta[:, cols], rows[f"d_{eq}"].to_numpy())
+            self.m.coef[eq] = c
+        return self
+
+
+# ---------------------------------------------------------------------------------- symmetry
+class SymmetricA(ModelA):
+    """A with side symmetry imposed (identical units): one firepower coefficient k for both sides
+    (H_B' = k R_R, H_R' = k R_B + k_wd R_B wd) and, optionally, one alive exponent p for both sides
+    (Red keeps its focus term). Equality constraints by reparametrisation: exact least squares on
+    A's selected terms, the same as ConstrainedSR3 with those constraints and no further pruning.
+    """
+
+    def __init__(self, alive: bool = True, **kw):
+        super().__init__(**kw)
+        self.alive = alive
+
+    def fit(self, data):
+        super().fit(data)
+        r, names = data.rates, self.m.names
+        Rb, Rr, wd = r["reach_blue"].to_numpy(), r["reach_red"].to_numpy(), r["withdraw"].to_numpy()
+        y = np.concatenate([r["d_health_blue"].to_numpy(), r["d_health_red"].to_numpy()])
+        T = np.column_stack([np.concatenate([Rr, Rb]), np.concatenate([0 * Rr, Rb * wd])])
+        (k, k_wd), *_ = np.linalg.lstsq(T, y, rcond=None)
+        for eq in ("health_blue", "health_red"):
+            self.m.coef[eq] = np.zeros(len(names))
+        self.m.coef["health_blue"][names.index("Rr")] = k
+        self.m.coef["health_red"][names.index("Rb")] = k
+        self.m.coef["health_red"][names.index("Rb*wd")] = k_wd
+        if self.alive:
+            gs, ys, fs = [], [], []
+            for side in ("blue", "red"):
+                ok = ((r[f"health_{side}"] > 0.03) & (r[f"alive_{side}"] > 0)).to_numpy()
+                g = (r[f"d_health_{side}"] / r[f"health_{side}"]).to_numpy()[ok]
+                gs.append(g)
+                ys.append((r[f"d_alive_{side}"] / r[f"alive_{side}"]).to_numpy()[ok])
+                fs.append(g * r["focus"].to_numpy()[ok] if side == "red" else 0 * g)
+            T = np.column_stack([np.concatenate(gs), np.concatenate(fs)])
+            (p, p_focus), *_ = np.linalg.lstsq(T, np.concatenate(ys), rcond=None)
+            self.m.p["blue"] = {"1": p, "hold": 0.0, "wd": 0.0, "focus": 0.0}
+            self.m.p["red"] = {"1": p, "hold": 0.0, "wd": 0.0, "focus": p_focus}
+        return self
+
+    def complexity(self):
+        n = 2 + 5 + (2 if self.alive else 3)  # shared k, k_wd; distance 5; alive p, p_focus (or A's 3)
+        return {"terms": n, "numbers": n + _closure_numbers(self.P)}
+
+
+# ------------------------------------------------------------------------------------ phases
+PHASES = ("approach", "engaged", "mopup")
+
+
+def phase_of(X: np.ndarray, reach: np.ndarray, mop: float = 0.3) -> np.ndarray:
+    """0 approach (under half a unit in reach on both sides), 2 mop-up (a side at <= 3 units), else 1."""
+    ph = np.ones(len(X), int)
+    ph[(reach[:, 0] < 0.05) & (reach[:, 1] < 0.05)] = 0
+    ph[np.minimum(X[:, 2], X[:, 3]) <= mop] = 2
+    return ph
+
+
+class PhaseA(ModelA):
+    """Hybrid SINDy: A's library fitted separately in each phase, switched by an explicit rule on the
+    current (predicted) state. Phases with < 2000 rows fall back to the global fit."""
+
+    def fit(self, data):
+        super().fit(data)
+        r = data.rates
+        ph = phase_of(r[STATE].to_numpy(), r[["reach_blue", "reach_red"]].to_numpy())
+        self.models, self.phase_rows = [], {}
+        for k, name in enumerate(PHASES):
+            sub = r[ph == k]
+            self.phase_rows[name] = len(sub)
+            if len(sub) < 2000:
+                self.models.append(self.m)
+                continue
+            self.models.append(
+                IntentModel(self.P, exclude=self.exclude).fit(
+                    sub, thr_health=self.thr_health, reach_true=True, thr_shape=None
+                )
+            )
+        return self
+
+    def rollout(self, B, stalkers=False):
+        from sindy_wm.models.intent_model import library, team_shares
+        from sindy_wm.models.switch_library import scaled
+
+        ms = [scaled(m, "marine", "stalker") for m in self.models] if stalkers else self.models
+        P = ms[0].P
+        X, S, U = B["X0"].astype(float).copy(), B["shape0"].astype(float), B["U"]
+        offset = B["reach0"] / np.maximum(X[:, 2:4], 1e-9) - np.column_stack(team_shares(X, S, P))
+        out = [X.copy()]
+        self.phase_trace = []
+        for n in range(U.shape[1]):
+            u = U[:, n]
+            s = np.column_stack(team_shares(X, S, P))
+            reach = X[:, 2:4] * np.clip(s + offset * np.exp(-n * DT), 0, 1)
+            ph = phase_of(X, reach)
+            self.phase_trace.append(np.bincount(ph, minlength=3))
+            F = library(X, u, S, P, reach, True)
+            theta = np.column_stack([F[k] for k in ms[0].names])
+            Xn = X.copy()
+            for k, m in enumerate(ms):
+                i = ph == k
+                if not i.any():
+                    continue
+                Ch = np.stack([m.coef["health_blue"], m.coef["health_red"]])
+                Hn = np.maximum(X[i, :2] + DT * theta[i] @ Ch.T, 0)
+                ratio = np.divide(Hn, X[i, :2], out=np.zeros_like(Hn), where=X[i, :2] > 1e-9)
+                A = X[i, 2:4] * np.column_stack(
+                    [ratio[:, 0] ** m._p_of("blue", u[i]), ratio[:, 1] ** m._p_of("red", u[i])]
+                )
+                d = np.maximum(X[i, 4] + DT * theta[i] @ m.coef["distance"], 0)
+                Xn[i] = np.column_stack([Hn, A, d])
+            X = Xn
+            out.append(X.copy())
+        return np.stack(out, 1)
+
+    def complexity(self):
+        n = sum(m.n_terms() for m in {id(m): m for m in self.models}.values())
+        return {"terms": n, "numbers": n + _closure_numbers(self.P) + 2}  # + the two phase thresholds
+
+    def coefficients(self):
+        out = {}
+        for name, m in zip(PHASES, self.models, strict=True):
+            out |= {f"{name} {k}": v for k, v in intent_coefficients(m).items()}
+        return out | {f"rows {k}": v for k, v in self.phase_rows.items()}
