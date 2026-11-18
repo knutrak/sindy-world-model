@@ -1,7 +1,7 @@
 # The final-exploration model to rebuild with scripts/build_final_model.py (see docs/final_exploration/REPORT.md).
 # model: one of "A*" (one-step SINDy, symmetric firepower, reach-regressor alive law), "A", "B", "S"
 model: "A*"
-bootstrap: 30          # refits on resampled training battles for coefficient intervals (0 = none)
-data: exp06_intents/train   # 6000 battles, seeds 0-5999; nothing else is read
-rates: savitzky-golay, window 9, polyorder 2 (per battle)
-closures: fitted on the same battles (movement gates by curve_fit, derived reach curve: lam, beta, g; rho = 5.75)
+bootstrap: 30   # refits on resampled training battles for coefficient intervals (0 = none)
+data: "exp06_intents/train (6000 battles, seeds 0-5999); nothing else is read"
+rates: "Savitzky-Golay, window 9, polyorder 2, per battle"
+closures: "fitted on the same battles: movement gates by curve_fit; derived reach curve (lam, beta, g; rho = 5.75)"
