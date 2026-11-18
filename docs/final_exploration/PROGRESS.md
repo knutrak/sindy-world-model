@@ -45,6 +45,33 @@ intents. They are **new**: the gates only scored 1-8 s horizons.
 - Held-out size (fit ≤ 25 units, score 26-33): A degrades the most (health 4 s 0.075, margin R²
   −0.03). B and S hold up (0.060 / 0.056; 0.29 / 0.39).
 
+## Axes A/B screen: per-unit features, one-step oracle (`screen_AB.py`, 18 Nov)
+
+Held-out R² gain of the SG-9 rate when one *measured* feature is added to A's selected terms (5 folds,
+mean ± std). This is an upper bound: in a rollout the feature would need its own equation.
+
+| equation | base R² | best additions (gain) | nothing (< 0.005) |
+|---|---|---|---|
+| health_blue | 0.734 | enemy volleys smoothed over 5 steps +0.083 (±0.002); enemy overkill +0.022; own nearest-enemy distance × R +0.013; own front-half health +0.010 | dispersion, hull, clusters, velocity, Gini, engaged health, F added to R |
+| health_red | 0.742 | V5 +0.084; nearest-enemy × R +0.025; overkill +0.024; front-half health +0.012 | same |
+| alive_blue | 0.066 | **own units about to die × enemy V5 +0.103 (±0.002)**; × F +0.089; enemy overkill +0.077 | Gini, min health |
+| alive_red | 0.159 | overkill +0.064; **dying × V5 +0.063**; dying × F +0.049 | Gini, min health |
+
+Readings, hedged:
+- Health: most of the gain is the **volley rhythm** (V5). `sindyc_08` showed it can't be forecast past
+  about 1 s, and that it is worth at most about 0.007 of health error at any horizon. The spatial
+  features (dispersion, hull, clusters, relative velocity) add nothing given R. So R already holds
+  what geometry has to say about damage *at the same moment*.
+- "F replaces R" *loses* 0.17 R² here, against `sindyc_06`'s finding that F matches the game rule. The
+  difference is that `sindyc_06` smoothed F like the rates, and this screen uses raw F. So it's not a
+  contradiction, but don't read anything into this row.
+- **The death law is where the per-unit data has something to add.** Deaths track "units at one
+  shot from death × enemy volleys" much better than A's `p (ln H)'`. Its R² goes from 0.07 to 0.17
+  (Blue) and from 0.16 to 0.22 (Red). That is the game's mechanism: a unit dies when a shot lands on a
+  unit with ≤ 6 hp. A rollout would need the count of units about to die, so the next step is to check
+  whether that count follows from (H, A) through a closure. If it does, test it as death law G/hazard.
+- Overkill helps both equations a little. It needs a target-allocation model, so it's out of scope.
+
 ## Log
 
 - **18 Nov.** Harness, reference models and tests committed (`5fcd2ec`); reference rows run
