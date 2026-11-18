@@ -116,6 +116,32 @@ cv means over 5 folds. The fold std is about 0.0005 for health at 4 s, 0.06 for 
   best winner score, 0.698). With close battles and a 59% Blue win rate, it rewards a bias towards
   Blue more than fidelity. I'll treat it as a secondary metric and report Brier only next to it.
 
+## Axes D/I and J screen (`explore_DIJ.py`, 18 Nov)
+
+| | health 4 s (cv / size) | mR² 4 s (cv / size) | mR² 8 s (cv) | alive 4 s (cv) | battle nRMSE (cv) | parameters |
+|---|---|---|---|---|---|---|
+| A | 0.053 / 0.075 | 0.01 / −0.03 | −0.83 | 0.959 | 0.130 | 11 terms |
+| size-scaled, thr 0.15 | identical to A: no size term survives | | | | | 11 |
+| size-scaled, thr 0.05 | 0.052 / 0.074 | 0.13 / 0.16 | −0.75 | 0.952 | 0.121 (2.2% blow-ups) | 17 |
+| S | 0.048 / 0.056 | 0.41 / 0.39 | −0.09 | 0.810 | 0.137 | 22 |
+| MLP (64, 2 s rollout loss) | 0.036 / 0.043 | 0.56 / 0.61 | −0.37 | 0.729 | 0.111 | 5,509 weights |
+| MLP wide (128, 4 s) | **0.033 / 0.040** | **0.62 / 0.65** | **0.17** | **0.647** | **0.092** | 19,205 weights |
+
+- **Battle size (D/I):** at A's threshold, STLSQ keeps none of the size-dependent copies of the
+  terms. At 0.05 it keeps exactly one in every fold: Blue's damage taken per Red unit in reach,
+  Rr × z, +0.012 per 10 units (about 7% less per unit in larger battles). It doesn't help on the
+  held-out larger battles. Reading: the coefficients are nearly size-free, so one model covers 11-33
+  units with no size parameter. A's size degradation comes from elsewhere, plausibly the closure:
+  B and S hold up on `size` with the same terms.
+- **Cost of interpretability (J):** the black-box world model on *the same* inputs (team state,
+  formation at the start, intents, start share in reach) is the new upper reference. It is clearly
+  better on every horizon metric and over whole battles, and it holds on larger battles. In health
+  error at 4 s, S closes about 25% of the gap from A to the wide MLP (0.053 → 0.048 → 0.033). In
+  margin R² it closes about 65% (0.01 → 0.41 → 0.62). This fits `sindyc_07`'s tree ceiling (0.64-0.70
+  from the start state) and confirms on a dynamic model that the team-level state is not the limit.
+- The MLP's winner accuracy (0.61-0.65) is *below* A's, although its trajectories are better. That is
+  the third sign that winner accuracy from step 0 doesn't measure fidelity here.
+
 ## Log
 
 - **18 Nov.** Harness, reference models and tests committed (`5fcd2ec`); reference rows run
