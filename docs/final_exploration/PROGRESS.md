@@ -34,6 +34,12 @@ intents. They are **new**: the gates only scored 1-8 s horizons.
 - **New, and worth a look:** from step 0, the *no-control* model calls the winner more often
   (0.74) than A, B or S (0.67-0.69), although it is worse at every horizon metric. The same holds on
   val, size and stalkers. Winner accuracy for A is barely above "whoever has more health now" (0.62).
+- Diagnostic on cv fold 0 (scratch script, not in the table): A's winner accuracy falls with the share of
+  the battle Blue spends withdrawing. It is 0.73 for battles with no withdraw and 0.59 for those
+  withdrawing over 35% of the time. No-control stays at 0.68-0.78. No-control also predicts a Blue win
+  more often (69% against the true 59%). So its edge is partly a bias that happens to suit this data,
+  and partly that A gets whole battles with long withdrawals wrong. Open question: is it the distance
+  under withdraw, or the 88% fire reduction?
 - Over whole battles, S is no better than A or B (nRMSE 0.137 vs 0.130), even though it is best at
   1-8 s. The duration error is about 3 s for every model, on battles of about 9 s.
 - Held-out size (fit ≤ 25 units, score 26-33): A degrades the most (health 4 s 0.075, margin R²
