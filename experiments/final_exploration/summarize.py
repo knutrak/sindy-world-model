@@ -83,6 +83,15 @@ def main() -> None:
     ]
     for split, std in (("cv", True), ("val", False), ("size", False), ("stalkers", False)):
         parts += [f"## {split}\n", table(split, std)]
+    pr = H.paired("ref/A")
+    lines = ["## cv: difference from ref/A, paired by fold (mean ± std; folds better)\n"]
+    ms = list(dict.fromkeys(m for m, _ in pr.columns))
+    lines.append("| experiment | " + " | ".join(SHORT.get(m, m) for m in ms) + " |")
+    lines.append("|" + "---|" * (len(ms) + 1))
+    for exp, row in pr.sort_index().iterrows():
+        cells = [f"{row[(m, 'diff')]:+.3f} ± {row[(m, 'std')]:.3f} ({row[(m, 'better')]})" for m in ms]
+        lines.append(f"| {exp} | " + " | ".join(cells) + " |")
+    parts.append("\n".join(lines) + "\n")
     (DOCS / "results_summary.md").write_text("\n".join(parts))
     shutil.copy(H.RESULTS, DOCS / "results.csv")
     if H.COEFS.exists():

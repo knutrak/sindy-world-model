@@ -514,3 +514,34 @@ def pareto_plot(
     if path is not None:
         fig.savefig(path, dpi=150)
     return fig
+
+
+def paired(
+    reference: str = "ref/A",
+    metrics=("health_4s", "margin_r2_4s", "alive_4s", "battle_health_nrmse"),
+    results: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """cv differences experiment − reference, paired by fold: mean, std, and folds in which it is better.
+
+    "better" means lower for errors and higher for R² and accuracy. With 5 folds, "5/5 better" with a
+    mean difference several stds from 0 is the bar for "outside the noise" used in the report.
+    """
+    r = load_results() if results is None else results
+    r = r[r["split"] == "cv"]
+    latest = r.groupby("experiment")["time"].transform("max")
+    hashes = r[r["time"] == latest].groupby("experiment")["config_hash"].first()
+    r = r[r["config_hash"].isin(hashes.values)].set_index(["experiment", "fold"])
+    ref = r.loc[reference]
+    out = {}
+    for exp in r.index.get_level_values(0).unique():
+        if exp == reference:
+            continue
+        row = {}
+        for m in metrics:
+            d = (r.loc[exp][m] - ref[m]).dropna()
+            higher = m.startswith(("margin", "winner", "step_r2"))
+            row[(m, "diff")] = d.mean()
+            row[(m, "std")] = d.std()
+            row[(m, "better")] = f"{int(((d > 0) if higher else (d < 0)).sum())}/{len(d)}"
+        out[exp] = row
+    return pd.DataFrame(out).T
