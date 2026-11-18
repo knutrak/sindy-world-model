@@ -129,7 +129,8 @@ Installed: **pysindy 2.1.0**, numpy 2.5.3, scikit-learn 1.9.1, scipy 1.18.1, Pyt
 | SR3 (L0/L1, trimming) | yes | no |
 | SSR, FROLS | yes | no |
 | EnsembleOptimizer (bagging, library ensemble) | yes | no (G3a bootstrap is hand-rolled) |
-| ConstrainedSR3, MIOSR, SBR, TrappingSR3, StableLinearSR3 | **not in this install** | — |
+| ConstrainedSR3, TrappingSR3, StableLinearSR3, SINDyPI | yes, once `cvxpy` is installed (*corrected 18 Nov*: hidden without it) | no |
+| MIOSR, SBR | need `gurobipy` / `numpyro`; not installed | — |
 | WeakPDELibrary | yes | own weak form in `notebooks/weak_sindy.py` |
 | SINDyPILibrary | yes | no |
 | ParameterizedLibrary, TensoredLibrary, GeneralizedLibrary | yes | no (libraries are built by hand in `intent_model.library`) |
