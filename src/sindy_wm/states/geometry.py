@@ -81,7 +81,10 @@ def geometry(snapshots: pd.DataFrame, reach: float = REACH) -> pd.DataFrame:
         front = np.nanmin(gap, axis=(1, 2))
         centre = {team: np.nanmean(p, axis=1) for team, p in pos.items()}
         axis = centre["red"] - centre["blue"]
-        axis = axis / np.linalg.norm(axis, axis=1, keepdims=True)
+        norm = np.linalg.norm(axis, axis=1, keepdims=True)
+        # Coincident centres: fall back to the x axis, as `geometry_from_positions` does. A wiped-out
+        # side gives a NaN norm and stays NaN, so depth and width are carried forward as before.
+        axis = np.where(norm == 0, np.array([1.0, 0.0]), axis / norm)
         perp = np.stack([-axis[:, 1], axis[:, 0]], axis=1)
         depth, width = (
             {
