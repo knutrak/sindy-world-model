@@ -73,12 +73,36 @@ class AliveVariantA(ModelA):
         super().fit(data)
         if self.law == "no-control":
             refit_alive(self.m, data.rates, controls=False)
+        elif self.law == "reach":
+            self._fit_reach_law(data.rates)
         elif self.law == "proportional":
             for side in ("blue", "red"):
                 self.m.p[side] = {"1": 1.0, "hold": 0.0, "wd": 0.0, "focus": 0.0}
         else:
             raise ValueError(self.law)
         return self
+
+    def _fit_reach_law(self, rows: pd.DataFrame) -> None:
+        """A's law, (ln A)' = p (ln H)', fitted with the regressor the rollout actually uses.
+
+        In a rollout H' = k R_enemy, so A' = p k R_enemy A / H. Regressing the alive rate on
+        R_enemy A / H (one SINDy library term, plus x focus for Red) avoids dividing by the noisy
+        smoothed health rate (errors in variables, which pulls p towards 0). p = c / k.
+        """
+        names = self.m.names
+        k = {
+            "blue": self.m.coef["health_blue"][names.index("Rr")],
+            "red": self.m.coef["health_red"][names.index("Rb")],
+        }
+        for side, enemy in (("blue", "red"), ("red", "blue")):
+            ok = ((rows[f"health_{side}"] > 0.03) & (rows[f"alive_{side}"] > 0)).to_numpy()
+            x = (rows[f"reach_{enemy}"] * rows[f"alive_{side}"] / rows[f"health_{side}"]).to_numpy()[ok]
+            y = rows[f"d_alive_{side}"].to_numpy()[ok]
+            T = x[:, None] if side == "blue" else np.column_stack([x, x * rows["focus"].to_numpy()[ok]])
+            c, *_ = np.linalg.lstsq(T, y, rcond=None)
+            p = c / k[side]
+            focus = float(p[1]) if side == "red" else 0.0
+            self.m.p[side] = {"1": float(p[0]), "hold": 0.0, "wd": 0.0, "focus": focus}
 
 
 class AliveRolloutA(_LabModel):

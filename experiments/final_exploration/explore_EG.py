@@ -6,6 +6,7 @@ E/ensemble         E-SINDy: 30 bootstrap refits by battle, keep terms with inclu
 E/ensemble-noalivectrl  the same with no intent terms in the alive law
 G/alive-noctrl     A with the alive law refitted without intent terms (G3b's moving terms)
 G/alive-proportional    alive in proportion to health (p = 1): the naive death rule
+G/alive-reach      A's law fitted on the regressor the rollout uses (R_enemy A / H)
 G/alive-rollout    A with only p_b, p_r, p_r_focus refitted on 1-8 s rollout error
 """
 
@@ -30,6 +31,12 @@ EXPERIMENTS = [
     ),
     Experiment(
         "G/alive-proportional", lambda: AliveVariantA("proportional"), {"law": "p = 1", "cost": 1}, axis="G"
+    ),
+    Experiment(
+        "G/alive-reach",
+        lambda: AliveVariantA("reach"),
+        {"law": "A' = c R_enemy A / H (+ focus for Red), p = c / k", "cost": 1},
+        axis="G",
     ),
     Experiment(
         "G/alive-rollout", AliveRolloutA, {"refit": "p_b, p_r, p_r_focus on 1-8 s", "cost": 5}, axis="G"
