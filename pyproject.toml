@@ -21,6 +21,14 @@ dependencies = [
 [project.scripts]
 sindy-wm = "sindy_wm:main"
 
+[project.optional-dependencies]
+explore = [
+    "cvxpy>=1.9.3",
+    "hmmlearn>=0.3.3",
+    "ruptures>=1.1.10",
+    "torch>=2.15.0",
+]
+
 [build-system]
 requires = ["uv_build>=0.11.16,<0.12.0"]
 build-backend = "uv_build"
