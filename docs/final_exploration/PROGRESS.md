@@ -213,6 +213,11 @@ and ties on margin. B and S beat A on margin R² 4 s on test2 and test2_cf; S is
 whole battles. The MLP is best everywhere. A\* transfers worse than A to stalkers on the margin.
 Recommendation and write-up: `REPORT.md`.
 
+## Post-hoc gates (18 Nov)
+
+A\* passes G1-G8 on val / cf / exp07 val (verdict: valid interpretable model, transfers). A, as the control,
+fails G3b exactly as on 17 Nov. Details in `04_gates_post_hoc.md` and REPORT §6.
+
 ## Log
 
 - **18 Nov.** Harness, reference models and tests committed (`5fcd2ec`); reference rows run

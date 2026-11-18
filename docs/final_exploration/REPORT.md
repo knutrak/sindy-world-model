@@ -150,7 +150,7 @@ Reasons, with their limits:
   identical units get one firepower coefficient, and the death law is fitted without dividing by a
   noisy rate. It uses one-step SINDy / least squares only, so "SINDy found it" remains true in
   the sense it is true for A.
-- It fixes A's pre-registered failure mode in spirit. A failed G3b because its alive term set moved
+- It fixes A's pre-registered failure mode (G3b; post-hoc gate check below). A failed G3b because its alive term set moved
   with the derivative estimate. A\*'s term set stays the same under SG 5 / 9 / 17 / 33, partly by
   design, since its alive law has no selection step. Its alive exponents move about 5-10% (A:
   25-35%), and k stays within ±4%. **Caveat:** A\* has not been put through the 17 Nov gates.
@@ -158,6 +158,22 @@ Reasons, with their limits:
   is post-hoc.
 - **What it doesn't fix:** margin R² at 4 s is still about 0 (B/S: 0.24-0.39). Stalker transfer is
   worse on the margin. Gains over A are small (health 4 s about −4%, alive about −6%).
+
+**Post-hoc gate check (18 Nov, `04_gates_post_hoc.md`).** The 17 Nov gates were applied to A\* and,
+as a control, A on `val` / `cf_*` / exp07 `val`, the sets `evaluate_final.py --dry-run` uses. G7
+used the test2 / val ratio. A fails G3b exactly as on 17 Nov, with the same term-set changes at SG 17
+and weak 1 s / 2 s, so the procedure reproduces.
+
+| | G1 | G2 | G3a | G3b | G4 | G5 | G7 | G8 | horizon val / cf | verdict |
+|---|---|---|---|---|---|---|---|---|---|---|
+| A | ✓ | ✓ | ✓ | ✗ | ✓ | ✓ | ✓ (0.98) | ✓ | 2 / 3 s | not valid |
+| A\* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ (0.98) | ✓ | 2 / 3 s | **valid interpretable model, transfers** |
+
+A\*'s G3b values: across SG 5 / 9 / 17 and weak 1 s / 2 s, k = 0.179-0.190 (max 4.6% from the median),
+k_wd within 8.2%. The term set is identical, partly by design, since the alive law has no selection
+step. The alive exponents stay within p_B 0.63-0.70 and p_R 0.52-0.60. **Caveats:** this is
+post-hoc, A\* was designed after looking at cv / val, and the reliable horizon is unchanged from A
+(2-3 s).
 
 If prediction at 2-4 s matters more than readability for a chapter (RQ3), S is the better choice,
 at the cost of 22 terms, two G2 sign failures (Red's `sf_adv`, `sf_hold`) and rollout fitting.
@@ -221,7 +237,7 @@ R = A·Φ((ρ − gap)/spread), ρ = 5.75 (the game's reach), λ, β, g fitted; 
   87% fire reduction?
 - Can a reach closure with a slow relaxation term be identified without trajectory fitting? The
   one-step STLSQ result says not from SG rates. A weak-form fit of the share equation is untested.
-- Does A\* pass the 17 Nov gates? (Post-hoc only now; G3b's weak-form part is the open piece.)
+- A\* passes the 17 Nov gates post-hoc, on val (`04_gates_post_hoc.md`). A pre-registered confirmation would need yet another fresh test set.
 - Is the stalker transfer loss of A\* in the alive law (p fitted to marine damage spreading) or in k?
 - Would a cooldown-phase state (volley timing) help at horizons under 1 s, the planner's step?
 
