@@ -205,6 +205,14 @@ down to 0.003, with and without S's sign rules:
   move about 5% (p_B) and 10% (p_R), against A's 25-35%. Caveat: the alive law has no selection
   step, so "same term set" is partly by design. The weak-form estimates of G3b were not re-run.
 
+## Phase 3 (test2, run once, 18 Nov)
+
+Pre-registered in `02_phase3_plan.md` (commit `c4192a5`, before the run); results in
+`03_test_results.md`. **All five expectations were met.** A\* beats A on health 4 s and battle nRMSE
+and ties on margin. B and S beat A on margin R² 4 s on test2 and test2_cf; S is worse than A over
+whole battles. The MLP is best everywhere. A\* transfers worse than A to stalkers on the margin.
+Recommendation and write-up: `REPORT.md`.
+
 ## Log
 
 - **18 Nov.** Harness, reference models and tests committed (`5fcd2ec`); reference rows run
@@ -217,6 +225,10 @@ down to 0.003, with and without S's sign rules:
   it back: `git stash apply --index`.
 
 ## Next
+
+Done: see `REPORT.md`. Remaining open questions are in its §8.
+
+(Earlier plan:)
 
 Queued, in order: per-unit features → E/G (thresholds, ensemble, death laws) → D/I/J
 (size-scaled library, MLP) → C/E (optimizers, symmetry, phases). Then the A/B feature screens.

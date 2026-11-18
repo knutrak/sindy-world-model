@@ -16,6 +16,16 @@ from sindy_wm.evaluation import harness as H
 from sindy_wm.paths import PROJECT_ROOT
 
 DOCS = PROJECT_ROOT / "docs" / "final_exploration"
+KEY = {
+    "ref/A",
+    "ref/B",
+    "ref/S",
+    "deep/A*",
+    "J/mlp-wide",
+    "ref/lanchester-square",
+    "ref/persistence",
+    "ref/no-control",
+}
 COLS = [
     "health_4s",
     "margin_r2_2s",
@@ -99,8 +109,8 @@ def main() -> None:
     import matplotlib
 
     matplotlib.use("Agg")
-    H.pareto_plot("cv", "n_terms", "battle_health_nrmse", DOCS / "pareto_cv.png")
-    fig = H.pareto_plot("cv", "n_terms", "margin_r2_4s")
+    H.pareto_plot("cv", "n_terms", "battle_health_nrmse", DOCS / "pareto_cv.png", labels=KEY)
+    fig = H.pareto_plot("cv", "n_terms", "margin_r2_4s", labels=KEY)
     # higher is better for R²: redraw the front for "max"
     ax = fig.axes[0]
     for line in ax.lines[1:]:

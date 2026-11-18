@@ -489,7 +489,11 @@ def stability(split: str = "cv") -> pd.DataFrame:
 
 
 def pareto_plot(
-    split: str = "cv", x: str = "n_terms", y: str = "battle_health_nrmse", path: Path | None = None
+    split: str = "cv",
+    x: str = "n_terms",
+    y: str = "battle_health_nrmse",
+    path: Path | None = None,
+    labels=None,
 ):
     """Complexity against error, one point per experiment (mean ± std over folds), front highlighted."""
     import matplotlib.pyplot as plt
@@ -504,7 +508,8 @@ def pareto_plot(
     order = sorted(front, key=lambda i: xs[i])
     ax.plot(xs[order], ys[order], "-o", color="C0", ms=5, zorder=2, label="Pareto front")
     for i, n in enumerate(names):
-        ax.annotate(n, (xs[i], ys[i]), fontsize=7, xytext=(3, 3), textcoords="offset points")
+        if labels is None or n in labels or i in front:
+            ax.annotate(n, (xs[i], ys[i]), fontsize=7, xytext=(3, 3), textcoords="offset points")
     ax.set_xscale("symlog", linthresh=10)
     ax.set_xlabel({"n_terms": "SINDy terms", "n_numbers": "fitted numbers"}.get(x, x))
     ax.set_ylabel(y)
