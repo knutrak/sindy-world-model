@@ -81,6 +81,41 @@ Readings, hedged:
   at 4 s 0.98 → 0.92; health 0.055 → 0.053. Now in the harness as **G/alive-reach**.
 - Overkill helps both equations a little. It needs a target-allocation model, so it's out of scope.
 
+## Axes E/G screen (`explore_EG.py`, 88 jobs, 18 Nov)
+
+cv means over 5 folds. The fold std is about 0.0005 for health at 4 s, 0.06 for margin R² at 4 s,
+0.011 for alive at 4 s and 0.017 for winner accuracy. Full table: `results_summary.md`.
+
+| cv | health 4 s | mR² 4 s | alive 4 s | battle nRMSE | winner | blow-up | terms |
+|---|---|---|---|---|---|---|---|
+| A (thr 0.15) | 0.053 | 0.01 | 0.959 | 0.130 | 0.666 | 0 | 11 |
+| thr 0.02 / 0.05 | 0.052 | 0.17 / 0.14 | 0.95 | 0.121 / 0.122 | 0.67 / 0.68 | **2.6% / 2.2%** | 19 / 16 |
+| thr 0.1 / 0.2 | 0.053 | 0.03 / 0.01 | 0.96 | 0.132 / 0.130 | 0.66 / 0.67 | 0 | 12 / 11 |
+| thr 0.3 | 0.060 | −0.06 | 1.026 | 0.141 | 0.698 | 0 | 10 |
+| E-SINDy (30 bags, keep ≥ 0.5) | 0.053 | 0.01 | 0.960 | 0.130 | 0.666 (Brier 0.331) | 0 | 11 |
+| alive: no intent terms | 0.053 | 0.01 | 0.970 | 0.130 | 0.666 | 0 | 10 |
+| alive: proportional (p = 1) | 0.052 | 0.02 | 0.966 | 0.136 | 0.678 | 0 | 10 |
+| **alive: reach regressor** | **0.051** | 0.02 | **0.905** | **0.127** | 0.674 | 0 | 11 |
+| alive: rollout-fitted p | 0.051 | 0.02 | 0.900 | 0.128 | 0.677 | 0 | 11 |
+| B / S | 0.050 / 0.048 | 0.29 / 0.41 | 0.84 / 0.81 | 0.129 / 0.137 | 0.69 / 0.69 | 0 | 11 / 22 |
+
+- **E-SINDy inclusion probabilities** (30 bootstrap refits by battle, every fold): all 11 of A's terms
+  are kept in **100%** of refits. The alive intent terms that made A fail G3b come in rarely: Blue
+  focus 10%, Blue hold 13% (fold-dependent, 0-30%), Red withdraw 3%. Red focus is kept in 100%.
+  So the term set is stable under resampling and only moves with the *derivative estimate* (G3b).
+  That is a statement about the alive equation's sensitivity to smoothing, not to the data.
+- The ensemble's win probability barely calibrates better than A's 0/1 call (Brier 0.331 vs 0.334).
+  The members barely differ, because the uncertainty is in the closure, not in the coefficients.
+- **The reach-regressor alive law** matches the rollout-fitted alive law (alive 4 s 0.905 vs 0.900;
+  A 0.959, about 5 fold-stds better) without any rollout fitting. It improves health and battle
+  nRMSE a little. On held-out size it helps (health 4 s 0.070 vs 0.075). On **stalkers** its alive error
+  is worse (0.651 vs 0.599), so the scaled transfer prefers A's exponents.
+- Lower thresholds buy margin R² with extra, partly cancelling terms and 2-3% blow-ups. That is the
+  same trade-off as `sindyc_02`.
+- **Winner accuracy keeps moving against the other metrics** (thr 0.3 is the worst model and has the
+  best winner score, 0.698). With close battles and a 59% Blue win rate, it rewards a bias towards
+  Blue more than fidelity. I'll treat it as a secondary metric and report Brier only next to it.
+
 ## Log
 
 - **18 Nov.** Harness, reference models and tests committed (`5fcd2ec`); reference rows run
