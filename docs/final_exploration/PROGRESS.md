@@ -70,6 +70,15 @@ Readings, hedged:
   (Blue) and from 0.16 to 0.22 (Red). That is the game's mechanism: a unit dies when a shot lands on a
   unit with ≤ 6 hp. A rollout would need the count of units about to die, so the next step is to check
   whether that count follows from (H, A) through a closure. If it does, test it as death law G/hazard.
+- **Follow-up (scratch screen, same folds):** the hazard law doesn't survive a closure. "About to die"
+  predicted from (H, A) through a binned function of mean health per unit only reaches R² 0.26-0.31.
+  With R in place of measured volleys, it explains nothing (alive R² −0.01 / −0.13). The rhythm, not
+  the count, carried the gain. **What does help** is A's own law written with the regressor the
+  rollout uses. In a rollout H' = k R_enemy, so A' = p k R_enemy A / H. Regressing the alive rate on
+  R_enemy·A/H, instead of dividing by the noisy smoothed (ln H)', gives held-out alive R² 0.20 / 0.25
+  (A's fit: 0.07 / 0.13). That is the errors-in-variables bias `sindyc_06` found, removed within
+  one-step SINDy. On val: p_B 0.52 → 0.66, p_R 0.51 → 0.54, Red's focus term 0.14 → 0.24; alive error
+  at 4 s 0.98 → 0.92; health 0.055 → 0.053. Now in the harness as **G/alive-reach**.
 - Overkill helps both equations a little. It needs a target-allocation model, so it's out of scope.
 
 ## Log
