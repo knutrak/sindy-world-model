@@ -303,7 +303,11 @@ class MLPWorld:
                 np.nan_to_num(B["reach0"] / np.maximum(B["X0"][:, 2:4], 1e-6)), dtype=torch.float32
             )
             U = torch.tensor(B["U"], dtype=torch.float32)
-            return self._roll(X0, S0, U, R0, U.shape[1]).numpy().astype(float)
+            Y = self._roll(X0, S0, U, R0, U.shape[1]).numpy().astype(float)
+        # float32 rounding must not count as "alive above the start" in the blow-up check
+        Y[:, :, :4] = np.minimum(Y[:, :, :4], B["X0"][:, None, :4])
+        Y[:, 0] = B["X0"]
+        return Y
 
     def complexity(self):
         return {"terms": self.n_params, "numbers": self.n_params}
