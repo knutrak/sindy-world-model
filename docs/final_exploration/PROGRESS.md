@@ -142,6 +142,40 @@ cv means over 5 folds. The fold std is about 0.0005 for health at 4 s, 0.06 for 
 - The MLP's winner accuracy (0.61-0.65) is *below* A's, although its trajectories are better. That is
   the third sign that winner accuracy from step 0 doesn't measure fidelity here.
 
+## Axes C and E screen (`explore_CE.py`, 72 jobs, 18 Nov)
+
+cv differences from A, paired by fold (mean; folds better out of 5):
+
+| | health 4 s | mR² 4 s | alive 4 s | battle nRMSE | terms | reading |
+|---|---|---|---|---|---|---|
+| SR3 (L0, λ matched to thr 0.15) | −0.0024 (5/5) | +0.087 (5/5) | +0.071 (0/5) | −0.001 (4/5) | 10 | gain is **shrinkage**: health coefficients 0.148 / 0.156 against 0.177 / 0.186, about B's 0.156 / 0.165; drops `flee·wd` |
+| SR3 unbiased | +0.0033 (0/5) | −0.112 (0/5) | +0.026 (0/5) | +0.003 (0/5) | 10 | A's coefficients without `flee·wd`: worse everywhere |
+| SSR κ 0.01 / 0.1 | +0.010 / +0.004 | −0.04 / +0.07 | worse | +0.047 / +0.033 | 15 / 21 | more terms, 2-4% blow-ups |
+| FROLS κ 0.01 / 0.1 | +0.014 / +0.17 | worse | worse | worse | 9 / 4 | drops `Rb·wd`; at 0.1 degenerate |
+| **symmetric** (one k for both sides, one p) | −0.0002 (4/5) | +0.015 (4/5) | −0.011 (5/5) | −0.0026 (5/5) | 9 | k = −0.182 (A: −0.177 / −0.186); fewer numbers, ties or slightly better |
+| symmetric health only | same | same | same | same | 10 | |
+| phase hybrid (approach / engaged / mop-up) | −0.0017 (5/5) | −0.046 (0/5) | −0.025 (5/5) | +0.0025 (0/5) | 38 | **5.5% blow-ups**; approach-phase alive law unphysical (p_wd ≈ 1.1) |
+
+- None of the optimizers beats STLSQ on A's library once shrinkage is separated out. The SR3 /
+  B / "fitting bias" story is one effect: smaller firepower coefficients compensate for the reach
+  closure over-predicting contact.
+- Side symmetry is consistent with identical units and costs nothing. It is cheap evidence for the
+  physical reading of k.
+- An explicit phase switch adds parameters and instability, with no rollout gain over the smooth gates.
+
+## Depth: S's share equation by one-step SINDy (val, scratch run, 18 Nov)
+
+STLSQ on the SG-9 rate of the measured share, with S's seven candidates per side, at thresholds 0.05
+down to 0.003, with and without S's sign rules:
+- At 0.05 it keeps **only** `sa` (share′ ≈ 0.97 closure′; one-step R² 0.78 / 0.71). At lower
+  thresholds the relaxation term `sk` comes in with the **wrong sign** (−0.066), and the sign rule
+  removes it.
+- Rollouts never get better than A: margin R² at 4 s 0.03-0.075 (S: 0.41), health 0.055-0.056.
+- **Reading (hedged):** S's gain lives in the slow relaxation of the reach offset. One-step rates
+  can't identify it, because the fast closure rate dominates the derivative. It only appears when
+  fitting on trajectories. That is the strongest evidence so far for "trajectory refinement matters
+  here". Queued on all splits as `deep/share-sindy` for the record.
+
 ## Log
 
 - **18 Nov.** Harness, reference models and tests committed (`5fcd2ec`); reference rows run
