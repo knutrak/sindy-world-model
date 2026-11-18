@@ -246,11 +246,13 @@ class _LabModel:
 
 
 class ModelB(_LabModel):
-    def __init__(self, n_start: int = 20_000):
-        self.n_start = n_start
+    """A's support with coefficients refitted on rollout error; `base` gives the starting model."""
+
+    def __init__(self, n_start: int = 20_000, base=None):
+        self.n_start, self.base = n_start, base
 
     def fit(self, data):
-        a = ModelA().fit(data)
+        a = (self.base or ModelA)().fit(data)
         self.n_closure = _closure_numbers(a.P)
         Bfit = data.subsample(self.n_start)
         self.p, _ = lab().refit(ALIVE + HEALTH + DIST + TAU, a.params(), Bfit)
@@ -260,11 +262,11 @@ class ModelB(_LabModel):
 class ModelS(_LabModel):
     """B, then the share-in-reach terms kept in `sindyc_07` refitted with the reach error weighted in."""
 
-    def __init__(self, n_start: int = 20_000):
-        self.n_start = n_start
+    def __init__(self, n_start: int = 20_000, base=None):
+        self.n_start, self.base = n_start, base
 
     def fit(self, data):
-        b = ModelB(self.n_start).fit(data)
+        b = ModelB(self.n_start, base=self.base).fit(data)
         self.n_closure = b.n_closure
         S0 = pickle.load(open(PROCESSED / "sindyc_07_models.pkl", "rb"))["S share as a state"]
         keep = [k for k in S0 if k.startswith(tuple(f"{s}_" for s in SHARE)) and S0[k]]

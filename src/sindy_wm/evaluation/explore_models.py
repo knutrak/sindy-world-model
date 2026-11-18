@@ -524,3 +524,109 @@ class PhaseA(ModelA):
         for name, m in zip(PHASES, self.models, strict=True):
             out |= {f"{name} {k}": v for k, v in intent_coefficients(m).items()}
         return out | {f"rows {k}": v for k, v in self.phase_rows.items()}
+
+
+# ------------------------------------------------------------------ share in reach, one-step SINDy
+SHARE_TERMS = ("sa", "sk", "sf_adv", "sf_hold", "sf_wd", "so_wd", "sd")
+
+
+def _sg_rate(values: np.ndarray, groups: np.ndarray, window: int = 9) -> np.ndarray:
+    """Savitzky-Golay rate of a per-step series, per battle (as `add_rates`)."""
+    from scipy.signal import savgol_filter
+
+    out = np.full(len(values), np.nan)
+    starts = np.flatnonzero(np.r_[True, groups[1:] != groups[:-1]])
+    ends = np.r_[starts[1:], len(values)]
+    for a, b in zip(starts, ends, strict=True):
+        if b - a > window:
+            out[a:b] = savgol_filter(values[a:b], window, 2, deriv=1, delta=DT)
+    return out
+
+
+class ShareSINDy(_LabModel):
+    """S's structure with every coefficient from one-step regressions (no rollout fitting).
+
+    Health and distance: A. Alive: A's law fitted on the reach regressor (G/alive-reach) if
+    `alive_reach`. Share in reach s = R / A per side, a state of its own, with S's seven candidates
+
+        s' = sa clo' + sk (clo - s) + C (1 - s)(sf_adv adv + sf_hold hold + sf_wd wd)
+             - so_wd wd s + sd (1 - s)(ln A)'
+
+    (clo = the closure's share, C = chance that any Blue unit is in reach), selected by STLSQ on the
+    SG-9 rate of the measured share. Rolled out with the same simulator as S.
+    """
+
+    def __init__(self, thr: float = 0.05, alive_reach: bool = True, signs: bool = False):
+        self.thr, self.alive_reach, self.signs = thr, alive_reach, signs
+
+    def fit(self, data):
+        from sindy_wm.models.intent_model import team_shares
+
+        a = AliveVariantA("reach").fit(data) if self.alive_reach else ModelA().fit(data)
+        self.n_closure = _closure_numbers(a.P)
+        p = a.params()
+        if self.alive_reach:
+            p |= {"p_b": a.m.p["blue"]["1"], "p_r": a.m.p["red"]["1"], "p_r_focus": a.m.p["red"]["focus"]}
+        r = data.raw_rates
+        r = r[(r["alive_blue"] > 0) & (r["alive_red"] > 0)]
+        ep = r.index.get_level_values(0).to_numpy()
+        X, S, U = r[STATE].to_numpy(), r[SHAPE].to_numpy(), r[CTRL].to_numpy()
+        clo = np.column_stack(team_shares(X, S, a.P))
+        share = np.clip(r[["reach_blue", "reach_red"]].to_numpy() / np.maximum(X[:, 2:4], 1e-9), 0, 1)
+        C = 1 - (1 - share[:, 0]) ** (10 * X[:, 2])
+        self.share_fit = {}
+        p["share_state"] = True
+        for j, t in enumerate("br"):
+            side = "blue" if t == "b" else "red"
+            ds, dclo = _sg_rate(share[:, j], ep), _sg_rate(clo[:, j], ep)
+            dlnA = r[f"d_alive_{side}"].to_numpy() / np.maximum(X[:, 2 + j], 1e-9)
+            s = share[:, j]
+            T = np.column_stack(
+                [
+                    dclo,
+                    clo[:, j] - s,
+                    C * (1 - s) * U[:, 0],
+                    C * (1 - s) * U[:, 1],
+                    C * (1 - s) * U[:, 2],
+                    -U[:, 2] * s,
+                    (1 - s) * dlnA,
+                ]
+            )
+            ok = np.isfinite(T).all(1) & np.isfinite(ds)
+            c = stlsq(T[ok], ds[ok], self.thr)
+            if self.signs:  # S's sign rules (G2): all >= 0 except sd <= 0; refit without violators
+                bad = np.r_[c[:6] < 0, c[6] > 0]
+                if bad.any():
+                    keep = (c != 0) & ~bad
+                    c = np.zeros(7)
+                    if keep.any():
+                        c[keep], *_ = np.linalg.lstsq(T[ok][:, keep], ds[ok], rcond=None)
+            self.share_fit[side] = {
+                "r2": float(1 - np.sum((ds[ok] - T[ok] @ c) ** 2) / np.sum((ds[ok] - ds[ok].mean()) ** 2))
+            }
+            for k, v in zip(SHARE_TERMS, c, strict=True):
+                p[f"{k}_{t}"] = float(v)
+        self.p = p
+        return self
+
+    def coefficients(self):
+        return super().coefficients() | {f"share R2 {k}": v["r2"] for k, v in self.share_fit.items()}
+
+
+# ------------------------------------------------------------------------------ combined (depth)
+class CombinedA(SymmetricA):
+    """A with the two changes that held up in screening: one firepower coefficient for both sides
+    (identical units) and the alive law fitted on the reach regressor (no attenuation). One-step
+    STLSQ / least squares only; same closures and distance equation as A."""
+
+    def __init__(self, **kw):
+        super().__init__(alive=False, **kw)
+
+    def fit(self, data):
+        super().fit(data)
+        AliveVariantA._fit_reach_law(self, data.rates)
+        return self
+
+    def complexity(self):
+        n = 2 + 5 + 3  # shared k and k_wd; five distance terms; p_b, p_r, p_r_focus
+        return {"terms": n, "numbers": n + _closure_numbers(self.P)}
