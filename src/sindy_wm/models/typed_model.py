@@ -135,8 +135,13 @@ class TypedA:
     """The per-type model (see the module docstring). `team` is a fitted team model (A*-2k on team
     totals) whose distance equation and movement gates are reused."""
 
-    def __init__(self, team, thr: float = 0.15, alloc: str = "closure"):
-        self.team, self.thr, self.alloc = team, thr, alloc
+    def __init__(self, team, thr: float = 0.15, alloc: str = "closure", max_reach: float | None = None):
+        """max_reach: the cap the state tables were built with (e.g. 6.0); sets each type's closure rho."""
+        self.team, self.thr, self.alloc, self.max_reach = team, thr, alloc, max_reach
+        cap = max_reach or np.inf
+        self.rho = {
+            a: float(np.mean([min(pair_reach(a.upper(), t.upper()), cap) for t in TYPES])) for a in TYPES
+        }
 
     # ---- terms ----
     @staticmethod
@@ -172,7 +177,7 @@ class TypedA:
                 )
                 y = (r[f"reach_{s}_{a}"] / r[f"alive_{s}_{a}"]).to_numpy()
                 sub = np.random.default_rng(0).choice(len(y), min(200_000, len(y)), replace=False)
-                f = lambda X, lam, beta, g, rho=RHO[a]: derived_share(*X, lam, beta, g, rho=rho)  # noqa: E731
+                f = lambda X, lam, beta, g, rho=self.rho[a]: derived_share(*X, lam, beta, g, rho=rho)  # noqa: E731
                 p, _ = curve_fit(f, tuple(x[sub] for x in X), y[sub], p0=(1.0, 1.0, 1.0), maxfev=20000)
                 self.share[(s, a)] = p
                 self.share_r2[(s, a)] = r2(r[f"reach_{s}_{a}"], r[f"alive_{s}_{a}"] * f(X, *p))
@@ -274,7 +279,7 @@ class TypedA:
                     wid[OTHER[s]],
                     n_opp[s],
                     *self.share[(s, a)],
-                    rho=RHO[a],
+                    rho=self.rho[a],
                 )
         return out
 

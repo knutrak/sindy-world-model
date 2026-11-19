@@ -51,8 +51,15 @@ def pair_reach(attacker: str, target: str) -> float:
     return a["range"] + a["radius"] + t["radius"]
 
 
-def typed_states(snapshots: pd.DataFrame, types: tuple[str, ...]) -> pd.DataFrame:
-    """Per-type state of one episode, one row per step (see the module docstring)."""
+def typed_states(
+    snapshots: pd.DataFrame, types: tuple[str, ...], max_reach: float | None = None
+) -> pd.DataFrame:
+    """Per-type state of one episode, one row per step (see the module docstring).
+
+    max_reach caps every pair reach (centre to centre), e.g. 6.0: SMAClite only offers agents attack
+    actions within AGENT_TARGET_RANGE = 6, whatever the unit's attack range (docs/mixed/PROGRESS.md).
+    The fire columns are unaffected (they come from the recorded targets).
+    """
     steps = pd.Index(sorted(snapshots["step"].unique()), name="step")
     alive = snapshots[snapshots["alive"]]
     out: dict[str, np.ndarray] = {}
@@ -89,9 +96,9 @@ def typed_states(snapshots: pd.DataFrame, types: tuple[str, ...]) -> pd.DataFram
             )
     gap = np.linalg.norm(pos["blue"][:, :, None, :] - pos["red"][:, None, :, :], axis=-1)  # step, blue, red
     for side, other, g in (("blue", "red", gap), ("red", "blue", gap.transpose(0, 2, 1))):
-        r = np.array([[pair_reach(a, t) for t in kind[other]] for a in kind[side]]).reshape(
-            len(kind[side]), len(kind[other])
-        )
+        r = np.array(
+            [[min(pair_reach(a, t), max_reach or np.inf) for t in kind[other]] for a in kind[side]]
+        ).reshape(len(kind[side]), len(kind[other]))
         within = (g <= r[None]).any(axis=2)  # NaN compares False: dead units never count
         for t in types:
             out[f"reach_{side}_{t.lower()}"] = within[:, kind[side] == t].sum(axis=1) / REF_UNITS
@@ -141,16 +148,20 @@ def typed_states(snapshots: pd.DataFrame, types: tuple[str, ...]) -> pd.DataFram
 
 
 def load_typed_states(
-    dataset_dir, types: tuple[str, ...], episode_ids: list[int] | None = None
+    dataset_dir, types: tuple[str, ...], episode_ids: list[int] | None = None, max_reach: float | None = None
 ) -> pd.DataFrame:
-    """Per-type states of a dataset, indexed by (episode_idx, step), with t in seconds."""
+    """Per-type states of a dataset, indexed by (episode_idx, step), with t in seconds (`typed_states`)."""
     dt = storage.load_manifest(dataset_dir)["config"]["env"]["seconds_per_step"]
     if episode_ids is None:
         episode_ids = storage.load_episode_index(dataset_dir)["episode_idx"].tolist()
     parts = []
     for chunk in np.array_split(np.asarray(episode_ids), max(1, min(10, len(episode_ids)))):
         snaps = storage.load_snapshots(dataset_dir, chunk.tolist())
-        parts.append(snaps.groupby("episode_idx").apply(typed_states, types=types, include_groups=False))
+        parts.append(
+            snaps.groupby("episode_idx").apply(
+                typed_states, types=types, max_reach=max_reach, include_groups=False
+            )
+        )
     states = pd.concat(parts)
     states["t"] = states.index.get_level_values("step") * dt
     return states

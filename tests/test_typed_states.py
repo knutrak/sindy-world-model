@@ -72,3 +72,12 @@ def test_team_view_sums_types_in_marine_hp():
     T = team_view(X)
     assert T[0] == pytest.approx(0.5 + 0.2 * 125 / 45)  # ten marines' hp
     assert T[3] == pytest.approx(0.4) and T[4] == 6.0
+
+
+def test_max_reach_caps_marauder_reach_only(mixed_snapshots):
+    full = typed_states(mixed_snapshots, ("MARINE", "MARAUDER"))
+    capped = typed_states(mixed_snapshots, ("MARINE", "MARAUDER"), max_reach=6.0)
+    for side in ("blue", "red"):
+        np.testing.assert_allclose(capped[f"reach_{side}_marine"], full[f"reach_{side}_marine"])
+        assert (capped[f"reach_{side}_marauder"] <= full[f"reach_{side}_marauder"] + 1e-12).all()
+    assert (capped["reach_blue_marauder"] < full["reach_blue_marauder"]).any()

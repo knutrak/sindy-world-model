@@ -15,6 +15,7 @@ Withdraw radius 8 (marauder reach against a marauder is 7.125). Collected from c
     uv run scripts/collect_mixed.py train --shard 0
     uv run scripts/collect_mixed.py cf --intent 2
     uv run scripts/collect_mixed.py build          per-type state tables -> data/processed/exp08_mixed/
+    uv run scripts/collect_mixed.py build --max-reach 6    reach capped at 6 -> data/processed/exp08_mixed_r6/
 """
 
 import argparse
@@ -62,9 +63,9 @@ def run(name: str, policy: IntentSchedule, first_seed: int, n: int, description:
     print(f"done {name}", flush=True)
 
 
-def build(name: str) -> pd.DataFrame:
+def build(name: str, max_reach: float | None = None) -> pd.DataFrame:
     dataset_dir = RAW / name
-    states = load_typed_states(dataset_dir, TYPES)
+    states = load_typed_states(dataset_dir, TYPES, max_reach=max_reach)
     controls = storage.load_controls(dataset_dir).set_index(["episode_idx", "step"])
     cols = [
         c for c in ("segment", "movement", "target", "branched", "reverted", "branch_at") if c in controls
@@ -78,8 +79,9 @@ def build(name: str) -> pd.DataFrame:
     return states.join(index[keep], on="episode_idx")
 
 
-def build_all() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
+def build_all(max_reach: float | None = None) -> None:
+    out = OUT if max_reach is None else OUT.with_name(f"{OUT.name}_r{max_reach:g}")
+    out.mkdir(parents=True, exist_ok=True)
     names = sorted(
         p.name
         for p in RAW.iterdir()
@@ -87,17 +89,17 @@ def build_all() -> None:
     )
     names = [n for n in names if n != "test3"]  # held out
     shards = [n for n in names if n.startswith("train_")]
-    if len(shards) == N_SHARDS and not (OUT / "train.parquet").exists():
+    if len(shards) == N_SHARDS and not (out / "train.parquet").exists():
         parts = []
         for name in shards:
-            t = build(name).reset_index()
+            t = build(name, max_reach).reset_index()
             t["episode_idx"] += int(name.split("_")[1]) * 1000
             parts.append(t.set_index(["episode_idx", "step"]))
-        pd.concat(parts).to_parquet(OUT / "train.parquet")
+        pd.concat(parts).to_parquet(out / "train.parquet")
         print("built train", flush=True)
     for name in names:
-        if not name.startswith("train_") and not (OUT / f"{name}.parquet").exists():
-            build(name).to_parquet(OUT / f"{name}.parquet")
+        if not name.startswith("train_") and not (out / f"{name}.parquet").exists():
+            build(name, max_reach).to_parquet(out / f"{name}.parquet")
             print("built", name, flush=True)
 
 
@@ -106,9 +108,15 @@ def main() -> None:
     parser.add_argument("what", choices=[*SETS, "build"])
     parser.add_argument("--shard", type=int, default=0)
     parser.add_argument("--intent", type=int, default=None, help="index into INTENTS (cf); default all")
+    parser.add_argument(
+        "--max-reach",
+        type=float,
+        default=None,
+        help="build: cap every pair reach (e.g. 6) -> exp08_mixed_r6/",
+    )
     args = parser.parse_args()
     if args.what == "build":
-        build_all()
+        build_all(args.max_reach)
         return
     first_seed, n = SETS[args.what]
     base = f"marines + marauders (same mix both sides), withdraw radius {WITHDRAW_RADIUS}"
