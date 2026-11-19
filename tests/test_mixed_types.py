@@ -42,3 +42,15 @@ def test_mixed_sampler_keeps_close_battle_draws_and_one_share_for_both_sides():
         assert m == mixed.sample(seed, BOUNDS)  # deterministic per seed
         rec = m.record()
         assert rec["n_marauder_blue"] + rec["n_marine_blue"] == rec["n_blue"]
+
+
+def test_uneven_sampler_gives_one_heavy_and_one_light_side():
+    from sindy_wm.envs.episode_sampling import UnevenMixSampler
+
+    heavy_blue = 0
+    for seed in range(60):
+        m = UnevenMixSampler().sample(seed, BOUNDS)
+        shares = [t.count("MARAUDER") / len(t) for t in m.unit_types]
+        assert max(shares) > 0.5 > min(shares)
+        heavy_blue += shares[0] > shares[1]
+    assert 15 < heavy_blue < 45

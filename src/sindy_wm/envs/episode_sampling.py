@@ -172,3 +172,27 @@ class MixedBattleSampler(CloseBattleSampler):
             side = [self.second_type] * k + [self.first_type] * (n - k)
             types.append(tuple(str(t) for t in rng.permutation(side)))
         return EpisodeSettings(base.unit_counts, base.start_health, base.spawn, (types[0], types[1]))
+
+
+@dataclass(frozen=True)
+class UnevenMixSampler(MixedBattleSampler):
+    """`MixedBattleSampler`, but the two sides get *different* mixes (branch mixed-marauders, 20 Nov).
+
+    One side gets `heavy` as its share of `second_type`, the other `light`; which side is heavy is drawn per
+    battle (fair coin from `default_rng([seed, 5])`). Counts, health and spawn as `CloseBattleSampler`, so the
+    battles are no longer balanced in strength: the marauder-heavy side has more hp per unit.
+    """
+
+    heavy: float = 2 / 3
+    light: float = 0.25
+
+    def sample(self, seed: int, bounds: tuple[float, float, float, float]) -> EpisodeSettings:
+        base = CloseBattleSampler.sample(self, seed, bounds)
+        rng = np.random.default_rng([seed, 5])
+        shares = (self.heavy, self.light) if rng.random() < 0.5 else (self.light, self.heavy)
+        types = []
+        for n, share in zip(base.unit_counts, shares, strict=True):
+            k = min(n - 1, max(1, round(n * share))) if n > 1 else 0
+            side = [self.second_type] * k + [self.first_type] * (n - k)
+            types.append(tuple(str(t) for t in rng.permutation(side)))
+        return EpisodeSettings(base.unit_counts, base.start_health, base.spawn, (types[0], types[1]))

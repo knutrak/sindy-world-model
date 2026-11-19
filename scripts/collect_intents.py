@@ -49,6 +49,7 @@ SEEDS = {
     "final_cf": 8_500_000,
     "test2": 9_000_000,
     "test2_cf": 9_500_000,
+    "test4": 9_800_000,  # fresh marine test for the generalisation test (docs/generalisation/00_plan.md, D2)
 }
 
 
@@ -75,7 +76,8 @@ def run(name: str, policy: IntentSchedule, first_seed: int, n: int, description:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument(
-        "what", choices=["pilot", "train", "val", "cf", "cftrain", "final", "final_cf", "test2", "test2_cf"]
+        "what",
+        choices=["pilot", "train", "val", "cf", "cftrain", "final", "final_cf", "test2", "test2_cf", "test4"],
     )
     parser.add_argument("--shard", type=int, default=0)
     parser.add_argument(
@@ -140,6 +142,15 @@ def main() -> None:
             SEEDS["final"],
             N_FINAL,
             "Final held-out test (pre-registered evaluation): intents switch every 1-4 s.",
+            args.scale,
+        )
+    elif args.what == "test4":
+        run(
+            "test4",
+            IntentSchedule(),
+            SEEDS["test4"],
+            1000,
+            "Fresh marine test (20 Nov) for the pre-registered generalisation test; intents switch 1-4 s.",
             args.scale,
         )
     elif args.what == "test2":
