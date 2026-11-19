@@ -16,6 +16,7 @@ import smaclite.env.smaclite as smaclite_module
 from smaclite.env.maps.map import MapInfo, MapPreset
 from smaclite.env.terrain.terrain import TerrainType
 from smaclite.env.units.unit import TICKS_PER_SECOND
+from smaclite.env.units.unit_type import StandardUnit
 from smaclite.env.util.faction import Faction
 
 from sindy_wm.envs.spawn_sampling import SpawnSample
@@ -66,6 +67,7 @@ def make_env(
     use_cpp_rvo2: bool = False,
     spawn: SpawnSample | None = None,
     unit_counts: tuple[int, int] | None = None,
+    unit_types: tuple[tuple[str, ...], tuple[str, ...]] | None = None,
     **kwargs,
 ) -> StepMulWrapper:
     """Create a SMAClite environment for a scenario.
@@ -85,12 +87,20 @@ def make_env(
         unit_counts: Override the number of units as (Blue, Red), keeping each
             group's unit type, e.g. (8, 10) on 10m_vs_10m. Same scenario
             requirement as `spawn`, and each group must have one unit type.
+        unit_types: Override each side's units as (Blue, Red) sequences of SMAClite unit type
+            names, e.g. (("MARINE", "MARAUDER", "MARINE"), ("MARAUDER", "MARINE", "MARINE")).
+            The order is kept: SMAClite fills its square formation grid row by row in this
+            order. Same scenario requirement as `spawn`; replaces `unit_counts`.
         **kwargs: Passed on to gym.make.
     """
-    if spawn is not None or unit_counts is not None:
+    if unit_types is not None and unit_counts is not None:
+        raise ValueError("Pass either unit_counts or unit_types, not both.")
+    if spawn is not None or unit_counts is not None or unit_types is not None:
         map_info = load_map_info(scenario)
         if unit_counts is not None:
             map_info = _with_unit_counts(map_info, *unit_counts)
+        if unit_types is not None:
+            map_info = _with_unit_types(map_info, *unit_types)
         if spawn is not None:
             map_info = _with_spawn(map_info, spawn)
         env = _make_quietly(
@@ -168,6 +178,18 @@ def _with_unit_counts(map_info: MapInfo, n_ally: int, n_enemy: int) -> MapInfo:
         unit_type = g.units[0][0]
         groups.append(replace(g, units=[(unit_type, n_ally if g.faction == Faction.ALLY else n_enemy)]))
     return replace(map_info, groups=groups, num_allied_units=n_ally, num_enemy_units=n_enemy)
+
+
+def _with_unit_types(map_info: MapInfo, ally: tuple[str, ...], enemy: tuple[str, ...]) -> MapInfo:
+    """Copy of map_info whose ALLY / ENEMY groups hold these unit types, in this order."""
+    _check_one_group_per_side(map_info)
+    if len(ally) < 1 or len(enemy) < 1:
+        raise ValueError(f"Each side needs at least one unit, got {len(ally)} and {len(enemy)}")
+    groups = [
+        replace(g, units=[(StandardUnit[name], 1) for name in (ally if g.faction == Faction.ALLY else enemy)])
+        for g in map_info.groups
+    ]
+    return replace(map_info, groups=groups, num_allied_units=len(ally), num_enemy_units=len(enemy))
 
 
 def _with_spawn(map_info: MapInfo, spawn: SpawnSample) -> MapInfo:

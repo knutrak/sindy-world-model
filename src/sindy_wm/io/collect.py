@@ -70,8 +70,13 @@ def collect(
     for idx, seed in enumerate(seeds):
         if sampler is not None:
             settings = sampler.sample(seed, bounds)
+            types = getattr(settings, "unit_types", None)
             episode_env = make_env(
-                scenario, step_mul=step_mul, spawn=settings.spawn, unit_counts=settings.unit_counts
+                scenario,
+                step_mul=step_mul,
+                spawn=settings.spawn,
+                unit_counts=None if types is not None else settings.unit_counts,
+                unit_types=types,
             )
             episode = play_episode(
                 episode_env, policy, seed=seed, max_steps=max_steps, start_health=settings.start_health

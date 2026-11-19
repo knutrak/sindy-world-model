@@ -20,6 +20,7 @@ class EpisodeSettings:
     unit_counts: tuple[int, int]  # (Blue, Red)
     start_health: tuple[float, float]  # (Blue, Red) fraction of full health every unit starts with
     spawn: SpawnSample
+    unit_types: tuple[tuple[str, ...], tuple[str, ...]] | None = None  # (Blue, Red) types, in order
 
     def record(self) -> dict:
         """Flat, JSON-serializable summary for the episode index."""
@@ -32,7 +33,16 @@ class EpisodeSettings:
             "start_health_red": self.start_health[1],
             "spawn_distance": float(np.hypot(dx, dy)),
             "spawn_bearing_deg": float(np.degrees(np.arctan2(dy, dx)) % 360),
-        }
+        } | self._type_counts()
+
+    def _type_counts(self) -> dict:
+        if self.unit_types is None:
+            return {}
+        out = {}
+        for side, types in zip(("blue", "red"), self.unit_types, strict=True):
+            for name in sorted(set(self.unit_types[0]) | set(self.unit_types[1])):
+                out[f"n_{name.lower()}_{side}"] = sum(t == name for t in types)
+        return out
 
 
 @dataclass(frozen=True)
@@ -134,3 +144,31 @@ class CloseBattleSampler:
             rng, bounds, min_distance, max(min_distance, self.spawn_distance[1]), margin
         )
         return EpisodeSettings((n_blue, n_red), (float(health[0]), float(health[1])), spawn)
+
+
+@dataclass(frozen=True)
+class MixedBattleSampler(CloseBattleSampler):
+    """`CloseBattleSampler` with two unit types and the same mix on both sides.
+
+    Unit counts, health fractions and the spawn are drawn exactly as by `CloseBattleSampler`
+    (same random stream, `[seed, 2]`). Then, from `default_rng([seed, 4])`: one share of
+    `second_type` from `shares`, applied to both sides (rounded, at least one of each type when
+    the share is above 0), and a random order of the units within each side's formation.
+    `unit_size` should be the larger unit's diameter (for the formation width).
+    """
+
+    first_type: str = "MARINE"
+    second_type: str = "MARAUDER"
+    shares: tuple[float, ...] = (0.25, 1 / 3, 0.5)
+    unit_size: float = 1.125
+
+    def sample(self, seed: int, bounds: tuple[float, float, float, float]) -> EpisodeSettings:
+        base = super().sample(seed, bounds)
+        rng = np.random.default_rng([seed, 4])
+        share = float(self.shares[int(rng.integers(len(self.shares)))])
+        types = []
+        for n in base.unit_counts:
+            k = min(n - 1, max(1, round(n * share))) if share > 0 and n > 1 else 0
+            side = [self.second_type] * k + [self.first_type] * (n - k)
+            types.append(tuple(str(t) for t in rng.permutation(side)))
+        return EpisodeSettings(base.unit_counts, base.start_health, base.spawn, (types[0], types[1]))
