@@ -62,3 +62,19 @@ number doesn't: the share of units in reach that are actually firing. That share
 marauders differ, and it looks like the quantity a per-type mixed model will need per type. Why
 marauders in reach fire so much less is not yet known (bigger bodies crowding? the wider band between
 Red's acquisition radius and the reach? longer turn-around after a kill?).
+
+## Full exp08 collection (19 Nov)
+
+`scripts/collect_mixed.py` (commit of the script before collecting; logs in `data/logs/mixed_2026-11-19/`),
+14 sets in parallel, about 8 minutes:
+
+| set | battles | seeds | Blue wins |
+|---|---|---|---|
+| train_0 … train_5 | 6 × 1000 | 10 100 000 + 1000 k | 59-63% |
+| val | 1000 | 10 500 000 | 60% |
+| cf_<intent> (6 intents) | 6 × 600 | 10 600 000 | 59-61% |
+| test3 | 1000 | 10 900 000 | 58% (**not read**; only the collector's summary line was seen) |
+
+None truncated at 90 s. Per-type state tables in `data/processed/exp08_mixed/` (train merged with
+episode ids shard × 1000 + episode; test3 not built). Checks: no missing values in train (767 077 steps,
+45 columns); the six cf branches are identical at the branch step in all 599 seeds checked.
