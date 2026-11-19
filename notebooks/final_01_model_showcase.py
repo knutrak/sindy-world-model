@@ -1,6 +1,9 @@
 # ruff: noqa: E501, B018  (markdown tables and display-only cell endings)
 # %% [markdown]
-# # The final model, its claims and its caveats: A\*, with A, B and S beside it
+# # The final model, its claims and its caveats: A\*-2k, with A, A\*, B and S beside it
+#
+# **Final model since 19 Nov: A\*-2k** = A's two firepower coefficients k_B, k_R + A\*'s alive law
+# (`REPORT.md` §6). A\* (one shared k, the 18 Nov choice) stays in every comparison.
 #
 # This notebook goes through what the final exploration (`docs/final_exploration/REPORT.md`) found,
 # organised as **claims**. Each claim gets one figure or table, and the caveat sits right next to it.
@@ -8,12 +11,12 @@
 # | # | claim | evidence here | caveat beside it |
 # |---|---|---|---|
 # | 1 | The coefficients are physics | learned vs. game values | p has no "true value" |
-# | 2 | What makes A\* differ from A | shared k, alive law without attenuation | A\* was designed after seeing cv / val |
+# | 2 | What makes A\*-2k differ from A and A\* | alive law without attenuation; why not one shared k | designed after seeing cv / val |
 # | 3 | What B and S buy with trajectory fitting | coefficients and margin R² vs. horizon | they read less like physics |
 # | 4 | It predicts within a horizon | error vs. horizon for all models | 2-3 s reliable horizon; MLP better everywhere |
 # | 5 | What it looks like in practice | three battles chosen by rule | — |
 # | 6 | It responds to intents | ranking of the six cf branches | measured on `cf` (used before), not test2 |
-# | 7 | It is robust and transfers | gates G1-G8, test2 table | gates post-hoc for A\* |
+# | 7 | It is robust and transfers | gates G1-G8, test2 table, stalkers | gates post-hoc; A\*-2k has no test2 number |
 # | 8 | Where it fails | error vs. withdraw share | — |
 #
 # **Data used:** every model is fitted on exp06 `train` only. Computed sections score on `val` and
@@ -28,6 +31,8 @@
 # | 18 Nov test2: 5 expectations for A\*, B, S | pre-registered | 5 / 5 met |
 # | A\* design (shared k, reach-fitted alive law) | post-hoc | chosen after cv / val |
 # | 17 Nov gates applied to A\* | post-hoc (val / cf / exp07 val) | passes G1-G8 |
+# | switch to A\*-2k (separate k), 19 Nov | post-hoc | ties A\* on cv / val, transfers better; Red reach at 5.375 tested and rejected |
+# | 17 Nov gates applied to A\*-2k | post-hoc (val / cf / exp07 val) | passes G1-G6, G8; G7 not evaluated (no test2) |
 # | everything computed in this notebook | exploratory | — |
 
 # %%
@@ -42,7 +47,7 @@ from IPython.display import Image, Markdown, display
 from scipy.stats import spearmanr
 
 from sindy_wm.evaluation import harness as H
-from sindy_wm.evaluation.explore_models import CombinedA
+from sindy_wm.evaluation.explore_models import AliveVariantA, CombinedA
 from sindy_wm.evaluation.harness_models import ModelA, ModelB, ModelS
 from sindy_wm.models.intent_model import DT, make_batch
 from sindy_wm.paths import PROJECT_ROOT
@@ -50,18 +55,27 @@ from sindy_wm.paths import PROJECT_ROOT
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 pd.set_option("display.width", 160)
 DOCS = PROJECT_ROOT / "docs" / "final_exploration"
-COLORS = {"A": "#7f7f7f", "A*": "#1f77b4", "B": "#ff7f0e", "S": "#2ca02c", "truth": "black"}
+COLORS = {
+    "A": "#7f7f7f",
+    "A*": "#1f77b4",
+    "A*2k": "#d62728",
+    "B": "#ff7f0e",
+    "S": "#2ca02c",
+    "truth": "black",
+}
+INTERP = ["A", "A*", "A*2k", "B", "S"]  # the interpretable models, in plotting order
 
 # %% [markdown]
-# ## 0. The four models
+# ## 0. The five models
 #
-# All four share the same state x = [H_B, H_R, A_B, A_R, d], the same controls u = [adv, hold, wd, focus],
+# All five share the same state x = [H_B, H_R, A_B, A_R, d], the same controls u = [adv, hold, wd, focus],
 # and the same reach closure R = A·Φ((ρ − gap)/spread). They differ in which equations are fitted and how.
 #
 # | model | health | alive law | distance | fitted on | terms |
 # |---|---|---|---|---|---|
 # | **A** (`model_derived`) | k_B·R_R, k_R·R_B + k_wd·R_B·wd, STLSQ | (ln A)' = p (ln H)', regress on the smoothed rate ratio | STLSQ, 5 terms | one-step rates (SG 9) | 11 |
-# | **A\*** | **one k for both sides** + k_wd | **A' = c·R_enemy·A/H, p = c/k** | same as A | one-step rates | 10 |
+# | **A\*** (18 Nov) | **one k for both sides** + k_wd | **A' = c·R_enemy·A/H, p = c/k** | same as A | one-step rates | 10 |
+# | **A\*-2k** (final, 19 Nov) | A's k_B, k_R + k_wd | A\*'s, with each side's own k | same as A | one-step rates | 11 |
 # | **B** | A's terms | A's terms | A's terms | coefficients refitted on 1-8 s rollout error, + offset decay τ | 11 |
 # | **S** | B | B | B | B + the share in reach as a state, rollout-fitted | 22 |
 #
@@ -70,8 +84,20 @@ COLORS = {"A": "#7f7f7f", "A*": "#1f77b4", "B": "#ff7f0e", "S": "#2ca02c", "trut
 # it is fitted here (B and S take about 5 min each).
 
 # %%
-FILES = {"A": "final_A.pkl", "A*": "final_Astar.pkl", "B": "final_B.pkl", "S": "final_S.pkl"}
-CLASSES = {"A": ModelA, "A*": CombinedA, "B": ModelB, "S": ModelS}
+FILES = {
+    "A": "final_A.pkl",
+    "A*": "final_Astar.pkl",
+    "A*2k": "final_Astar2k.pkl",
+    "B": "final_B.pkl",
+    "S": "final_S.pkl",
+}
+CLASSES = {
+    "A": ModelA,
+    "A*": CombinedA,
+    "A*2k": lambda: AliveVariantA(law="reach"),
+    "B": ModelB,
+    "S": ModelS,
+}
 _train = None
 
 
@@ -97,7 +123,7 @@ pd.DataFrame({n: m.complexity() for n, m in models.items()})
 # %% [markdown]
 # ## 1. Claim: the coefficients are physics
 #
-# All four models can be written in the same parameter vocabulary (the `sindyc_07_lab` dict), so
+# All five models can be written in the same parameter vocabulary (the `sindyc_07_lab` dict), so
 # their numbers can be put side by side. The scale: health 1 = ten marines × 45 hp; R in tens of units.
 #
 # Game values:
@@ -152,13 +178,17 @@ coef["meaning"] = pd.Series(MEANING)
 coef.round(3)
 
 # %% [markdown]
-# A\*'s 95% bootstrap ranges (30 battle-resampled refits, closures fixed; `final_Astar_bootstrap.csv`)
-# and A's (`final_A_bootstrap.csv`, if it exists). The ranges cover data noise only, not the closure
+# 95% bootstrap ranges of A\*-2k, A\* and A (30 battle-resampled refits each, closures fixed;
+# `final_<model>_bootstrap.csv`). The ranges cover data noise only, not the closure
 # or the derivative estimate (see the derivative robustness in section 7).
 
 # %%
 boot = {}
-for name, f in (("A*", "final_Astar_bootstrap.csv"), ("A", "final_A_bootstrap.csv")):
+for name, f in (
+    ("A*2k", "final_Astar2k_bootstrap.csv"),
+    ("A*", "final_Astar_bootstrap.csv"),
+    ("A", "final_A_bootstrap.csv"),
+):
     if (DOCS / f).exists():
         boot[name] = pd.read_csv(DOCS / f).set_index("coefficient")[["value", "q2.5", "q97.5"]]
 pd.concat(boot, axis=1).round(4) if boot else "no bootstrap tables found"
@@ -168,8 +198,8 @@ fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 ax = axes[0]
 keys = ["kb", "kr", "kr_wd"]
 x = np.arange(len(keys))
-for j, n in enumerate(["A", "A*", "B", "S"]):
-    ax.bar(x + (j - 1.5) * 0.18, [abs(P[n].get(k, np.nan)) for k in keys], 0.18, label=n, color=COLORS[n])
+for j, n in enumerate(INTERP):
+    ax.bar(x + (j - 2) * 0.16, [abs(P[n].get(k, np.nan)) for k in keys], 0.16, label=n, color=COLORS[n])
 ax.scatter(
     x, [abs(TRUTH[k]) for k in keys], marker="_", s=900, color="k", zorder=5, label="game (all in reach fire)"
 )
@@ -179,8 +209,8 @@ ax.legend(fontsize=8)
 ax = axes[1]
 keys = ["d_adv", "d_hold_contact", "d_hold_far", "d_wd"]
 x = np.arange(len(keys))
-for j, n in enumerate(["A", "A*", "B", "S"]):
-    ax.bar(x + (j - 1.5) * 0.18, [-P[n].get(k, np.nan) for k in keys], 0.18, label=n, color=COLORS[n])
+for j, n in enumerate(INTERP):
+    ax.bar(x + (j - 2) * 0.16, [-P[n].get(k, np.nan) for k in keys], 0.16, label=n, color=COLORS[n])
 ax.scatter(
     x, [-TRUTH[k] for k in keys], marker="_", s=900, color="k", zorder=5, label="game (walking speeds)"
 )
@@ -190,9 +220,10 @@ ax.set_title("Distance: closing speeds vs. walking speed")
 plt.tight_layout()
 
 # %% [markdown]
-# **Reading.** A and A\* recover the walking speeds within about 5% (6.0 vs 6.3, 3.16-3.18 vs 3.15),
-# and their firepower is about 85% of the "everyone in reach fires" rate, plausible because units in
-# reach are sometimes still turning or on cooldown. B and S give up much of that. Trajectory fitting
+# **Reading.** A, A\* and A\*-2k recover the walking speeds within about 5% (6.0 vs 6.3, 3.16-3.18 vs
+# 3.15), and their firepower is 83-87% of the "everyone in reach fires" rate, plausible because units in
+# reach are sometimes still turning or on cooldown. A and A\*-2k keep k_B < k_R (section 2 explains why);
+# A\* forces them equal. B and S give up much of that. Trajectory fitting
 # shrinks k (to compensate for the closure's early, full contact), adds offset decays τ that have no
 # game counterpart, and moves the closing speeds away from the walking speeds (advance 7.7 instead of
 # 6.3; hold-far and withdraw about 2.0-2.2 instead of 3.15). S refits only its share terms, so its
@@ -205,13 +236,17 @@ plt.tight_layout()
 # would you need to see to tell those apart?
 
 # %% [markdown]
-# ## 2. What makes A\* differ from A
+# ## 2. What makes A\*-2k differ from A, and why not A\*'s one k
 #
-# The distance equation is identical. The two changes are in health and alive:
+# The distance equation is the same in all three. A\*-2k changes only the alive law (point 2). A\* also
+# changed the health equations (point 1), and that change was taken back on 19 Nov.
 #
-# 1. **One firepower coefficient for both sides.** The units are identical, so k_B = k_R is what the
-#    physics predicts. A fits them separately and gets 0.177 vs 0.186, a 5% gap with tight bootstrap
-#    ranges that do not overlap. A\* fits one k by least squares on both equations stacked.
+# 1. **One firepower coefficient for both sides? No.** The units are identical, but the controllers are
+#    not: SMAClite's Red AI picks up a new target only within its scan range + the target's radius
+#    (5 + 0.375 = 5.375), while Blue shoots out to 5.75. Red keeps targets out to 5.75 and fights back
+#    against units shooting it. So some Red units counted in R_R do not fire yet, and k_B (Blue's loss per
+#    Red unit in reach) should be lower than k_R. A's separate fit shows exactly that: 0.177 vs 0.186,
+#    with bootstrap ranges that do not overlap. A\* fits one k on both equations stacked and hides it.
 # 2. **The alive law fitted without dividing by a noisy rate.** A regresses (ln A)' on (ln H)'. Both are
 #    ratios of smoothed derivatives, so the regressor is noisy, and least squares with a noisy
 #    regressor pulls the slope towards 0 (errors-in-variables attenuation). In a rollout, H' = k·R_enemy,
@@ -227,10 +262,12 @@ for side, enemy in (("blue", "red"), ("red", "blue")):
     y = (r[f"d_alive_{side}"] / r[f"alive_{side}"]).to_numpy()[ok]
     x = (r[f"reach_{enemy}"] * r[f"alive_{side}"] / r[f"health_{side}"]).to_numpy()[ok]
     ya = r[f"d_alive_{side}"].to_numpy()[ok]
-    k = P["A*"]["kb"]
+    k = P["A*2k"]["kb" if side == "blue" else "kr"]  # each side's own firepower
     p_ratio = float(np.dot(g, y) / np.dot(g, g))
     p_reach = float(np.dot(x, ya) / np.dot(x, x) / k)
-    rows.append({"side": side, "p from rate ratio (A's regressor)": p_ratio, "p from R·A/H (A*'s)": p_reach})
+    rows.append(
+        {"side": side, "p from rate ratio (A's regressor)": p_ratio, "p from R·A/H (A*-2k's)": p_reach}
+    )
 pd.DataFrame(rows).set_index("side").round(3)
 
 # %% [markdown]
@@ -250,9 +287,9 @@ for ax, side, enemy, p_key in ((axes[0], "blue", "red", "p_b"), (axes[1], "red",
     bx = np.array([base[idx == i].mean() for i in range(25)])
     by = np.array([ya[idx == i].mean() for i in range(25)])
     ax.scatter(bx, by, s=14, color="k", label="data (binned means)")
-    for n in ("A", "A*"):
+    for n in ("A", "A*", "A*2k"):
         p = P[n][p_key]
-        kk = P[n]["kb" if side == "blue" else "kr"] / P["A*"]["kb"]  # A's own k for that side
+        kk = P[n]["kb" if side == "blue" else "kr"] / P["A*"]["kb"]  # the model's own k for that side
         ax.plot(bx, p * kk * bx, color=COLORS[n], label=f"{n}: p = {p:.3f}")
     ax.set_xlabel("k·R_enemy·A/H  (alive rate if p = 1)")
     ax.set_ylabel(f"A_{side}' (alive rate)")
@@ -261,16 +298,18 @@ for ax, side, enemy, p_key in ((axes[0], "blue", "red", "p_b"), (axes[1], "red",
 plt.tight_layout()
 
 # %% [markdown]
-# **What it changes in prediction** (val; from `results.csv`, the same harness as everywhere else).
-# The gains are small in absolute terms. On cv, A\* beat A in 5 / 5 folds on health 4 s, alive 4 s and
-# battle nRMSE, and on test2 (run once) health 4 s went from 0.054 to 0.052, with a paired 95% interval
-# of [−0.0023, −0.0016].
+# **What it changes in prediction** (val and stalkers; from `results.csv`, the same harness as everywhere
+# else; A\*-2k is the row `G/alive-reach`). The alive law gives small gains over A (on cv A\* beat A in
+# 5 / 5 folds on health 4 s, alive 4 s and battle nRMSE; on test2, run once, health 4 s went from 0.054 to
+# 0.052, [−0.0023, −0.0016]). A\*-2k ties A\* on val. On stalkers (scaled, no refit) A\*-2k keeps A's
+# margin transfer, which A\*'s shared k loses.
 
 # %%
 res = H.load_results()
 NAMES = {
     "ref/A": "A",
     "deep/A*": "A*",
+    "G/alive-reach": "A*2k",
     "ref/B": "B",
     "ref/S": "S",
     "J/mlp-wide": "MLP",
@@ -289,17 +328,26 @@ cols = [
     "battle_health_nrmse",
     "n_terms",
 ]
-val.loc[["A", "A*", "B", "S"], cols].round(3)
+stalk = res[(res.split == "stalkers") & res.experiment.isin(NAMES)].drop_duplicates("experiment", keep="last")
+stalk = stalk.assign(model=stalk.experiment.map(NAMES)).set_index("model")
+pd.concat(
+    {
+        "val": val.loc[INTERP, cols],
+        "stalkers": stalk.loc[INTERP, ["health_4s", "margin_r2_4s", "battle_health_nrmse"]],
+    },
+    axis=1,
+).round(3)
 
 # %% [markdown]
-# **Robustness is where A\* differs most.** A failed the pre-registered G3b gate because its alive
-# term set changed with the derivative estimate. A\*'s alive law has no term selection, so its term set
-# cannot change (partly by design). What can still move is the numbers:
+# **Robustness is where the new alive law matters most.** A failed the pre-registered G3b gate because
+# its alive term set changed with the derivative estimate. The reach-regressor alive law (A\*, A\*-2k) has
+# no term selection, so its term set cannot change (partly by design). What can still move is the numbers:
 
 # %%
 gates = json.loads((DOCS / "04_gates_post_hoc.json").read_text())
+gates["A*2k"] = json.loads((DOCS / "05_gates_separate_k.json").read_text())["A*, separate k"]
 g3 = []
-for n in ("A", "A*"):
+for n in ("A", "A*", "A*2k"):
     d = gates[n]["G3b detail"]
     for term, v in d.get("health coefficients", {}).items():
         g3.append(
@@ -321,8 +369,8 @@ for n in ("A", "A*"):
 pd.DataFrame(g3)
 
 # %% [markdown]
-# *Caveat:* A\* was designed after looking at cv and val, so its gate pass is post-hoc support, not a
-# pre-registered confirmation. A's failure reproduces exactly (same term-set changes at SG 17 and weak
+# *Caveat:* A\* and A\*-2k were designed after looking at cv and val, so their gate passes are post-hoc
+# support, not a pre-registered confirmation. A's failure reproduces exactly (same term-set changes at SG 17 and weak
 # 1 s / 2 s), so the procedure itself is not the difference.
 
 # %% [markdown]
@@ -334,8 +382,8 @@ pd.DataFrame(g3)
 
 # %%
 show = ["kb", "kr", "kr_wd", "p_b", "p_r", "p_r_focus", "tau_b", "tau_r"]
-cmp = coef.loc[show, ["game", "A", "A*", "B", "S", "meaning"]].copy()
-cmp["B / A*"] = coef.loc[show, "B"] / coef.loc[show, "A*"]
+cmp = coef.loc[show, ["game", *INTERP, "meaning"]].copy()
+cmp["B / A*-2k"] = coef.loc[show, "B"] / coef.loc[show, "A*2k"]
 cmp.round(3)
 
 # %%
@@ -346,7 +394,7 @@ for ax, metric, title in (
     (axes[1], "margin_r2_{}s", "margin R² (who gains)"),
     (axes[2], "alive_{}s", "alive error (units)"),
 ):
-    for n in ("A", "A*", "B", "S"):
+    for n in INTERP:
         ax.plot(hs, [val.loc[n, metric.format(h)] for h in hs], "o-", color=COLORS[n], label=n)
     ax.set_xscale("log", base=2)
     ax.set_xticks(hs, [f"{h} s" for h in hs])
@@ -358,11 +406,11 @@ plt.tight_layout()
 
 # %% [markdown]
 # **Reading.** The trajectory-fitted models gain mainly on the **margin** (who is winning) at 2-4 s:
-# margin R² 4 s about 0.28 (B) and 0.41 (S) against about 0.1 for A / A\*. Health error moves less. They
+# margin R² 4 s about 0.28 (B) and 0.41 (S) against about 0.1 for A / A\* / A\*-2k. Health error moves less. They
 # pay for it with smaller firepower coefficients, offset decays, and (for S) two Red share terms with
 # the wrong sign (G2). Over whole battles S is *worse* than A (battle nRMSE 0.141 vs 0.131).
 #
-# *To think about:* the margin is what a planner needs. Does that make S the model for RQ3 and A\* the
+# *To think about:* the margin is what a planner needs. Does that make S the model for RQ3 and A\*-2k the
 # model for the "physics" RQ, or is one model per thesis cleaner?
 
 # %% [markdown]
@@ -373,7 +421,7 @@ plt.tight_layout()
 
 # %%
 fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-order = ["persistence", "Lanchester", "no control", "A", "A*", "B", "S", "MLP"]
+order = ["persistence", "Lanchester", "no control", *INTERP, "MLP"]
 style = {"persistence": ":", "Lanchester": ":", "no control": ":", "MLP": "--"}
 extra = {"persistence": "#bbbbbb", "Lanchester": "#8c564b", "no control": "#e377c2", "MLP": "#9467bd"}
 for ax, metric, title in ((axes[0], "health_{}s", "health error"), (axes[1], "margin_r2_{}s", "margin R²")):
@@ -392,7 +440,7 @@ for ax, metric, title in ((axes[0], "health_{}s", "health error"), (axes[1], "ma
 axes[1].set_ylim(-0.6, 0.8)
 axes[1].axhline(0, color="k", lw=0.5)
 axes[1].axvspan(1, 2.5, color="#1f77b4", alpha=0.06)
-axes[1].text(1.05, -0.5, "A* reliable\nhorizon (G6)", fontsize=8)
+axes[1].text(1.05, -0.5, "A*-2k reliable\nhorizon (G6)", fontsize=8)
 axes[0].legend(fontsize=8)
 plt.tight_layout()
 
@@ -404,14 +452,14 @@ display(Image(filename=str(DOCS / "pareto_cv.png"), width=650))
 
 # %% [markdown]
 # **Caveat:** the reliable horizon (G6: margin R² interval above a threshold) is 2 s on val and 3 s on
-# cf, the same for A and A\*. The MLP is better at every horizon; the gap at 4 s (health 0.033 vs 0.053)
-# is the price of a 10-term readable model.
+# cf, the same for A, A\* and A\*-2k. The MLP is better at every horizon; the gap at 4 s (health 0.033 vs
+# 0.053) is the price of an 11-term readable model.
 
 # %% [markdown]
 # ## 5. What it looks like: three battles, chosen by rule
 #
 # Closed-loop rollouts from step 0 to the end of the battle under the real intent sequence (the harness's
-# battle rollout). The battles are chosen by A\*'s whole-battle error: the **median** battle, the
+# battle rollout). The battles are chosen by A\*-2k's whole-battle error: the **median** battle, the
 # **90th percentile**, and the median among **withdraw-heavy** battles (Blue withdraws > 35% of the time).
 
 # %%
@@ -442,9 +490,9 @@ def pick(values, q, mask=None):
 
 
 picks = {
-    "median battle": pick(nr["A*"].to_numpy(), 0.5),
-    "90th percentile": pick(nr["A*"].to_numpy(), 0.9),
-    "withdraw-heavy (median)": pick(nr["A*"].to_numpy(), 0.5, wd_share > 0.35),
+    "median battle": pick(nr["A*2k"].to_numpy(), 0.5),
+    "90th percentile": pick(nr["A*2k"].to_numpy(), 0.9),
+    "withdraw-heavy (median)": pick(nr["A*2k"].to_numpy(), 0.5, wd_share > 0.35),
 }
 fig, axes = plt.subplots(3, 3, figsize=(14, 9), sharex="row")
 for row, (label, i) in enumerate(picks.items()):
@@ -454,13 +502,13 @@ for row, (label, i) in enumerate(picks.items()):
     for col, (j, ylab) in enumerate(((0, "health Blue"), (1, "health Red"), (4, "distance"))):
         ax = axes[row, col]
         ax.plot(t, Bb["Y"][i, : end + 1, j], color="k", lw=2, label="truth")
-        for n in ("A", "A*", "B", "S"):
+        for n in INTERP:
             ax.plot(tm, Yb[n][i, : len(tm), j], color=COLORS[n], lw=1.2, label=n)
         ax.axvline(end * DT, color="k", lw=0.5, ls=":")
         ax.set_ylabel(ylab)
         if col == 0:
             ax.set_title(
-                f"{label}: battle {Bb['ep'][i]}, A* nRMSE {nr['A*'][i]:.3f}, withdraw {wd_share[i]:.0%}",
+                f"{label}: battle {Bb['ep'][i]}, A*-2k nRMSE {nr['A*2k'][i]:.3f}, withdraw {wd_share[i]:.0%}",
                 loc="left",
                 fontsize=9,
             )
@@ -576,7 +624,8 @@ for h in (4, 8):
 # chosen in hindsight on these same seeds, so it is slightly optimistic. Regret is in health units
 # (1 = ten marines): the margin a planner would give away by trusting the model.
 #
-# **Observation (run of 18 Nov):** at 4 s all four models rank the branches with a rank correlation of
+# **Observation (19 Nov run):** A\*-2k ranks like A\* (rank correlation 0.52 at 4 s, 0.21 at 8 s). At
+# 4 s all five models rank the branches with a rank correlation of
 # about 0.5 and pick the true best about as often as the best fixed intent (0.45-0.49 vs 0.46), with a
 # slightly *higher* regret (0.030-0.032 vs 0.027). At 8 s the correlation drops to about 0.2 and none
 # beats the fixed rule. Model differences are small here; S is the only one above the fixed rule on
@@ -589,12 +638,13 @@ for h in (4, 8):
 # %% [markdown]
 # ## 7. Claim: robust and transfers (gates and the held-out test)
 #
-# The 17 Nov gates applied post-hoc to A\* and, as a control, to A (`04_gates_post_hoc.md`), and the
-# pre-registered test2 run (`03_test_results.md`, run once on 18 Nov).
+# The 17 Nov gates applied post-hoc to A\* and, as a control, to A (`04_gates_post_hoc.md`), and to
+# A\*-2k (`05_gates_separate_k.md`, 19 Nov); and the pre-registered test2 run (`03_test_results.md`, run
+# once on 18 Nov). A\*-2k was chosen after test2 was spent, so it has no test2 row and no G7.
 
 # %%
 gate_rows = {}
-for n in ("A", "A*"):
+for n in ("A", "A*", "A*2k"):
     g = gates[n]
     gate_rows[n] = {k: g.get(k) for k in ("G1", "G2", "G3a", "G3b", "G4", "G5", "G7", "G8")} | {
         "horizon val / cf (s)": f"{g['G6']['val']} / {g['G6']['cf']}",
@@ -636,9 +686,10 @@ display(
 ci
 
 # %% [markdown]
-# **Caveats.** The gate pass for A\* is post-hoc on sets used before. The bootstrap intervals understate
-# uncertainty (data noise only). On stalkers, A\*'s reach-fitted alive exponents transfer *worse* than
-# A's on the margin — expectation 4 in the pre-registration, which was met.
+# **Caveats.** The gate passes for A\* and A\*-2k are post-hoc on sets used before. The bootstrap
+# intervals understate uncertainty (data noise only). On stalkers, A\* transfers the margin *worse* than A
+# (expectation 4 in the pre-registration, met). A\*-2k, with the same alive law but separate k, does not
+# (section 2), so the loss came mostly from the shared k.
 
 # %% [markdown]
 # ## 8. Where it fails: withdraw-heavy battles
@@ -652,7 +703,7 @@ ci
 bins = [-0.01, 0.0, 0.15, 0.35, 1.0]
 labels = ["none", "0-15%", "15-35%", "> 35%"]
 nr["withdraw bin"] = pd.cut(nr["withdraw share"], bins, labels=labels)
-by_bin = nr.groupby("withdraw bin", observed=True)[["A", "A*", "B", "S"]].mean()
+by_bin = nr.groupby("withdraw bin", observed=True)[INTERP].mean()
 by_bin["battles"] = nr.groupby("withdraw bin", observed=True).size()
 
 Bh = H.horizon_batch(val_states)
@@ -674,7 +725,7 @@ win_table = E.groupby("bin", observed=True).mean()
 win_table[("n", "starts")] = E.groupby("bin", observed=True).size()
 
 fig, axes = plt.subplots(1, 3, figsize=(15, 3.8))
-for n in ("A", "A*", "B", "S"):
+for n in INTERP:
     axes[0].plot(labels, by_bin[n].reindex(labels), "o-", color=COLORS[n], label=n)
     axes[1].plot(labels, win_table[(n, "distance 4 s")].reindex(labels), "o-", color=COLORS[n], label=n)
     axes[2].plot(labels, win_table[(n, "health 4 s")].reindex(labels), "o-", color=COLORS[n], label=n)
@@ -699,8 +750,9 @@ win_table.round(3)
 #
 # | claim | supported? | strength |
 # |---|---|---|
-# | Coefficients are physics (A, A\*) | speeds within ~5%, firepower ~85% of the game rate, k_B = k_R by construction in A\* | good for health and distance; p has no reference |
-# | A\* improves on A | small, consistent gains (5/5 folds, test2 interval below 0); passes G3b | post-hoc design and gates |
+# | Coefficients are physics (A, A\*-2k) | speeds within ~5%, firepower 83-87% of the game rate, k_B < k_R as Red's scan radius predicts | good for health and distance; p has no reference |
+# | A\*-2k improves on A | alive law: small, consistent gains (A\*: 5/5 folds, test2 interval below 0); passes G3b | post-hoc design and gates; no test2 number for A\*-2k itself |
+# | One shared k (A\*) | ties A\*-2k, but hides the asymmetry and loses margin transfer to stalkers | Red reach at 5.375 overcorrects (rejected) |
 # | Trajectory fitting (B, S) | better margin at 2-4 s | coefficients read less like physics; S worse over whole battles |
 # | Predicts within a horizon | 2 s (val) / 3 s (cf) | MLP better everywhere |
 # | Responds to intents | see section 6 | exploratory, on `cf` |

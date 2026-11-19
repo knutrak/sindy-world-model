@@ -8,6 +8,16 @@ Branch `final-exploration`. Supporting files in this folder:
 - `03_test_results.md` / `.json`: the test, run once.
 - `results_summary.md`, `results.csv`, `coefficients.csv`: every number, generated.
 - `PROGRESS.md`: the running log with every intermediate reading.
+- `05_gates_separate_k.md` / `.json`: the gates on the final model (19 Nov, post-hoc).
+
+> **Update 19 Nov: the final model is now A\*-2k, not A\*.** A\* used one firepower coefficient
+> for both sides because the units are identical. But the *controllers* differ: SMAClite's Red AI only
+> picks up new targets within 5.375 (scan range + target radius), while Blue shoots out to 5.75. A's
+> separate fit had already shown the gap (k_B 0.177 < k_R 0.186, non-overlapping intervals). A\*-2k
+> keeps A's two coefficients and A\*'s alive law. It ties A\* on cv / val, transfers the margin to
+> stalkers much better (0.195 vs 0.122), and passes the 17 Nov gates post-hoc (G7 not evaluated: it was
+> not run on test2). Measuring Red's reach at 5.375 instead was tested and fails (§6). Sections 4-9
+> are updated where they depended on the shared k; the 18 Nov text on A\* is kept where it is history.
 
 ## 1. What was done, in one paragraph
 
@@ -84,7 +94,9 @@ different models.** That is itself a finding (§5, failure modes).
    rollout fitting, and it makes the alive exponents far less sensitive to the derivative estimate
    (§6). Held on test2.
 2. **One firepower coefficient for both sides** (E/symmetric). Fewer numbers; ties or slightly
-   better (nRMSE −0.0026, 5/5). Consistent with identical units.
+   better (nRMSE −0.0026, 5/5). *Revised 19 Nov:* not used in the final model. The units are
+   identical but Red's AI acquires targets at a shorter radius (5.375 vs 5.75), and one k hides that
+   asymmetry and transfers worse to stalkers (§6). Its small nRMSE gain is the only thing it adds.
 3. **Trajectory refinement of A's support** (B), and the **share in reach as a state on top** (S).
    They replicate 17 Nov on fresh data: test2 margin R² 4 s 0.24 / 0.39 against A's −0.06. B\* = B
    shows the rollout fit has one optimum, whatever it starts from.
@@ -138,13 +150,34 @@ health and **worse on margin R² 4 s** (0.15 vs 0.25, [−0.12, −0.07]), as ex
 The test2 numbers match val closely (A\* 0.052 vs 0.053; B 0.050 vs 0.052; S 0.048 vs 0.050). So
 there is no sign of overfitting to val.
 
-## 6. Recommended final model: A\*
+## 6. Recommended final model: A\*-2k (switched 19 Nov; was A\*)
 
-**Recommendation (hedged):** use **A\*** as the thesis's core interpretable model. Report **S** as
-"what the same structure reaches when fitted on trajectories", and the **MLP** as the upper
-reference that puts the cost of interpretability in numbers.
+**Recommendation (hedged, 19 Nov):** use **A\*-2k** as the thesis's core interpretable model: A's
+recipe with its two firepower coefficients k_B, k_R, plus the alive law fitted on the rollout's
+regressor. Report **S** as "what the same structure reaches when fitted on trajectories", and the
+**MLP** as the upper reference that puts the cost of interpretability in numbers.
 
-Reasons, with their limits:
+**Why the switch from A\* (19 Nov, post-hoc; `PROGRESS.md`, axis K).**
+
+- *Mechanism.* Red (attack-move AI) picks up a new target only within `minimum_scan_range` + target
+  radius = 5.375; Blue shoots out to 5.75. Red keeps targets out to 5.75 and fights back against units
+  shooting it. So some Red units counted in R_R (at 5.75) are not firing, and k_B (Blue's loss per Red
+  unit in reach) should be lower than k_R. It is: 0.177 vs 0.186, bootstrap intervals not overlapping.
+- *Accuracy.* A\*-2k ties A\* (cv health 4 s 0.0514 vs 0.0515; alive 0.905 vs 0.904). A\* is better on
+  battle nRMSE by 0.0005-0.002 in 5/5 folds; A\*-2k on margin R² 4 s by about 0.01 in 4/5. On val the
+  paired intervals (A\*-2k − A\*) are [+0.00003, +0.0004] for health 4 s and [−0.021, +0.004] for margin.
+- *Transfer.* On stalkers A\*-2k's margin R² 4 s is 0.195 against A\*'s 0.122 (A: 0.215). The
+  shared k, not the alive law, seems to cause A\*'s transfer loss.
+- *Gates (post-hoc, `05_gates_separate_k.md`).* G1-G6 and G8 pass, horizon 2 s (val) / 3 s (cf). G3b:
+  k_B 0.174-0.186, k_R 0.183-0.194 across SG 5 / 9 / 17 and weak 1 s / 2 s (≤ 4.7% from the median),
+  k_wd ≤ 9.3%. **G7 not evaluated**: A\*-2k was not run on test2, which is spent. Its closest held-out
+  evidence is A\*'s test2 result (same alive law, same distance equation).
+- *The alternative that failed.* Measuring Red's reach at 5.375 (one k or two) is much worse (cv health
+  4 s 0.064 / 0.089, margin R² −0.69 / −1.13). Least squares on the 5.375 reach gives k_B = 0.223,
+  above the game's 0.213, so 5.375 undercounts the Red units that fire (sticky targets, fighting back).
+  Red's effective reach lies between 5.375 and 5.75, close to 5.75.
+
+**The 18 Nov reasons for A\*, which mostly carry over** (the alive law is the same):
 
 - A\* is A with two changes that each have a physical reason and that held on fresh data:
   identical units get one firepower coefficient, and the death law is fitted without dividing by a
@@ -168,6 +201,7 @@ and weak 1 s / 2 s, so the procedure reproduces.
 |---|---|---|---|---|---|---|---|---|---|---|
 | A | ✓ | ✓ | ✓ | ✗ | ✓ | ✓ | ✓ (0.98) | ✓ | 2 / 3 s | not valid |
 | A\* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ (0.98) | ✓ | 2 / 3 s | **valid interpretable model, transfers** |
+| A\*-2k (19 Nov) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | not evaluated | ✓ | 2 / 3 s | **valid interpretable model (G7 n/a), transfers** |
 
 A\*'s G3b values: across SG 5 / 9 / 17 and weak 1 s / 2 s, k = 0.179-0.190 (max 4.6% from the median),
 k_wd within 8.2%. The term set is identical, partly by design, since the alive law has no selection
@@ -178,40 +212,44 @@ post-hoc, A\* was designed after looking at cv / val, and the reliable horizon i
 If prediction at 2-4 s matters more than readability for a chapter (RQ3), S is the better choice,
 at the cost of 22 terms, two G2 sign failures (Red's `sf_adv`, `sf_hold`) and rollout fitting.
 
-**A\*'s equations** (fitted on all of `train`; 95% ranges from 30 battle-bootstrap refits with
-closures fixed, `final_Astar_bootstrap.csv`):
+**A\*-2k's equations** (fitted on all of `train`; 95% ranges from 30 battle-bootstrap refits with
+closures fixed, `final_Astar2k_bootstrap.csv`):
 
 ```
-H_B' = k·R_R                         k     = −0.1819  [−0.1826, −0.1812]
-H_R' = k·R_B + k_wd·R_B·wd           k_wd  = +0.1590  [+0.1581, +0.1604]
+H_B' = k_B·R_R                       k_B   = −0.1770  [−0.1775, −0.1765]
+H_R' = k_R·R_B + k_wd·R_B·wd         k_R   = −0.1861  [−0.1871, −0.1852]
+                                     k_wd  = +0.1633  [+0.1623, +0.1647]
 d'   = −6.008 c·adv − 3.158 c·wd + 0.296 f·wd − 3.183 c·hold·far − 5.915 c·hold·contact
        (ranges: ±0.03-0.08 on each closing speed, flee 0.284-0.311)
-(ln A_B)' = p_B (ln H_B)'            p_B   = 0.645  [0.642, 0.649]
-(ln A_R)' = (p_R + p_f·focus)(ln H_R)'   p_R = 0.552 [0.545, 0.557], p_f = 0.244 [0.235, 0.254]
+(ln A_B)' = p_B (ln H_B)'            p_B   = 0.663  [0.659, 0.666]
+(ln A_R)' = (p_R + p_f·focus)(ln H_R)'   p_R = 0.539 [0.533, 0.545], p_f = 0.238 [0.229, 0.248]
 R = A·Φ((ρ − gap)/spread), ρ = 5.75 (the game's reach), λ, β, g fitted; movement gates c, f fitted (curve_fit)
 ```
 
-(p is fitted as A' = p·k·R_enemy·A/H, the form the rollout uses.)
+(p is fitted as A' = p·k·R_enemy·A/H with each side's own k, the form the rollout uses. A\*, for
+comparison: one k = −0.1819, k_wd = +0.1590, p_B = 0.645, p_R = 0.552, p_f = 0.244.)
 
 **Physical reading of each term** (common scale: health 1 = ten marines × 45 hp; R in tens of units):
 
-- **k = −0.182.** Each enemy unit in reach removes 0.0182 × 450 ≈ 8.2 hp/s. A firing marine deals
-  6 hp per 0.625 s = 9.6 hp/s (the game rule, 0.213 on this scale). So about 85% of the units in
-  reach are effectively firing. One coefficient for both sides is what identical units predict.
-- **k_wd = +0.159.** When Blue withdraws, the damage Red takes per Blue unit in reach drops by
-  0.159 / 0.182 ≈ 87%: withdrawing units mostly walk instead of shooting.
+- **k_R = −0.186, k_B = −0.177.** Each Blue unit in reach removes 0.0186 × 450 ≈ 8.4 hp/s of Red's
+  health; each Red unit in reach removes 8.0 hp/s of Blue's. A firing marine deals 6 hp per 0.625 s =
+  9.6 hp/s (0.213 on this scale), so about 87% of Blue's and 83% of Red's units in reach are
+  effectively firing. The units are identical; the 5% gap matches Red's shorter acquisition radius
+  (5.375 vs 5.75): Red units at the edge of reach that nobody is shooting do not start firing.
+- **k_wd = +0.163.** When Blue withdraws, the damage Red takes per Blue unit in reach drops by
+  0.163 / 0.186 ≈ 88%: withdrawing units mostly walk instead of shooting.
 - **Distance.** Mutual advance closes at 6.0 map units/s, about two walking speeds (2 × 3.15).
   Holding before contact closes at 3.18 (only Red walks: 3.15). Holding in contact closes at 5.9
   (Blue steps in again once it has targets). Withdraw closes at 3.16 inside the gate, because Red
   chases at its own speed, and adds a small flee term (+0.30) beyond it.
-- **p_B = 0.645, p_R = 0.552.** Units-alive is less elastic than health: health is lost faster than
+- **p_B = 0.663, p_R = 0.539.** Units-alive is less elastic than health: health is lost faster than
   units die, because damage spreads over several units before one dies. **Focus fire raises Red's
-  kill conversion by 44%** (0.55 → 0.80), the expected effect of concentrating fire. Blue and Red
+  kill conversion by 44%** (0.54 → 0.78), the expected effect of concentrating fire. Blue and Red
   differ: Red's sticky-nearest targeting spreads damage more.
 
 ## 7. Known failure modes
 
-1. **The margin beyond about 2-3 s** (A, A\*). Margin R² at 4 s is about 0 on test2. The reach closure
+1. **The margin beyond about 2-3 s** (A, A\*, A\*-2k). Margin R² at 4 s is about 0 on test2. The reach closure
    predicts contact too early and too fully when formations are scattered (`sindyc_07`). B / S
    compensate with smaller firepower coefficients and an offset decay, but then the coefficients
    read less like physics.
@@ -224,7 +262,9 @@ R = A·Φ((ρ − gap)/spread), ρ = 5.75 (the game's reach), λ, β, g fitted; 
    59% Blue win rate, it rewards a bias towards Blue. The E-SINDy win probability is barely
    calibrated better than a 0/1 call (Brier 0.331 vs 0.334): the members barely differ, because the
    uncertainty sits in the closure.
-5. **Transfer.** A\*'s reach-fitted alive exponents transfer worse to stalkers than A's.
+5. **Transfer.** A\*'s margin transfers worse to stalkers than A's (0.12 vs 0.21). A\*-2k, with the
+   same alive law but separate k, transfers nearly as well as A (0.195), so the loss was mostly the
+   shared k.
 6. **The formation is held** at its start value in every rollout. The interpretable models have no
    formation dynamics.
 7. **Bootstrap intervals understate the uncertainty.** They cover data noise only, not the closure
@@ -237,8 +277,12 @@ R = A·Φ((ρ − gap)/spread), ρ = 5.75 (the game's reach), λ, β, g fitted; 
   87% fire reduction?
 - Can a reach closure with a slow relaxation term be identified without trajectory fitting? The
   one-step STLSQ result says not from SG rates. A weak-form fit of the share equation is untested.
-- A\* passes the 17 Nov gates post-hoc, on val (`04_gates_post_hoc.md`). A pre-registered confirmation would need yet another fresh test set.
-- Is the stalker transfer loss of A\* in the alive law (p fitted to marine damage spreading) or in k?
+- A\* and A\*-2k pass the 17 Nov gates post-hoc, on val (`04_gates_post_hoc.md`, `05_gates_separate_k.md`). A pre-registered confirmation would need yet another fresh test set; A\*-2k also has no test2 number.
+- Is the stalker transfer loss of A\* in the alive law or in k? Mostly k (19 Nov): A\*-2k, same alive law, transfers nearly as well as A.
+- Red's effective reach: 5.375 undercounts the Red units that fire, 5.75 overcounts them. Can it be
+  derived from the game's rules (target retention, fighting back) rather than fitted?
+- Blue decides every step_mul = 2 ticks, Red every tick. Firing is checked every tick under a held
+  attack order, so the expected loss is at most one tick per kill. Untested.
 - Would a cooldown-phase state (volley timing) help at horizons under 1 s, the planner's step?
 
 ## 9. Paragraphs to adapt for the thesis
@@ -262,10 +306,15 @@ trajectories. The exponent rises from 0.52 to 0.65 for Blue, near the rollout-fi
 the alive error at 4 s falls by 6% in every fold. The exponent also becomes far less sensitive to
 the smoothing window (5-10% variation across Savitzky-Golay windows 5-33, against 25-35%).
 
-**Side symmetry.** Marines on both sides are identical, so a single firepower coefficient should
-describe both. Imposing it costs nothing in accuracy (equal or slightly better in every fold) and
-gives k = −0.182. This corresponds to about 85% of the units in reach firing at the game's rate.
-Focus fire raises Red's kill conversion by 44% (exponent 0.55 → 0.80).
+**Side asymmetry.** Marines on both sides are identical, but the two sides are not controlled the
+same way: the built-in Red AI only acquires new targets within 5.375 map units, while the scripted
+Blue team can shoot out to 5.75. The fitted firepower coefficients reflect this: Red deals 0.177 per
+unit in reach, Blue 0.186 (about 83% and 87% of the game's maximum rate), with non-overlapping
+bootstrap intervals. Imposing one coefficient for both sides costs almost nothing in accuracy, but it
+hides the asymmetry and halves how well the predicted margin transfers to stalkers. Counting Red's
+units in reach at 5.375 instead overcorrects (the implied rate exceeds the game's maximum), because
+Red keeps targets it already has and fights back. Focus fire raises Red's kill conversion by 44%
+(exponent 0.54 → 0.78).
 
 **What did not help.** Replacing STLSQ with SR3, stepwise sparse regression or forward orthogonal
 regression did not improve the model once SR3's coefficient shrinkage was accounted for. Explicit
@@ -278,7 +327,8 @@ estimate, not to the data.
 
 **Trajectory fitting and the closure.** The model's limit is the reach closure, not the team-level
 state. A black-box world model on the same inputs reaches a health error of 0.032 and a margin R²
-of 0.60 at 4 s on the test set, against 0.052 and −0.05 for the interpretable model. The
+of 0.60 at 4 s on the test set, against 0.052 and −0.05 for the interpretable model (A\*; the final
+variant with two firepower coefficients ties it on cross-validation but was not run on the test set). The
 predictive gains of the extended models (B, S) come from fitting coefficients on trajectories:
 one-step sparse regression on the measured share rate never identifies the slow relaxation term
 that makes S work. Refitting on trajectories from two different starting models converged to the
@@ -293,10 +343,11 @@ in the opposite order. Winner accuracy is therefore reported but not used to cho
 ## 10. Reproducing the recommended model
 
 ```bash
-uv run --extra explore scripts/build_final_model.py --model 'A*' --bootstrap 30
+uv run --extra explore scripts/build_final_model.py --model 'A*2k' --bootstrap 30
 ```
 
-`configs/final_model.yaml` names the model and the data. The script reads exp06 `train` only, fits
-the closures and A\*, prints the equations and writes the bootstrap table. Every harness row can be
+`configs/final_model.yaml` names the model (`A*2k` since 19 Nov; `A*` gives the 18 Nov model) and the
+data. The script reads exp06 `train` only, fits the closures and the model, prints the equations and
+writes the bootstrap table. Every harness row can be
 regenerated with `experiments/final_exploration/run.py <module>`. Rows already in the table are
 skipped, never overwritten.

@@ -21,13 +21,20 @@ import pandas as pd  # noqa: E402
 import yaml  # noqa: E402
 
 from sindy_wm.evaluation import harness as H  # noqa: E402
-from sindy_wm.evaluation.explore_models import CombinedA, resample_battles  # noqa: E402
+from sindy_wm.evaluation.explore_models import AliveVariantA, CombinedA, resample_battles  # noqa: E402
 from sindy_wm.evaluation.harness_models import ModelA, ModelB, ModelS  # noqa: E402
 from sindy_wm.paths import PROJECT_ROOT  # noqa: E402
 
 CONFIG = PROJECT_ROOT / "configs" / "final_model.yaml"
 DOCS = PROJECT_ROOT / "docs" / "final_exploration"
-MODELS = {"A*": CombinedA, "A": ModelA, "B": ModelB, "S": ModelS}
+
+
+def SeparateK() -> AliveVariantA:
+    """A*-2k (final model from 19 Nov): A's separate k_B, k_R with A*'s reach-regressor alive law."""
+    return AliveVariantA(law="reach")
+
+
+MODELS = {"A*2k": SeparateK, "A*": CombinedA, "A": ModelA, "B": ModelB, "S": ModelS}
 
 
 def train_data(seed: int = 0) -> H.FitData:
