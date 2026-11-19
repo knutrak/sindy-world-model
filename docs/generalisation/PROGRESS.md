@@ -37,3 +37,15 @@ Same train battles, same val start points (checked identical to the harness's).
 
 **Verdict: pass, with one explained difference** (the alive regressor includes the withdraw term). D4: the
 pipeline's marine model can replace A*-2k; its only change is in Red's alive exponents.
+
+## Decision rules for WP5 (fixed 20 Nov, before WP4; Knut approved)
+
+Written before any val comparison of the options on marauders or mixed battles. (The marine numbers for the
+withdraw options were seen in WP2: fitted term better on margin and battle nRMSE there.)
+
+- **D1 withdraw (all scenarios):** fit both options (fitted term, rule) in all three scenarios on train; score on
+  val. For each scenario, rank the two options on health error at 4 s and on whole-battle health nRMSE (rank 1 =
+  lower). The option with the lower mean rank over the 3 scenarios × 2 metrics wins; a tie goes to the rule.
+- **Target choice (mixed only):** use the proportional rule (no fitted numbers) unless the fitted closure has
+  both lower health error at 4 s and lower whole-battle nRMSE on mixed val.
+- Everything else is fixed by the plan (thresholds 0.15 / 0.05, SG window 9, reach cap 6, tau 1 s).
