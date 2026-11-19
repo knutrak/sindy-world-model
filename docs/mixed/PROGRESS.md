@@ -158,3 +158,36 @@ Paired 95% (typed − team, 4 s): health [−0.0058, −0.0038] for both; margin
   advance, 2.93 hold-far, 3.60 withdraw; alive exponents 0.64 / 0.56, like marines alone.
 - Alive error at 4 s is no better than the team model's (0.79 vs 0.79): the per-type alive law (low p, low
   one-step R²) is the weak part.
+
+## Do the two types separate? (val, 19 Nov; decision: "defensible on average")
+
+Marines and marauders walk at the same speed (3.15), so the question is range: under advance, Blue's
+marauders could stop about 1.2 earlier. Measured marauder-minus-marine front offset per side (map units,
+mean ± battle-to-battle std) relative to first contact: Blue +0.04 (0.63) at −2 s, +0.01 at 0 s, −0.05 at
++2 s, −0.08 (0.81) at +8 s; Red −0.21 at −2 s, 0.00 at 0 s, −0.15 (0.44) at +8 s. Formation depth 0.4-0.9.
+On average the types stay level (packed formations), so one centroid distance with a fixed per-type offset
+is defensible on average; within a battle the offset varies about as much as the formation depth, a
+plausible reason for the weak Red-marine reach closure. Knut's decision (19 Nov): defensible on average is
+enough; no offset state. With stalkers (faster) this would not hold.
+
+## Step 4: counterfactual ranking (`05_cf_ranking.md`) and the notebook `notebooks/mixed_01_marauders`
+
+Ranking the six intents from the branch moment (exp08 cf_*, 598 seeds; outcome = change in the team margin):
+
+| | 4 s: rank corr. / picks best / regret | 8 s: rank corr. / picks best / regret |
+|---|---|---|
+| team A*-2k | 0.54 / 0.42 / 0.042 | 0.27 / 0.41 / 0.080 |
+| typed (closure) | 0.51 / 0.42 / 0.045 | 0.26 / 0.40 / 0.083 |
+| typed (rule) | 0.51 / 0.41 / 0.045 | 0.25 / 0.39 / 0.082 |
+| best fixed intent (hindsight) | — / 0.51 / 0.036 | — / 0.45 / 0.074 |
+| random | 0 / 0.31 / 0.121 | 0 / 0.31 / 0.138 |
+
+Same pattern as marines (`final_01`): well above random, not above the best fixed intent; the per-type
+state does not help ranking (the team model ranks slightly better).
+
+Firing share measured in mixed val (from the notebook): marines 0.86 / 0.82 (Blue / Red), marauders 0.58 /
+0.60, both higher than in single-type battles (0.79; 0.53-0.54).
+
+The notebook (`mixed_01_marauders.py` / `.ipynb`) collects steps 1b-4 as claims with caveats. All
+checklist items are done; open: why marauders in reach fire less, a better per-type alive law, an explicit
+firing share, and gates / a pre-registered test3 run if this becomes a thesis chapter.
