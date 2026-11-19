@@ -78,3 +78,49 @@ Red's acquisition radius and the reach? longer turn-around after a kill?).
 None truncated at 90 s. Per-type state tables in `data/processed/exp08_mixed/` (train merged with
 episode ids shard × 1000 + episode; test3 not built). Checks: no missing values in train (767 077 steps,
 45 columns); the six cf branches are identical at the branch step in all 599 seeds checked.
+
+## Checkpoint 2: one-step damage matrix (`03_oracle.md`, `experiments/mixed/oracle.py`)
+
+Fitted on exp08 train (6000 battles), one-step R² on val, STLSQ threshold 0.15, measured reach and
+measured fire allocation (no closures, no rollouts).
+
+**(ii) reach × measured allocation share (the form a rollout model uses) recovers the matrix.** STLSQ
+keeps exactly the four attacker → target terms per side (plus a withdraw term for Blue's marauders),
+with tight battle-bootstrap ranges (±1%):
+
+| attacker → target (Blue / Red attacking) | game | fitted, per unit in reach | / game | / (game × firing share from 1b) |
+|---|---|---|---|---|
+| marine → marine | 0.213 | 0.173 / 0.170 | 0.81 / 0.80 | 1.03 / 1.01 |
+| marine → marauder | 0.064 | 0.055 / 0.053 | 0.86 / 0.83 | 1.08 / 1.04 |
+| marauder → marine | 0.198 | 0.141 / 0.121 | 0.71 / 0.61 | 1.32 / 1.14 |
+| marauder → marauder | 0.135 | 0.093 / 0.081 | 0.69 / 0.60 | 1.27 / 1.11 |
+
+- Marine entries are the game rate times the marines' firing share from step 1b (0.79), within 1-8%.
+- Marauder entries sit above the single-type firing share (0.54): in mixed battles marauders in reach fire
+  more often than in marauder-only battles (implied 0.60-0.71).
+- Blue (scripted) is again more effective per unit in reach than Red (AI), now for both attacker types.
+- Withdraw: Blue's marauders lose all their fire when withdrawing (+0.185 against −0.141; +0.097 against
+  −0.093). No withdraw term is kept for Blue's marines: they leave their shorter reach quickly when
+  withdrawing (radius 8), so R_marine already drops (hedged reading).
+
+**(i) measured fire per firing unit is not identifiable with reach in the library.** Fire counts and reach
+are nearly collinear (firing ≈ 0.8 × reach for marines), and STLSQ splits the effect between them, with a
+wrong-signed cross term (+0.11 on marines' health from marine fire on marauders). Without reach as a
+candidate (pilot preview) the per-firing-unit rates came out at 0.85-1.0 of the game. A SINDy caveat:
+which of two collinear physical descriptions gets selected depends on the library.
+
+**(iii) the proportional allocation rule is clearly worse.** Val R² drops from 0.41-0.62 to 0.21-0.47 and the
+marine → marauder term is lost for Blue's marauders. The allocation closure matters.
+
+**Does the per-type state help one step ahead? Barely, for total health.** R² of the total health rate
+(hp/s) on val: team-level one-k fit 0.44 (Blue) / 0.56 (Red); per type with measured shares 0.46 / 0.57;
+per type with the proportional rule 0.41 / 0.56. The value of the per-type state, if any, will have to show
+in composition (which units die) and in rollouts, where the composition changes over the battle.
+
+**Alive law per type** (A*-2k's form): p = 0.53 / 0.41 (Blue marines / marauders), 0.45 / 0.37 (Red),
+lower than in single-type battles (0.53-0.66), with low one-step R² (0.05-0.16). Not yet understood.
+
+**Reading (hedged).** The structure holds: with the right reach and allocation, one-step SINDy finds the
+heterogeneous Lanchester matrix with the game's pattern. Two things carry the difficulty: the allocation
+closure (proportional rule loses a lot) and the firing share per type (not unit-free, and different in
+mixed and single-type battles). One-step total-health accuracy does not improve on the team-level model.
