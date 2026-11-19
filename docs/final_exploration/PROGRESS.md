@@ -218,6 +218,55 @@ Recommendation and write-up: `REPORT.md`.
 A\* passes G1-G8 on val / cf / exp07 val (verdict: valid interpretable model, transfers). A, as the control,
 fails G3b exactly as on 17 Nov. Details in `04_gates_post_hoc.md` and REPORT §6.
 
+## Is one k for both sides justified? (axis K, post-hoc, 19 Nov)
+
+**Question (Knut).** Blue and Red are the same unit, but not the same controller. SMAClite's Red AI
+(attack-move) only picks up a *new* target within `minimum_scan_range` + target radius = 5 + 0.375 =
+**5.375**, while Blue shoots out to 5 + 2 × 0.375 = **5.75** (the reach ρ). Red keeps a target it has out
+to 5.75 and always fights back against a unit that is shooting it. So R_R (counted at 5.75) includes Red
+units that may not be firing yet. A\*'s "identical units → one k" ignores this. (Also raised: Blue decides
+every step_mul = 2 ticks, Red every tick. Firing itself is checked every tick under a held attack order,
+so the loss is at most one tick after each kill; not tested.)
+
+**What A already showed:** k_B = 0.177 (Blue's loss per Red unit in reach) < k_R = 0.186, bootstrap
+ranges not overlapping. A 5% gap in the direction the scan radius predicts.
+
+Two fixes tested (`explore_K.py`, `gates_separate_k.py`, `build_red_scan_states.py`):
+
+- **(a) separate k + A\*'s alive law** (= `G/alive-reach`, already in the table).
+- **(b) Red's reach measured at 5.375** (new tables `data/processed/<exp>_redscan/`, only `reach_red`
+  differs; Red's closure fitted at 5.375; stalkers at 5 + 0.625), with one k or separate k.
+
+| cv mean (val) | health 4 s | alive 4 s | margin R² 4 s | battle nRMSE | stalkers margin R² 4 s |
+|---|---|---|---|---|---|
+| A | 0.0533 (0.0551) | 0.959 | 0.011 (0.073) | 0.1298 | 0.215 |
+| A\* (one k) | 0.0515 (0.0529) | 0.904 | 0.011 (0.096) | 0.1258 | 0.122 |
+| (a) separate k | 0.0514 (0.0532) | 0.905 | 0.020 (0.087) | 0.1272 | 0.195 |
+| (b) Red reach 5.375, one k | 0.0638 (0.0672) | 0.976 | −0.689 (−0.732) | 0.1390 | −1.735 |
+| (b) Red reach 5.375, separate k | 0.0887 (0.0913) | 2.584 | −1.131 (−1.084) | 0.2660 | — |
+
+**(b) fails, and the way it fails is informative.** Red's mean reach drops from 0.30 to 0.17 (most Red
+units in contact sit in the 5.375-5.75 band). A plain least-squares fit of H_B' on the 5.375 reach gives
+k_B = 0.223, *above* the game's maximum of 0.213, and the gap flips (k_R / k_B 1.05 → 0.84). With
+separate-k STLSQ, Blue's health equation drops R_R as its driver and is built from Blue's own reach and
+alive counts. So 5.375 undercounts the Red units that fire: sticky targets and fighting back keep most
+Red units in the band firing. Red's effective reach lies between 5.375 and 5.75, much closer to 5.75.
+Not tried: a fitted Red radius (a closure parameter, less physical).
+
+**(a) is as good as A\* and keeps the asymmetry.** Paired over cv folds (a − A\*): health 4 s ±0.0002
+(tie), battle nRMSE +0.0005 to +0.002 (A\* better in 5/5, small), margin R² 4 s +0.01 (a better in 4/5).
+On val (paired 95%, a − A\*): health 4 s [+0.00003, +0.0004], margin R² 4 s [−0.021, +0.004]. On stalkers
+(a) transfers the margin much better than A\* (0.195 vs 0.122, close to A's 0.215): A\*'s weaker transfer
+(expectation 4 in Phase 3) seems to come from the shared k, not from the alive law.
+
+**Gates on (a) (post-hoc, `05_gates_separate_k.md`):** passes G1-G6 and G8; horizon 2 s (val) / 3 s (cf);
+G7 not evaluated (no test2 run, test2 is spent). G3b: k_B 0.174-0.186, k_R 0.183-0.194 (max 4.5% and
+4.7% from the median), k_wd 9.3%; same term set; alive exponents p_B 0.64-0.72, p_R 0.52-0.58.
+
+**Reading (hedged).** The shared k is not needed for A\*'s gains (those come from the alive law), it hides
+a real asymmetry with a mechanism in the game code, and it costs transfer. (a) has one more coefficient
+and no test2 number. Whether to switch the final model from A\* to (a) is open: decision for Knut.
+
 ## Log
 
 - **18 Nov.** Harness, reference models and tests committed (`5fcd2ec`); reference rows run

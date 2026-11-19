@@ -630,3 +630,49 @@ class CombinedA(SymmetricA):
     def complexity(self):
         n = 2 + 5 + 3  # shared k and k_wd; five distance terms; p_b, p_r, p_r_focus
         return {"terms": n, "numbers": n + _closure_numbers(self.P)}
+
+
+# ------------------------------------------------------------------------------- Red's scan reach
+RED_SCAN = {"marine": 5 + 0.375, "stalker": 5 + 0.625}  # SMAClite minimum_scan_range + target radius
+
+
+class RedScanA(SymmetricA):
+    """A's recipe on tables whose `reach_red` counts Red units with a Blue unit within Red's
+    acquisition radius (5.375 for marines; `scripts/build_red_scan_states.py`), with Red's reach
+    closure fitted at that radius. Blue's reach stays 5.75.
+
+    shared=True: one firepower coefficient for both sides (as A*); False: k_B, k_R separately (A's
+    STLSQ). The alive law is A*'s reach-regressor law in both cases. Only meaningful on the
+    `_redscan` tables: on the original tables the measured Red reach and the closure disagree.
+    """
+
+    def __init__(self, shared: bool = True, **kw):
+        super().__init__(alive=False, **kw)
+        self.shared = shared
+
+    def fit(self, data):
+        from sindy_wm.models.intent_model import fit_derived_share
+
+        if self.P is None:
+            P = closures_for(data)
+            P["share_red"] = fit_derived_share(data.rates, "red", rho=RED_SCAN["marine"])[0]
+            self.P = P
+        if self.shared:
+            SymmetricA.fit(self, data)  # alive=False: only k, k_wd are replaced
+        else:
+            ModelA.fit(self, data)
+        AliveVariantA._fit_reach_law(self, data.rates)
+        return self
+
+    def rollout(self, B, stalkers=False):
+        from sindy_wm.models.switch_library import scaled
+
+        if not stalkers:
+            return self.m.simulate(B["X0"], B["shape0"], B["U"], reach0=B["reach0"])
+        m = scaled(self.m, "marine", "stalker")
+        m.P["share_red"][3] = RED_SCAN["stalker"]  # scaled() scales rho by attack reach; Red: scan radius
+        return m.simulate(B["X0"], B["shape0"], B["U"], reach0=B["reach0"])
+
+    def complexity(self):
+        n = (2 if self.shared else 3) + 5 + 3
+        return {"terms": n, "numbers": n + _closure_numbers(self.P)}
