@@ -191,3 +191,32 @@ Firing share measured in mixed val (from the notebook): marines 0.86 / 0.82 (Blu
 The notebook (`mixed_01_marauders.py` / `.ipynb`) collects steps 1b-4 as claims with caveats. All
 checklist items are done; open: why marauders in reach fire less, a better per-type alive law, an explicit
 firing share, and gates / a pre-registered test3 run if this becomes a thesis chapter.
+
+## Why marauders in reach fire less (`experiments/mixed/firing_share.py`)
+
+Firing share (target in range) of units with an enemy within their attack reach, by distance to the nearest
+enemy (val, 200 battles each; Blue's withdraw steps excluded):
+
+| nearest enemy | marines: Blue / Red | marauders: Blue / Red |
+|---|---|---|
+| ≤ 5.375 | 0.87 / 0.92 | 0.89 / 0.93 |
+| 5.375-5.56 | 0.88 / 0.72 | 0.95 / 0.94 |
+| 5.56-6.0 | 0.87 / 0.49 (up to 5.75) | 0.90 / 0.80 |
+| **6.0-7.125** | — | **0.00 / 0.07** |
+
+**Cause, in the SMAClite code.** Blue's attack actions are only available against enemies within
+`AGENT_TARGET_RANGE = 6` (centre to centre), a fixed constant for every unit type (`smaclite.py`,
+`__can_target`; SMAC also uses a fixed shoot range of 6). Our scripts only shoot what the action mask allows.
+So a Blue marauder between 6 and its attack reach 7.125 cannot be ordered to shoot. Red's AI picks up new
+targets only within its scan radius (5 + target radius = 5.56) and keeps or fights back beyond it, which
+gives the 7% there. About 30-45% of the marauders' in-reach time falls in the 6-7.125 band; inside 6 they
+fire as often as marines (0.8-0.95).
+
+**So the marauders' longer range is mostly unusable in this environment**: their effective reach is about
+6, not 7.125. For marines (5.75 < 6) the action limit never binds; only Red's scan radius matters (known from
+axis K). For stalkers (reach 7.25) the same limit applies, which likely contributes to the stalker transfer
+loss (not checked).
+
+Implication: the reach should be counted at the effective radius min(attack reach, 6) for Blue (and the
+closure's ρ set to it). Expected: marauders' firing share near the marines' and k closer to the game rate.
+Not yet done.
