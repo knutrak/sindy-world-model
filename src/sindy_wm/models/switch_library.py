@@ -36,6 +36,8 @@ MOVES = ("advance", "hold", "withdraw", "flee")
 UNITS = {
     "marine": {"reach": 5 + 2 * 0.375, "speed": 3.15, "health": 45.0, "dps": 6 / 0.61},
     "stalker": {"reach": 6 + 2 * 0.625, "speed": 4.13, "health": 160.0, "dps": 17.5 / 1.34},
+    # marauder against marauder: 10 + 10 (vs armored) - 1 armor (branch mixed-marauders, 19 Nov)
+    "marauder": {"reach": 6 + 2 * 0.5625, "speed": 3.15, "health": 125.0, "dps": 19 / 1.07},
 }
 for _u in UNITS.values():
     _u["tau"] = _u["health"] / _u["dps"]  # seconds for one unit to kill one unit
