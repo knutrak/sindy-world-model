@@ -274,3 +274,33 @@ costs a little prediction accuracy against the uncapped fits, which absorbed the
 and a fitted withdraw term. With the withdraw rule the capped per-type model again beats the team model,
 but stays slightly behind the uncapped one on margin and whole battles. Per-type alive law unchanged and
 still the weak part.
+
+## What if withdraw were removed? (`06_no_withdraw.md`, `experiments/mixed/no_withdraw.py`, 20 Nov)
+
+Imitation with existing data: 45% of marine battles and 33% of mixed battles never withdraw (the schedule
+never drew it). Fit on those train battles only, score on the val battles that never withdraw. Closures:
+reach curves refitted on them; movement gates from all battles (the withdraw gate can't be fitted without it).
+
+| | health 4 s | margin R² 4 s | battle nRMSE | winner | duration err |
+|---|---|---|---|---|---|
+| marines A*-2k, all train → all val | 0.053 | 0.09 | 0.129 | 0.65 | 3.1 s |
+| marines A*-2k, all train → no-wd val | 0.049 | 0.07 | 0.098 | 0.73 | 1.4 s |
+| marines A*-2k, **no-wd train → no-wd val** | **0.046** | **0.27** | **0.088** | **0.76** | 1.6 s |
+| mixed typed + wd rule, all → all | 0.065 | 0.10 | 0.139 | 0.66 | 5.0 s |
+| mixed typed + wd rule, all → no-wd val | 0.061 | 0.33 | 0.112 | 0.75 | 2.6 s |
+| mixed typed + wd rule, **no-wd → no-wd** | 0.062 | 0.35 | **0.105** | 0.76 | 2.4 s |
+| mixed team A*-2k, no-wd → no-wd | 0.068 | 0.39 | 0.111 | 0.77 | 2.4 s |
+
+- Most of the gain comes from *scoring* on battles without withdraw; refitting without it adds a little more
+  (marines: margin R² 4 s 0.07 → 0.27).
+- **Part of it is battle length** (no-withdraw battles are shorter: marines 7.7 s vs 10.4 s, mixed 11.0 vs
+  15.9 s), **but not all**: at equal length, battles with withdraw still have a higher whole-battle error
+  (marines 9-12 s: 0.093 without vs 0.141 with; mixed 12-18 s: 0.123 vs 0.138).
+- **The coefficients get less physical without withdraw** (marines): k drops from 0.177 / 0.186 to 0.148 /
+  0.141 (69% of the game rate, and Blue/Red order flips), alive exponents rise to 0.82 / 0.73, and small
+  alive-count terms (A_R, A_B) enter the health equations. Closing speeds move closer to the game (advance
+  6.25, hold in contact 6.26 against 6.3). Mixed team model: k_R drops to 0.174, Red's p rises to 0.70.
+- In mixed battles without withdraw, the per-type model's margin advantage over the team model disappears
+  (0.35 vs 0.39); its health advantage stays (0.062 vs 0.068).
+- Caveat: an imitation (selected battles, and the selection favours short battles). A clean answer needs a
+  collection with movement weights (0.625, 0.375, 0). Not collected.
