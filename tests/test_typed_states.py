@@ -60,3 +60,15 @@ def test_fire_allocation_counts_units_firing_and_never_exceeds_reach(mixed_snaps
         0.4
     )
     assert first["health_blue_marauder"] == pytest.approx(0.3)
+
+
+def test_team_view_sums_types_in_marine_hp():
+    from sindy_wm.models.typed_model import idx, team_view
+
+    X = np.zeros(9)
+    X[idx("health", "blue", "marine")], X[idx("health", "blue", "marauder")] = 0.5, 0.2
+    X[idx("alive", "red", "marine")], X[idx("alive", "red", "marauder")] = 0.3, 0.1
+    X[8] = 6.0
+    T = team_view(X)
+    assert T[0] == pytest.approx(0.5 + 0.2 * 125 / 45)  # ten marines' hp
+    assert T[3] == pytest.approx(0.4) and T[4] == 6.0

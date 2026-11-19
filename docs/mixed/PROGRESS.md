@@ -124,3 +124,37 @@ lower than in single-type battles (0.53-0.66), with low one-step R² (0.05-0.16)
 heterogeneous Lanchester matrix with the game's pattern. Two things carry the difficulty: the allocation
 closure (proportional rule loses a lot) and the firing share per type (not unit-free, and different in
 mixed and single-type battles). One-step total-health accuracy does not improve on the team-level model.
+
+## Step 3: per-type closures and rollouts (`04_rollouts.md`, `experiments/mixed/rollouts.py`)
+
+Model `src/sindy_wm/models/typed_model.py` (`TypedA`): per-type health (checkpoint 2's (ii) coefficients),
+per-type reach closure (A's derived share, shifted by how far forward the type sits, rho = the type's mean
+pair reach, measured start offset decaying in 1 s), allocation closure (logistic in the logit of the target
+side's marauder share and the marauder-minus-marine front offset, fitted per attacking side and attacker
+type), per-type alive law (A*-2k's form), and the distance equation of the team model. Baseline: A*-2k on team
+totals (health in ten marines' hp). Fitted on train, scored on val (1000 battles).
+
+| val | health 4 s | margin R² 2 s / 4 s | alive 4 s | battle nRMSE | winner | duration err |
+|---|---|---|---|---|---|---|
+| persistence | 0.245 | −0.03 / −0.05 | 1.93 | 0.567 | 0.64 | 74 s |
+| team A*-2k | 0.068 | 0.35 / 0.05 | 0.79 | 0.136 | 0.65 | 5.0 s |
+| typed, allocation closure | **0.064** | 0.40 / 0.17 | 0.79 | 0.127 | 0.70 | 4.6 s |
+| typed, proportional rule | **0.064** | **0.43 / 0.23** | 0.80 | **0.125** | **0.71** | 4.5 s |
+
+Paired 95% (typed − team, 4 s): health [−0.0058, −0.0038] for both; margin R² [+0.08, +0.15] (closure),
+[+0.14, +0.21] (rule).
+
+- **The per-type state pays off in rollouts**, unlike one step ahead (checkpoint 2): health −6%, margin R² at
+  4 s from 0.05 to 0.17-0.23, whole-battle error −7%, winner accuracy 0.65 → 0.70.
+- **The allocation closure versus the proportional rule is mixed.** The closure predicts the per-type
+  quantities a little better (composition error at 4 s 0.091 vs 0.099, marine health 0.033 vs 0.036); the rule
+  gives the better team margin (0.23 vs 0.17). Not the clear win checkpoint 2 suggested for the closure;
+  there the rule was used to *fit* the coefficients, here only to roll out.
+- Allocation closure, physically: b2 = 1.7-2.2 (fire shifts to whichever type stands further forward, as a
+  nearest-target rule implies); Red's b0 = 0.44-0.73 (Red over-targets marauders, as in the pilot), Blue's ≈ 0.
+- Reach closure R² (counts): 0.82 / 0.94 Blue marines / marauders, 0.58 / 0.88 Red. Red's marines are the
+  weak spot.
+- The team model on mixed data: firepower 0.178 / 0.192 (k_B / k_R in marine-hp units), closing speeds 5.43
+  advance, 2.93 hold-far, 3.60 withdraw; alive exponents 0.64 / 0.56, like marines alone.
+- Alive error at 4 s is no better than the team model's (0.79 vs 0.79): the per-type alive law (low p, low
+  one-step R²) is the weak part.
