@@ -17,3 +17,48 @@ is pre-registered unless stated. Data: `exp08_mixed` (marines + marauders, same 
   7.0 × 7.125 / 5.75 = 8.67 for marauders alone, the same reach scaling as the stalker set, so the
   scaled marine model's withdraw gate matches.
 - Battle limit 90 s (marauders kill slower: about 7 s per kill against 4.7 s for marines).
+
+## Checkpoint 1: the exp08 pilot (300 mixed battles, `01_pilot.md`)
+
+- Collected in 69 s. Blue wins 60%. Battles last 15-17 s, against about 9 s for marines alone, and
+  get longer with more marauders (share ~1/2: 17.3 s). None hit the 90 s limit.
+- On the winning side 56% of the marauders survive, against 27% of the marines: marines die first.
+- **Fire allocation.** Blue's fire on marauders (0.53-0.57) follows the marauder share among Red's alive
+  units (0.54-0.60), slightly below it (Blue's focus picks marines, the weakest by absolute hp). Red puts
+  *more* fire on marauders than their share (0.51-0.53 against 0.40-0.47): Red's AI keeps its first
+  target and takes the nearest new one, and the marauders' longer range brings them into contact first.
+  So the proportional rule is close for Blue and biased for Red.
+- **Preview of the damage matrix (measured fire, one-step least squares).** Marine attackers: 0.92-1.01
+  of the game rate on both target types. Marauder attackers: 0.85-0.90. With measured allocation the
+  matrix is recovered with the right pattern, including the low marine → marauder entry (0.063-0.065
+  against 0.064). This is a preview of checkpoint 2, not the closure model.
+
+## Step 1b: marauders alone (exp09, `02_marauders.md`)
+
+Collected: train 1500, val 500, test 500 (not read). Marauder battles last about 17 s; Blue wins 50-54%.
+
+| on exp09 val | health 4 s | margin R² 4 s | alive 4 s | distance 4 s | battle nRMSE |
+|---|---|---|---|---|---|
+| persistence | 0.140 | −0.01 | 1.77 | 1.09 | 0.572 |
+| A / A\* / A\*-2k, marines scaled (no refit) | 0.057 / 0.055 / 0.054 | −0.45 / −0.59 / −0.49 | 0.87-0.96 | 0.78 | 0.153-0.160 |
+| A\*-2k refit on marauders | **0.034** | **0.13** | 0.75 | 0.63 | **0.124** |
+
+- **The refit finds the same 11 terms** as on marines: same structure, no new terms.
+- **Transfer without refitting** beats persistence by far but gets the margin wrong (R² −0.45 to −0.59).
+  The scaled firepower is too high: 0.115-0.121 against the refit's 0.077 / 0.086.
+- **Why: the share of units in reach that fire is not unit-free.** From the snapshots (200 val battles
+  each): marines in reach are firing 79% of the time, marauders only 53-54%. The refit's firepower is
+  57-64% of the game rate (0.135), which matches 0.135 × 0.54 ≈ 0.073 (slightly above it). `scaled()`
+  assumes the firing share carries over from marines; for marauders it doesn't. The *per-firing-unit* rate
+  is close to the game's (pilot preview: 0.86-0.90).
+- k_B < k_R again (0.077 vs 0.086), the direction Red's shorter acquisition radius predicts. For marauders
+  the gap between Red's acquisition (5 + 0.5625 = 5.56) and the reach (7.125) is much wider than for marines.
+- Distance: hold before contact 3.00 and withdraw 3.05 (walking speed 3.15); mutual advance 5.61 (6.3);
+  hold in contact 3.87 (marines 5.91). Flee term larger (0.73 vs 0.30).
+- Alive exponents p_B 0.63, p_R 0.53, close to the marines' (0.66, 0.54); focus term smaller (0.15 vs 0.24).
+
+**Reading (hedged).** The structure transfers (same terms, same signs, similar alive exponents), but one
+number doesn't: the share of units in reach that are actually firing. That share is where marines and
+marauders differ, and it looks like the quantity a per-type mixed model will need per type. Why
+marauders in reach fire so much less is not yet known (bigger bodies crowding? the wider band between
+Red's acquisition radius and the reach? longer turn-around after a kill?).
