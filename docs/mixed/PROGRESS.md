@@ -220,3 +220,57 @@ loss (not checked).
 Implication: the reach should be counted at the effective radius min(attack reach, 6) for Blue (and the
 closure's ρ set to it). Expected: marauders' firing share near the marines' and k closer to the game rate.
 Not yet done.
+
+## Refit with the reach capped at 6 (20 Nov; `*_r6` docs and tables)
+
+Reach counted at min(attack reach, 6) for every pair (marines unchanged, marauders 7.125 → 6), and every
+reach closure's ρ set to match. Tables: `data/processed/exp09_marauders_r6/`, `exp08_mixed_r6/` (built by
+`collect_marauders.py build --max-reach 6`, `collect_mixed.py build --max-reach 6`); scripts take
+`--max-reach 6`. `switch_library.UNITS["marauder_r6"]` scales the marine model to reach 6.
+
+**Marauders alone (`02_marauders_r6.md`).**
+
+| exp09 val | health 4 s | margin R² 2 s / 4 s | battle nRMSE | k_B / k_R (game 0.135) |
+|---|---|---|---|---|
+| marine A*-2k scaled, reach 7.125 | 0.054 | −0.04 / −0.49 | 0.154 | 0.115 / 0.121 |
+| marine A*-2k scaled, **reach 6** | **0.039** | **0.36 / 0.03** | 0.149 | 0.115 / 0.121 |
+| refit, reach 7.125 | **0.034** | 0.37 / **0.13** | **0.124** | 0.077 / 0.086 |
+| refit, **reach 6** | 0.041 | 0.22 / −0.02 | 0.154 | **0.125 / 0.122** |
+
+- With the cap, the **refit's firepower is 90-92% of the game rate** (was 57-64%), as for marines, and
+  k_B ≈ k_R. Holding in contact closes at 5.28 (7.125: 3.87; game: both walk, 6.3).
+- With the cap, **the scaled marine model transfers**: health 4 s 0.054 → 0.039, margin R² 2 s −0.04 → 0.36.
+- But the capped refit predicts worse than the uncapped refit (health 4 s 0.041 vs 0.034, margin 4 s
+  −0.02 vs 0.13). With reach 6, withdrawing marauders leave reach quickly and STLSQ keeps no withdraw term,
+  while the closure (distance only) doesn't know about withdraw (see the mixed result below).
+- First attempt had absurd withdraw distance terms (−18.2): the gate fit had been started from reach-6 values.
+  The movement gates do not use the reach count, so they are now started from the attack reach as before.
+
+**Mixed battles (`03_oracle_r6.md`, `04_rollouts_r6.md`, `05_cf_ranking_r6.md`).**
+
+- **Damage matrix: all eight entries are now 0.82-0.94 of the game rate** (marauder entries were 0.60-0.71),
+  and Blue and Red agree (e.g. marauder → marine 0.163 / 0.165; was 0.141 / 0.121). The team model on capped
+  data: k_B 0.218, k_R 0.220 (was 0.178 / 0.192). The Blue-Red asymmetry in mixed battles came mostly from
+  counting marauders as in reach beyond 6. No withdraw terms are selected any more.
+- **Rollouts without a withdraw term lose the per-type advantage**: health 4 s ties the team model, margin R²
+  4 s −0.02 / 0.02 against 0.04, intent ranking 0.29 against 0.53. Diagnosis: under withdraw the model
+  predicts Blue dealing 2.5 times the true damage in 2 s (0.0055 vs 0.0022; uncapped 0.0029).
+- **Withdraw rule (not fitted):** Blue units don't fire while Blue withdraws, which is what our withdraw
+  intent does (walk away unless cornered; measured firing share under withdraw 5-8%). `TypedA(withdraw_rule=True)`.
+
+| exp08 val | health 4 s | margin R² 2 s / 4 s | battle nRMSE | winner | rank corr. 4 s |
+|---|---|---|---|---|---|
+| team A*-2k (reach 6) | 0.072 | 0.34 / 0.04 | 0.141 | 0.67 | 0.53 |
+| typed, closure / rule (reach 6) | 0.072 | 0.27 / −0.02, 0.26 / 0.02 | 0.151 / 0.146 | 0.72 / 0.73 | 0.29 |
+| typed + withdraw rule, closure / rule (reach 6) | **0.065** | 0.37 / 0.10, **0.38 / 0.15** | 0.139 / **0.136** | 0.66 | 0.51 |
+| typed, closure / rule (reach 7.125, 19 Nov) | 0.064 | 0.40 / 0.17, 0.43 / 0.23 | 0.127 / 0.125 | 0.70 / 0.71 | 0.51 |
+
+Paired 95% (typed + withdraw rule − team, reach 6, 4 s): health [−0.0073, −0.0053] / [−0.0081, −0.0063];
+margin R² [+0.03, +0.09] / [+0.08, +0.14].
+
+**Reading (hedged).** The cap makes the coefficients physical (≈ 85-94% of the game rate for every entry,
+both sides alike), makes the marine model transfer to marauders, and removes the Blue-Red asymmetry. It
+costs a little prediction accuracy against the uncapped fits, which absorbed the unusable range into k
+and a fitted withdraw term. With the withdraw rule the capped per-type model again beats the team model,
+but stays slightly behind the uncapped one on margin and whole battles. Per-type alive law unchanged and
+still the weak part.

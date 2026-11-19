@@ -25,7 +25,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from oracle import rates  # noqa: E402
+import oracle  # noqa: E402
 
 from sindy_wm.evaluation import harness as H  # noqa: E402
 from sindy_wm.evaluation.explore_models import AliveVariantA  # noqa: E402
@@ -81,7 +81,15 @@ def per_type_metrics(Y: np.ndarray, B: dict) -> dict:
 
 
 def main() -> None:
-    tr = rates("train")
+    global P, DOC
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--max-reach", type=float, default=None)
+    max_reach = parser.parse_args().max_reach
+    suffix = oracle.configure(max_reach)
+    P, DOC = oracle.P, DOC.with_name(DOC.stem + suffix + ".md")
+    tr = oracle.rates("train")
     val = add_controls(pd.read_parquet(P / "val.parquet"))
     Bh = typed_batch(val)
     Th = team_horizon_batch(Bh)
@@ -91,8 +99,14 @@ def main() -> None:
     team = AliveVariantA(law="reach").fit(team_data)
     models = {"team A*-2k": team}
     for alloc in ("closure", "rule"):
-        models[f"typed ({alloc})"] = TypedA(team, alloc=alloc).fit(tr)
-    pickle.dump(models, open(H.CACHE / "mixed_models.pkl", "wb"))
+        models[f"typed ({alloc})"] = TypedA(team, alloc=alloc, max_reach=max_reach).fit(tr)
+    for alloc in ("closure", "rule"):  # Blue does not fire while withdrawing (the intent's rule, not fitted)
+        m = TypedA(team, alloc=alloc, max_reach=max_reach, withdraw_rule=True)
+        m.__dict__.update(
+            {k: v for k, v in models[f"typed ({alloc})"].__dict__.items() if k != "withdraw_rule"}
+        )
+        models[f"typed ({alloc}) + wd rule"] = m
+    pickle.dump(models, open(H.CACHE / f"mixed_models{suffix}.pkl", "wb"))
 
     rows, typed_rows, team_Y = {}, {}, {}
     pers_h = np.repeat(Th["X0"][:, None], Th["U"].shape[1] + 1, 1)
@@ -111,7 +125,7 @@ def main() -> None:
         print(name, f"health 4 s {rows[name]['health_4s']:.4f}", flush=True)
     lab = __import__("sindy_wm.evaluation.harness_models", fromlist=["lab"]).lab()
     paired = {}
-    for name in ("typed (closure)", "typed (rule)"):
+    for name in [n for n in models if n.startswith("typed")]:
         pb = lab.paired_bootstrap(team_Y["team A*-2k"], team_Y[name], Th, h=4, n_boot=1000)
         paired[name] = {k: f"[{v[0]:+.4f}, {v[1]:+.4f}]" for k, v in pb.items() if k.endswith("b-a")}
     team_cols = [

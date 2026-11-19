@@ -135,9 +135,19 @@ class TypedA:
     """The per-type model (see the module docstring). `team` is a fitted team model (A*-2k on team
     totals) whose distance equation and movement gates are reused."""
 
-    def __init__(self, team, thr: float = 0.15, alloc: str = "closure", max_reach: float | None = None):
-        """max_reach: the cap the state tables were built with (e.g. 6.0); sets each type's closure rho."""
+    def __init__(
+        self,
+        team,
+        thr: float = 0.15,
+        alloc: str = "closure",
+        max_reach: float | None = None,
+        withdraw_rule: bool = False,
+    ):
+        """max_reach: the cap the state tables were built with (e.g. 6.0); sets each type's closure rho.
+        withdraw_rule: Blue units do not fire while Blue withdraws (the intent's rule: walk away unless
+        cornered; measured firing share under withdraw 5-8%). Applied in rollouts; nothing is fitted."""
         self.team, self.thr, self.alloc, self.max_reach = team, thr, alloc, max_reach
+        self.withdraw_rule = withdraw_rule
         cap = max_reach or np.inf
         self.rho = {
             a: float(np.mean([min(pair_reach(a.upper(), t.upper()), cap) for t in TYPES])) for a in TYPES
@@ -314,6 +324,8 @@ class TypedA:
                     on_M = _alloc(pi, dfront, self.alloc_b[(o, a)]) if self.alloc == "closure" else pi
                     sig[(a, "marauder")], sig[(a, "marine")] = on_M, 1 - on_M
                 R_o = {a: R[(o, a)] for a in TYPES}
+                if o == "blue" and getattr(self, "withdraw_rule", False):
+                    R_o = {a: v * (1 - wd) for a, v in R_o.items()}
                 A_o = {a: A[(o, a)] for a in TYPES}
                 for t in TYPES:
                     L = self._terms(R_o, sig, A_o, wd, o, t)

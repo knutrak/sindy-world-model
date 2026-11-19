@@ -36,6 +36,17 @@ THR = 0.15
 FIRING = {"marine": 0.79, "marauder": 0.54}  # share of units in reach firing, single-type data (step 1b)
 
 
+def configure(max_reach: float | None) -> str:
+    """Use the reach-capped tables (exp08_mixed_r6) if max_reach is given; returns the file suffix."""
+    global P, DOC
+    if max_reach is None:
+        return ""
+    suffix = f"_r{max_reach:g}"
+    P = DATA_DIR / "processed" / f"exp08_mixed{suffix}"
+    DOC = DOC.with_name(DOC.stem + suffix + ".md")
+    return suffix
+
+
 def md(table) -> str:
     return "```\n" + table.to_string() + "\n```"
 
@@ -120,6 +131,11 @@ def resample(r: pd.DataFrame, seed: int) -> pd.DataFrame:
 
 
 def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--max-reach", type=float, default=None)
+    configure(parser.parse_args().max_reach)
     tr, va = rates("train"), rates("val")
     lines = ["# Checkpoint 2: one-step damage matrix with measured reach and allocation (19 Nov)", ""]
     lines += [

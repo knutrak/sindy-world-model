@@ -32,17 +32,23 @@ SETS = {
 }
 
 
-def build(name: str) -> None:
+def out_dir(max_reach: float | None):
+    return OUT if max_reach is None else OUT.with_name(f"{OUT.name}_r{max_reach:g}")
+
+
+def build(name: str, max_reach: float | None = None) -> None:
+    """max_reach caps the reach (e.g. 6: SMAClite's AGENT_TARGET_RANGE) -> exp09_marauders_r6/."""
     dataset_dir = RAW / name
-    states = load_team_states(dataset_dir, reach=MARAUDER_REACH, unit_health=MARAUDER_HEALTH)
+    reach = MARAUDER_REACH if max_reach is None else min(MARAUDER_REACH, max_reach)
+    states = load_team_states(dataset_dir, reach=reach, unit_health=MARAUDER_HEALTH)
     controls = storage.load_controls(dataset_dir).set_index(["episode_idx", "step"])
     cols = ["segment", "movement", "target"]
     states = states.join(controls[cols])
     states[cols] = states.groupby(level="episode_idx")[cols].ffill()
     index = storage.load_episode_index(dataset_dir).set_index("episode_idx")
     states = states.join(index[["seed", "battle_won", "n_blue", "n_red"]], on="episode_idx")
-    OUT.mkdir(parents=True, exist_ok=True)
-    states.to_parquet(OUT / f"{name}.parquet")
+    out_dir(max_reach).mkdir(parents=True, exist_ok=True)
+    states.to_parquet(out_dir(max_reach) / f"{name}.parquet")
     print("built", name, len(states), flush=True)
 
 
@@ -50,15 +56,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("what", choices=[*SETS, "build"])
     parser.add_argument("--scale", type=float, default=1.0)
+    parser.add_argument("--max-reach", type=float, default=None, help="build: cap the reach (e.g. 6)")
     args = parser.parse_args()
     if args.what == "build":
         for name in SETS:
             if (
                 name != "test"
                 and (RAW / name / "manifest.json").exists()
-                and not (OUT / f"{name}.parquet").exists()
+                and not (out_dir(args.max_reach) / f"{name}.parquet").exists()
             ):
-                build(name)
+                build(name, args.max_reach)
         return
     first_seed, n = SETS[args.what]
     collect(

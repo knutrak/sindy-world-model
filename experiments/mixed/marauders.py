@@ -9,8 +9,11 @@
 Both are scored with the harness's metrics. exp09 `test` is not read. Writes docs/mixed/02_marauders.md.
 
     uv run --extra explore experiments/mixed/marauders.py
+    uv run --extra explore experiments/mixed/marauders.py --max-reach 6   (reach capped at SMAClite's agent
+        target range: exp09_marauders_r6, closures at rho 6, transfer scaled to reach 6) -> 02_marauders_r6.md
 """
 
+import argparse
 import copy
 import pickle
 
@@ -37,7 +40,7 @@ def md(table) -> str:
 
 def marauder_closures(rates: pd.DataFrame) -> dict:
     """A's closures on marauder data: gates started from the marine values scaled by the reach ratio."""
-    s = REACH_MRD / REACH_M
+    s = (6 + 2 * 0.5625) / REACH_M  # gate starting values: the attack reach (gates don't use the reach count)
     X = lambda a: tuple(a[c].to_numpy() for c in ["distance", *SHAPE])  # noqa: E731
     gates = {}
     for m, f, p0 in [
@@ -60,12 +63,22 @@ def score(Y_h, Bh, Y_b, Bb) -> dict:
     return {**H.horizon_metrics(Y_h, Bh), **H.battle_metrics(Y_b, Bb)}
 
 
+UNIT = "marauder"
+
+
 def roll(model, B, transfer: bool):
-    m = scaled(model.m, "marine", "marauder") if transfer else model.m
+    m = scaled(model.m, "marine", UNIT) if transfer else model.m
     return m.simulate(B["X0"], B["shape0"], B["U"], reach0=B["reach0"])
 
 
 def main() -> None:
+    global EXP, DOC, REACH_MRD, UNIT
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--max-reach", type=float, default=None)
+    args = parser.parse_args()
+    if args.max_reach is not None:
+        EXP, REACH_MRD, UNIT = f"{EXP}_r{args.max_reach:g}", min(REACH_MRD, args.max_reach), "marauder_r6"
+        DOC = DOC.with_name(f"02_marauders_r{args.max_reach:g}.md")
     val = H.load_states("val", EXP)
     Bh, Bb = H.horizon_batch(val), H.battle_batch(val)
     marine = H.FitData(states=None, rates=H.both_alive(H.rows_with_rates("train")))
@@ -78,12 +91,12 @@ def main() -> None:
     for name, cls in (("A", ModelA), ("A*", CombinedA), ("A*-2k", lambda: AliveVariantA(law="reach"))):
         m = cls().fit(marine)
         rows[f"{name}, marines scaled"] = score(roll(m, Bh, True), Bh, roll(m, Bb, True), Bb)
-        coefs[f"{name}, marines scaled"] = scaled(m.m, "marine", "marauder")
+        coefs[f"{name}, marines scaled"] = scaled(m.m, "marine", UNIT)
     P = marauder_closures(mrd.rates)
     refit = AliveVariantA(law="reach", P=copy.deepcopy(P)).fit(mrd)
     rows["A*-2k, refit on marauders"] = score(roll(refit, Bh, False), Bh, roll(refit, Bb, False), Bb)
     coefs["A*-2k, refit on marauders"] = refit.m
-    pickle.dump(refit, open(H.CACHE / "marauders_Astar2k.pkl", "wb"))
+    pickle.dump(refit, open(H.CACHE / f"marauders_Astar2k{'' if UNIT == 'marauder' else '_r6'}.pkl", "wb"))
 
     table = pd.DataFrame(rows).T
     cols = [
@@ -113,7 +126,7 @@ def main() -> None:
         terms[name] = t
     terms = pd.DataFrame(terms)
     lines = [
-        "# Step 1b: marauders alone (exp09, 19 Nov)",
+        f"# Step 1b: marauders alone ({EXP}, reach {REACH_MRD:g})",
         "",
         "Script: `experiments/mixed/marauders.py`. Scored on exp09 `val` (500 battles); `test` not read.",
         "Health scale: 1 = ten full-health marauders (125 hp each). Game values: firepower",

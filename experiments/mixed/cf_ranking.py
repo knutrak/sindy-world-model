@@ -102,9 +102,19 @@ def predictions(B: dict, models: dict) -> dict:
 
 
 def main() -> None:
+    global P, DOC
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--max-reach", type=float, default=None)
+    max_reach = parser.parse_args().max_reach
+    suffix = "" if max_reach is None else f"_r{max_reach:g}"
+    if suffix:
+        P = DATA_DIR / "processed" / f"exp08_mixed{suffix}"
+        DOC = DOC.with_name(DOC.stem + suffix + ".md")
     states, labels = load_cf()
     B = branch_batch(states)
-    models = pickle.load(open(H.CACHE / "mixed_models.pkl", "rb"))
+    models = pickle.load(open(H.CACHE / f"mixed_models{suffix}.pkl", "rb"))
     preds = predictions(B, models)
     lines = ["# Step 4: counterfactual intent ranking on mixed battles (exp08 cf_*, 19 Nov)", ""]
     lines += [f"Script: `experiments/mixed/cf_ranking.py`. Branches: {labels}.", ""]
