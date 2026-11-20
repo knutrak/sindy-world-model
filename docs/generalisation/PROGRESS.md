@@ -88,3 +88,25 @@ withdraw term when fitted), five distance terms, no sign failures, no extra term
   (coefficient 0) and so failed everywhere. Fixed to check only advance, hold far and hold in contact, as the
   amendment says. No held-out result had been produced. With the fix, the dry run's E2 is met for marines and
   mixed; marauders still fail (hold in contact 0.775 < 0.8, limit unchanged).
+
+## WP6: held-out test, run once (`04_test_results.md` / `.json`, 21 Nov)
+
+**19 of 20 pre-registered expectations met.** The one miss: uneven E2 (physics). In the refit on the uneven
+scenario, Blue's marine → marauder firepower came out at 1.02 × the game rate (0.065 vs 0.064), just above the
+pre-registered upper bound of 1.0; every other entry was 0.77-0.99.
+
+| held-out | health 2 s | margin R² 2 s | battle nRMSE | horizon | firepower / game (refit) | speeds / game (refit) |
+|---|---|---|---|---|---|---|
+| marines test4 | 0.0275 (val 0.0277) | 0.40 | 0.129 | 2 s | 0.82, 0.86 | 0.93-1.02 |
+| marauders test | 0.0199 (val 0.0203) | 0.37 | 0.134 | 3 s | 0.92, 0.93 | 0.81-1.04 |
+| mixed test3 | 0.0343 (val 0.0346) | 0.42 | 0.131 | 3 s | 0.83-0.94 | 0.83-0.93 |
+| uneven (never seen; mixed model) | 0.0378 | 0.39 | 0.122 | 3 s | 0.77-1.02 | 0.87-0.97 |
+
+- Every model beats persistence and Lanchester at 2 and 4 s; the per-type model beats the team-level A*-2k at 2 s
+  in mixed ([−0.0044, −0.0037]) and uneven ([−0.0039, −0.0030]) battles.
+- The held-out errors match val (no sign of overfitting to val).
+- The structure is the same in all four refits: one firepower term per attacker type and target type, five distance
+  terms, no sign failures.
+- Uneven battles are lopsided in strength (one side has far more hp), so winner accuracy is high for every model
+  (0.88-0.93) and not informative.
+- Marauder hold in contact was 0.814 (val dry run: 0.775); it passes the unchanged 20% limit on test.

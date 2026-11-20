@@ -1,0 +1,1182 @@
+{
+ "marines": {
+  "table": {
+   "step_r2_health_blue": {
+    "pipeline": 0.11037052983303108,
+    "persistence": -0.435607081372432,
+    "Lanchester": -0.01859313603277646
+   },
+   "step_r2_health_red": {
+    "pipeline": 0.14506696472667513,
+    "persistence": -0.36408305073371383,
+    "Lanchester": 0.002485151815766362
+   },
+   "step_r2_distance": {
+    "pipeline": 0.36261381407044646,
+    "persistence": -0.04560329736389512,
+    "Lanchester": -0.04560329736389512
+   },
+   "health_1s": {
+    "pipeline": 0.01606873635159531,
+    "persistence": 0.06090049572769814,
+    "Lanchester": 0.03597571631657778
+   },
+   "margin_r2_1s": {
+    "pipeline": 0.43596927118315754,
+    "persistence": -0.02149996774553875,
+    "Lanchester": 0.032540988988815966
+   },
+   "alive_1s": {
+    "pipeline": 0.419488109187106,
+    "persistence": 0.7518196632265073,
+    "Lanchester": 0.6649014356548495
+   },
+   "distance_1s": {
+    "pipeline": 0.25751170376403365,
+    "persistence": 0.3667800301627322,
+    "Lanchester": 0.3667800301627322
+   },
+   "health_2s": {
+    "pipeline": 0.027464153113809658,
+    "persistence": 0.12039494591487401,
+    "Lanchester": 0.06214515673268063
+   },
+   "margin_r2_2s": {
+    "pipeline": 0.39933436903086805,
+    "persistence": -0.028712984833071387,
+    "Lanchester": -0.05372527033338992
+   },
+   "alive_2s": {
+    "pipeline": 0.5617560418450713,
+    "persistence": 1.501889092017063,
+    "Lanchester": 0.9747767285437801
+   },
+   "distance_2s": {
+    "pipeline": 0.36251007737144886,
+    "persistence": 0.5896708411146362,
+    "Lanchester": 0.5896708411146362
+   },
+   "health_4s": {
+    "pipeline": 0.050682729297543354,
+    "persistence": 0.22749112730928675,
+    "Lanchester": 0.09762764986322126
+   },
+   "margin_r2_4s": {
+    "pipeline": 0.048187312720963216,
+    "persistence": -0.04061034674897446,
+    "Lanchester": -0.36236876913352645
+   },
+   "alive_4s": {
+    "pipeline": 0.9020491852414301,
+    "persistence": 2.8466806316467936,
+    "Lanchester": 1.4159288210405643
+   },
+   "distance_4s": {
+    "pipeline": 0.5013717583279311,
+    "persistence": 0.8962091902644921,
+    "Lanchester": 0.8962091902644921
+   },
+   "health_8s": {
+    "pipeline": 0.08526993647164503,
+    "persistence": 0.32949529727048943,
+    "Lanchester": 0.11845627167362857
+   },
+   "margin_r2_8s": {
+    "pipeline": -0.9162882036858857,
+    "persistence": -0.06477570144115741,
+    "Lanchester": -1.4904968643531782
+   },
+   "alive_8s": {
+    "pipeline": 1.5391593219772934,
+    "persistence": 4.023616496298907,
+    "Lanchester": 1.9072289392154231
+   },
+   "distance_8s": {
+    "pipeline": 0.8197082040388036,
+    "persistence": 1.2212041575599188,
+    "Lanchester": 1.2212041575599188
+   },
+   "battle_health_nrmse": {
+    "pipeline": 0.12930611325994965,
+    "persistence": 0.5666222342407348,
+    "Lanchester": 0.18275855784985773
+   },
+   "winner_acc": {
+    "pipeline": 0.676,
+    "persistence": 0.631,
+    "Lanchester": 0.656
+   },
+   "brier": {
+    "pipeline": 0.324,
+    "persistence": 0.369,
+    "Lanchester": 0.344
+   },
+   "final_health_err": {
+    "pipeline": 0.11874903938078367,
+    "persistence": 0.5631977195653556,
+    "Lanchester": 0.131285306552315
+   },
+   "duration_err_s": {
+    "pipeline": 3.033,
+    "persistence": 79.360875,
+    "Lanchester": 4.574
+   },
+   "no_end_rate": {
+    "pipeline": 0.0,
+    "persistence": 1.0,
+    "Lanchester": 0.0
+   },
+   "blowup_rate": {
+    "pipeline": 0.0,
+    "persistence": 0.0,
+    "Lanchester": 0.0
+   },
+   "n_battles": {
+    "pipeline": 1000.0,
+    "persistence": 1000.0,
+    "Lanchester": 1000.0
+   }
+  },
+  "ci_model_minus_baseline": {
+   "persistence 2s": [
+    -0.09702671837686545,
+    -0.08885314805470343
+   ],
+   "persistence 4s": [
+    -0.18602466349779206,
+    -0.16750858451382927
+   ],
+   "Lanchester 2s": [
+    -0.03621736373413441,
+    -0.03322501966107025
+   ],
+   "Lanchester 4s": [
+    -0.04983459763277825,
+    -0.044163445067974955
+   ]
+  },
+  "horizon": 2,
+  "horizon_detail": {
+   "1 s": {
+    "margin R2": 0.43596927118315754,
+    "interval": [
+     0.4068341147854793,
+     0.46134691030149205
+    ],
+    "meets rule": true
+   },
+   "2 s": {
+    "margin R2": 0.39933436903086805,
+    "interval": [
+     0.347539207604535,
+     0.4475786694724298
+    ],
+    "meets rule": true
+   },
+   "3 s": {
+    "margin R2": 0.230344364672754,
+    "interval": [
+     0.1434019315546205,
+     0.3084117425689519
+    ],
+    "meets rule": false
+   },
+   "4 s": {
+    "margin R2": 0.048187312720963216,
+    "interval": [
+     -0.06764567958703839,
+     0.1488964935617266
+    ],
+    "meets rule": false
+   },
+   "6 s": {
+    "margin R2": -0.36312414839212015,
+    "interval": [
+     -0.5390691413595833,
+     -0.20467665621538628
+    ],
+    "meets rule": false
+   },
+   "8 s": {
+    "margin R2": -0.9162882036858857,
+    "interval": [
+     -1.2177996666040418,
+     -0.6754478874159449
+    ],
+    "meets rule": false
+   }
+  },
+  "refit_terms": {
+   "health_blue_marine: R[marine]*s[marine]": -0.17488061406514355,
+   "health_red_marine: R[marine]*s[marine]": -0.1836932809178195,
+   "distance: walk_r*wd": -0.4890340605489389,
+   "distance: danger*wd": 0.5635228939259237,
+   "distance: close*adv": -5.984997934032363,
+   "distance: close*hold*far": -3.2220525893094774,
+   "distance: close*hold*contact": -5.854535330762125,
+   "alive_blue_marine: p": 0.6645503276341583,
+   "alive_red_marine: p": 0.5653850724582844,
+   "alive_red_marine: focus": 0.2644888554208796
+  },
+  "refit_gates": {
+   "G1": true,
+   "G1 detail": {
+    "health_blue_marine": 1,
+    "health_red_marine": 1,
+    "distance": 5
+   },
+   "G2": true,
+   "G2 detail": []
+  },
+  "refit_physics": {
+   "fitted": {
+    "marine (red) \u2192 marine": 0.17488061406514355,
+    "marine (blue) \u2192 marine": 0.1836932809178195,
+    "distance close*adv": 5.984997934032363,
+    "distance close*wd": -0.0,
+    "distance close*hold*far": 3.2220525893094774,
+    "distance close*hold*contact": 5.854535330762125
+   },
+   "game": {
+    "marine (red) \u2192 marine": 0.21333333333333332,
+    "marine (blue) \u2192 marine": 0.21333333333333332,
+    "distance close*adv": 6.3,
+    "distance close*wd": 3.15,
+    "distance close*hold*far": 3.15,
+    "distance close*hold*contact": 6.3
+   },
+   "fitted / game": {
+    "marine (red) \u2192 marine": 0.8197528784303604,
+    "marine (blue) \u2192 marine": 0.861062254302279,
+    "distance close*adv": 0.9499996720686291,
+    "distance close*wd": -0.0,
+    "distance close*hold*far": 1.0228738378760245,
+    "distance close*hold*contact": 0.9292913223431944
+   }
+  },
+  "expectations": {
+   "E1 structure": true,
+   "E2 physics": true,
+   "E3 beats persistence and Lanchester at 2 and 4 s": true,
+   "E5 reliable horizon >= 2 s": true,
+   "E6 health 2 s <= 1.2 x val": true
+  }
+ },
+ "marauders": {
+  "table": {
+   "step_r2_health_blue": {
+    "pipeline": 0.045487407273405944,
+    "persistence": -0.24466378754926388,
+    "Lanchester": -0.037448289809281166
+   },
+   "step_r2_health_red": {
+    "pipeline": 0.08954715990817208,
+    "persistence": -0.22580723333931219,
+    "Lanchester": -0.02043338023035779
+   },
+   "step_r2_distance": {
+    "pipeline": 0.32640102513072067,
+    "persistence": -0.01408396823990965,
+    "Lanchester": -0.01408396823990965
+   },
+   "health_1s": {
+    "pipeline": 0.011616099631693445,
+    "persistence": 0.03740326569019567,
+    "Lanchester": 0.021680666425566517
+   },
+   "margin_r2_1s": {
+    "pipeline": 0.34822994346867375,
+    "persistence": -0.0021136404806672004,
+    "Lanchester": 0.02134460523154713
+   },
+   "alive_1s": {
+    "pipeline": 0.38956338671986473,
+    "persistence": 0.4686898498652637,
+    "Lanchester": 0.5249719170495304
+   },
+   "distance_1s": {
+    "pipeline": 0.3071216434119562,
+    "persistence": 0.4272608716788438,
+    "Lanchester": 0.4272608716788438
+   },
+   "health_2s": {
+    "pipeline": 0.019859924191267742,
+    "persistence": 0.0744081227315272,
+    "Lanchester": 0.037447418459481574
+   },
+   "margin_r2_2s": {
+    "pipeline": 0.3739610542829459,
+    "persistence": -0.0033291157922130665,
+    "Lanchester": -0.026205586571389272
+   },
+   "alive_2s": {
+    "pipeline": 0.49192010398519426,
+    "persistence": 0.935965994789524,
+    "Lanchester": 0.7338260572067701
+   },
+   "distance_2s": {
+    "pipeline": 0.4378153415527748,
+    "persistence": 0.7075876756446847,
+    "Lanchester": 0.7075876756446847
+   },
+   "health_4s": {
+    "pipeline": 0.037183731735478065,
+    "persistence": 0.1456260539682332,
+    "Lanchester": 0.06270900004358221
+   },
+   "margin_r2_4s": {
+    "pipeline": 0.22578572980438838,
+    "persistence": -0.005780174486465395,
+    "Lanchester": -0.19990162673585954
+   },
+   "alive_4s": {
+    "pipeline": 0.7212500833213318,
+    "persistence": 1.8567455903384715,
+    "Lanchester": 1.0581483580597852
+   },
+   "distance_4s": {
+    "pipeline": 0.5873015691115303,
+    "persistence": 1.0505113466633276,
+    "Lanchester": 1.0505113466633276
+   },
+   "health_8s": {
+    "pipeline": 0.06573685618739379,
+    "persistence": 0.26649295807179263,
+    "Lanchester": 0.0948564994478759
+   },
+   "margin_r2_8s": {
+    "pipeline": -0.24631017777628728,
+    "persistence": -0.014181873321079452,
+    "Lanchester": -0.7517510960114935
+   },
+   "alive_8s": {
+    "pipeline": 1.2560564183563927,
+    "persistence": 3.411382113821138,
+    "Lanchester": 1.5231374460519953
+   },
+   "distance_8s": {
+    "pipeline": 0.7831350668607137,
+    "persistence": 1.380878626505782,
+    "Lanchester": 1.380878626505782
+   },
+   "battle_health_nrmse": {
+    "pipeline": 0.13351030500143907,
+    "persistence": 0.5827278993173574,
+    "Lanchester": 0.1676800616415394
+   },
+   "winner_acc": {
+    "pipeline": 0.618,
+    "persistence": 0.604,
+    "Lanchester": 0.604
+   },
+   "brier": {
+    "pipeline": 0.382,
+    "persistence": 0.396,
+    "Lanchester": 0.396
+   },
+   "final_health_err": {
+    "pipeline": 0.11867913761879283,
+    "persistence": 0.5702510152749295,
+    "Lanchester": 0.12499428632090999
+   },
+   "duration_err_s": {
+    "pipeline": 5.39125,
+    "persistence": 72.9725,
+    "Lanchester": 6.044
+   },
+   "no_end_rate": {
+    "pipeline": 0.01,
+    "persistence": 1.0,
+    "Lanchester": 0.0
+   },
+   "blowup_rate": {
+    "pipeline": 0.0,
+    "persistence": 0.0,
+    "Lanchester": 0.0
+   },
+   "n_battles": {
+    "pipeline": 500.0,
+    "persistence": 500.0,
+    "Lanchester": 500.0
+   }
+  },
+  "ci_model_minus_baseline": {
+   "persistence 2s": [
+    -0.057184844042714664,
+    -0.05193714994396568
+   ],
+   "persistence 4s": [
+    -0.11430503273244029,
+    -0.1029048417418077
+   ],
+   "Lanchester 2s": [
+    -0.018804881059246454,
+    -0.01632405373807338
+   ],
+   "Lanchester 4s": [
+    -0.02797568026736592,
+    -0.023106659452139668
+   ]
+  },
+  "horizon": 3,
+  "horizon_detail": {
+   "1 s": {
+    "margin R2": 0.34822994346867375,
+    "interval": [
+     0.31728550974268127,
+     0.37854076306545753
+    ],
+    "meets rule": true
+   },
+   "2 s": {
+    "margin R2": 0.3739610542829459,
+    "interval": [
+     0.32995762908190723,
+     0.41400227173400567
+    ],
+    "meets rule": true
+   },
+   "3 s": {
+    "margin R2": 0.31775007062619265,
+    "interval": [
+     0.25804062947289963,
+     0.3771877882375243
+    ],
+    "meets rule": true
+   },
+   "4 s": {
+    "margin R2": 0.22578572980438838,
+    "interval": [
+     0.14400098016738844,
+     0.3059031559779543
+    ],
+    "meets rule": false
+   },
+   "6 s": {
+    "margin R2": -0.033260262062936974,
+    "interval": [
+     -0.16311726508444427,
+     0.09023549579738199
+    ],
+    "meets rule": false
+   },
+   "8 s": {
+    "margin R2": -0.24631017777628728,
+    "interval": [
+     -0.42176871265142857,
+     -0.07909692883853743
+    ],
+    "meets rule": false
+   }
+  },
+  "refit_terms": {
+   "health_blue_marauder: R[marauder]*s[marauder]": -0.1243563557951199,
+   "health_red_marauder: R[marauder]*s[marauder]": -0.12491816841143484,
+   "distance: walk_r*wd": -0.35997155395572455,
+   "distance: danger*wd": 0.9860382454066181,
+   "distance: close*adv": -5.762285877602117,
+   "distance: close*hold*far": -3.2759793648245306,
+   "distance: close*hold*contact": -5.125639275193582,
+   "alive_blue_marauder: p": 0.6161234262448949,
+   "alive_red_marauder: p": 0.5141120339887701,
+   "alive_red_marauder: focus": 0.20637843001252906
+  },
+  "refit_gates": {
+   "G1": true,
+   "G1 detail": {
+    "health_blue_marauder": 1,
+    "health_red_marauder": 1,
+    "distance": 5
+   },
+   "G2": true,
+   "G2 detail": []
+  },
+  "refit_physics": {
+   "fitted": {
+    "marauder (red) \u2192 marauder": 0.1243563557951199,
+    "marauder (blue) \u2192 marauder": 0.12491816841143484,
+    "distance close*adv": 5.762285877602117,
+    "distance close*wd": -0.0,
+    "distance close*hold*far": 3.2759793648245306,
+    "distance close*hold*contact": 5.125639275193582
+   },
+   "game": {
+    "marauder (red) \u2192 marauder": 0.13511111111111113,
+    "marauder (blue) \u2192 marauder": 0.13511111111111113,
+    "distance close*adv": 6.3,
+    "distance close*wd": 3.15,
+    "distance close*hold*far": 3.15,
+    "distance close*hold*contact": 6.3
+   },
+   "fitted / game": {
+    "marauder (red) \u2192 marauder": 0.9204006596678281,
+    "marauder (blue) \u2192 marauder": 0.9245588122556854,
+    "distance close*adv": 0.914648552000336,
+    "distance close*wd": -0.0,
+    "distance close*hold*far": 1.0399934491506446,
+    "distance close*hold*contact": 0.813593535745013
+   }
+  },
+  "expectations": {
+   "E1 structure": true,
+   "E2 physics": true,
+   "E3 beats persistence and Lanchester at 2 and 4 s": true,
+   "E5 reliable horizon >= 2 s": true,
+   "E6 health 2 s <= 1.2 x val": true
+  }
+ },
+ "mixed": {
+  "table": {
+   "step_r2_health_blue": {
+    "pipeline": 0.07902895468431137,
+    "persistence": -0.2536526681820197,
+    "Lanchester": -0.01814615852504109,
+    "team-level A*-2k": 0.06014514394899351
+   },
+   "step_r2_health_red": {
+    "pipeline": 0.1446302720330791,
+    "persistence": -0.26627400106879473,
+    "Lanchester": -0.009176591007328705,
+    "team-level A*-2k": 0.1291482335048193
+   },
+   "step_r2_distance": {
+    "pipeline": 0.29918909427983165,
+    "persistence": -0.017788576504362164,
+    "Lanchester": -0.017788576504362164,
+    "team-level A*-2k": 0.31338191354739153
+   },
+   "health_1s": {
+    "pipeline": 0.01998754254876181,
+    "persistence": 0.06510001302789631,
+    "Lanchester": 0.04004532361977881,
+    "team-level A*-2k": 0.021498467482797018
+   },
+   "margin_r2_1s": {
+    "pipeline": 0.4262267892014643,
+    "persistence": -0.016565503135742565,
+    "Lanchester": 0.03632339955353314,
+    "team-level A*-2k": 0.41549038311778275
+   },
+   "alive_1s": {
+    "pipeline": 0.3769884812505838,
+    "persistence": 0.5005184570717545,
+    "Lanchester": 0.5455562886499438,
+    "team-level A*-2k": 0.3939718282822
+   },
+   "distance_1s": {
+    "pipeline": 0.292153286943723,
+    "persistence": 0.38813535952815814,
+    "Lanchester": 0.38813535952815814,
+    "team-level A*-2k": 0.2967847920990767
+   },
+   "health_2s": {
+    "pipeline": 0.03425550340865543,
+    "persistence": 0.12891256952894523,
+    "Lanchester": 0.07026297261867233,
+    "team-level A*-2k": 0.038329522312402976
+   },
+   "margin_r2_2s": {
+    "pipeline": 0.4218517091803018,
+    "persistence": -0.02352345922719845,
+    "Lanchester": -0.017492603852113264,
+    "team-level A*-2k": 0.3800113752176416
+   },
+   "alive_2s": {
+    "pipeline": 0.5009921956473362,
+    "persistence": 1.0032674884895292,
+    "Lanchester": 0.7954311148927011,
+    "team-level A*-2k": 0.5262322376418134
+   },
+   "distance_2s": {
+    "pipeline": 0.42040561805319693,
+    "persistence": 0.6316245424934921,
+    "Lanchester": 0.6316245424934921,
+    "team-level A*-2k": 0.43446224310906856
+   },
+   "health_4s": {
+    "pipeline": 0.06462768383277755,
+    "persistence": 0.250116052873985,
+    "Lanchester": 0.11757347338459433,
+    "team-level A*-2k": 0.07189547175594789
+   },
+   "margin_r2_4s": {
+    "pipeline": 0.19352270579923225,
+    "persistence": -0.0362028943749233,
+    "Lanchester": -0.1996876643185217,
+    "team-level A*-2k": 0.08022816007058231
+   },
+   "alive_4s": {
+    "pipeline": 0.7420173154391697,
+    "persistence": 1.9713500784929354,
+    "Lanchester": 1.1794438039879294,
+    "team-level A*-2k": 0.7811198940236399
+   },
+   "distance_4s": {
+    "pipeline": 0.5781813071755988,
+    "persistence": 0.947620834923218,
+    "Lanchester": 0.947620834923218,
+    "team-level A*-2k": 0.6005775510070547
+   },
+   "health_8s": {
+    "pipeline": 0.11396091752747863,
+    "persistence": 0.44405206959360105,
+    "Lanchester": 0.17497823721962893,
+    "team-level A*-2k": 0.1229650821360427
+   },
+   "margin_r2_8s": {
+    "pipeline": -0.33625763487500415,
+    "persistence": -0.06682245659935937,
+    "Lanchester": -0.8215294134594895,
+    "team-level A*-2k": -0.4570991503476063
+   },
+   "alive_8s": {
+    "pipeline": 1.2293182505524287,
+    "persistence": 3.451696606786427,
+    "Lanchester": 1.6973261613143134,
+    "team-level A*-2k": 1.284187844553961
+   },
+   "distance_8s": {
+    "pipeline": 0.8114376491964178,
+    "persistence": 1.3368430893241274,
+    "Lanchester": 1.3368430893241274,
+    "team-level A*-2k": 0.8613815737483813
+   },
+   "battle_health_nrmse": {
+    "pipeline": 0.13137775824797407,
+    "persistence": 0.5631353672721245,
+    "Lanchester": 0.181335229962416,
+    "team-level A*-2k": 0.14462294612182358
+   },
+   "winner_acc": {
+    "pipeline": 0.659,
+    "persistence": 0.648,
+    "Lanchester": 0.666,
+    "team-level A*-2k": 0.645
+   },
+   "brier": {
+    "pipeline": 0.341,
+    "persistence": 0.352,
+    "Lanchester": 0.334,
+    "team-level A*-2k": 0.355
+   },
+   "final_health_err": {
+    "pipeline": 0.19996668470368006,
+    "persistence": 0.9069154901808625,
+    "Lanchester": 0.2180413331019913,
+    "team-level A*-2k": 0.2048070402694962
+   },
+   "duration_err_s": {
+    "pipeline": 4.778,
+    "persistence": 74.09225,
+    "Lanchester": 6.57375,
+    "team-level A*-2k": 5.359875
+   },
+   "no_end_rate": {
+    "pipeline": 0.005,
+    "persistence": 1.0,
+    "Lanchester": 0.0,
+    "team-level A*-2k": 0.003
+   },
+   "blowup_rate": {
+    "pipeline": 0.0,
+    "persistence": 0.0,
+    "Lanchester": 0.0,
+    "team-level A*-2k": 0.0
+   },
+   "n_battles": {
+    "pipeline": 1000.0,
+    "persistence": 1000.0,
+    "Lanchester": 1000.0,
+    "team-level A*-2k": 1000.0
+   }
+  },
+  "ci_model_minus_baseline": {
+   "persistence 2s": [
+    -0.09806209316412871,
+    -0.09127561778289095
+   ],
+   "persistence 4s": [
+    -0.19310858332259043,
+    -0.17799897163689943
+   ],
+   "Lanchester 2s": [
+    -0.03757517370903474,
+    -0.03442286837938667
+   ],
+   "Lanchester 4s": [
+    -0.05621603039814356,
+    -0.04953813767016566
+   ],
+   "team-level A*-2k 2s": [
+    -0.00444905615737537,
+    -0.0037114443735423706
+   ],
+   "team-level A*-2k 4s": [
+    -0.008231662605270943,
+    -0.006387320862851858
+   ]
+  },
+  "horizon": 3,
+  "horizon_detail": {
+   "1 s": {
+    "margin R2": 0.4262267892014643,
+    "interval": [
+     0.4052639948031069,
+     0.4459064645484148
+    ],
+    "meets rule": true
+   },
+   "2 s": {
+    "margin R2": 0.4218517091803018,
+    "interval": [
+     0.38262853601060365,
+     0.4568744753351271
+    ],
+    "meets rule": true
+   },
+   "3 s": {
+    "margin R2": 0.32430921232990173,
+    "interval": [
+     0.2570990797194954,
+     0.38622634180861953
+    ],
+    "meets rule": true
+   },
+   "4 s": {
+    "margin R2": 0.19352270579923225,
+    "interval": [
+     0.09409509792195145,
+     0.2854148193784585
+    ],
+    "meets rule": false
+   },
+   "6 s": {
+    "margin R2": -0.07456830834628736,
+    "interval": [
+     -0.21662752553492162,
+     0.05451467603485367
+    ],
+    "meets rule": false
+   },
+   "8 s": {
+    "margin R2": -0.33625763487500415,
+    "interval": [
+     -0.5128122951328651,
+     -0.17059485457222714
+    ],
+    "meets rule": false
+   }
+  },
+  "refit_terms": {
+   "health_blue_marine: R[marine]*s[marine]": -0.17656750084788145,
+   "health_blue_marine: R[marauder]*s[marine]": -0.16505645811459096,
+   "health_blue_marauder: R[marine]*s[marauder]": -0.059053835031797244,
+   "health_blue_marauder: R[marauder]*s[marauder]": -0.11189187072747837,
+   "health_red_marine: R[marine]*s[marine]": -0.18753610987867447,
+   "health_red_marine: R[marauder]*s[marine]": -0.16967893319922,
+   "health_red_marauder: R[marine]*s[marauder]": -0.059976703076235476,
+   "health_red_marauder: R[marauder]*s[marauder]": -0.11578627239300888,
+   "distance: walk_r*wd": -0.34386897774384106,
+   "distance: danger*wd": 0.7204438411731503,
+   "distance: close*adv": -5.3977839508634435,
+   "distance: close*hold*far": -2.926177833851688,
+   "distance: close*hold*contact": -5.256258684689562,
+   "alive_blue_marine: p": 0.5807628349023213,
+   "alive_blue_marauder: p": 0.44090450561104705,
+   "alive_red_marine: p": 0.5023832662199365,
+   "alive_red_marine: focus": 0.16444004213272698,
+   "alive_red_marauder: p": 0.3740145918928552,
+   "alive_red_marauder: focus": 0.12559423392915334
+  },
+  "refit_gates": {
+   "G1": true,
+   "G1 detail": {
+    "health_blue_marine": 2,
+    "health_blue_marauder": 2,
+    "health_red_marine": 2,
+    "health_red_marauder": 2,
+    "distance": 5
+   },
+   "G2": true,
+   "G2 detail": []
+  },
+  "refit_physics": {
+   "fitted": {
+    "marine (red) \u2192 marine": 0.17656750084788145,
+    "marine (red) \u2192 marauder": 0.059053835031797244,
+    "marauder (red) \u2192 marine": 0.16505645811459096,
+    "marauder (red) \u2192 marauder": 0.11189187072747837,
+    "marine (blue) \u2192 marine": 0.18753610987867447,
+    "marine (blue) \u2192 marauder": 0.059976703076235476,
+    "marauder (blue) \u2192 marine": 0.16967893319922,
+    "marauder (blue) \u2192 marauder": 0.11578627239300888,
+    "distance close*adv": 5.3977839508634435,
+    "distance close*wd": -0.0,
+    "distance close*hold*far": 2.926177833851688,
+    "distance close*hold*contact": 5.256258684689562
+   },
+   "game": {
+    "marine (red) \u2192 marine": 0.21333333333333332,
+    "marine (red) \u2192 marauder": 0.064,
+    "marauder (red) \u2192 marine": 0.19753086419753088,
+    "marauder (red) \u2192 marauder": 0.13511111111111113,
+    "marine (blue) \u2192 marine": 0.21333333333333332,
+    "marine (blue) \u2192 marauder": 0.064,
+    "marauder (blue) \u2192 marine": 0.19753086419753088,
+    "marauder (blue) \u2192 marauder": 0.13511111111111113,
+    "distance close*adv": 6.3,
+    "distance close*wd": 3.15,
+    "distance close*hold*far": 3.15,
+    "distance close*hold*contact": 6.3
+   },
+   "fitted / game": {
+    "marine (red) \u2192 marine": 0.8276601602244443,
+    "marine (red) \u2192 marauder": 0.9227161723718319,
+    "marauder (red) \u2192 marine": 0.8355983192051167,
+    "marauder (red) \u2192 marauder": 0.8281470695290339,
+    "marine (blue) \u2192 marine": 0.8790755150562867,
+    "marine (blue) \u2192 marauder": 0.9371359855661793,
+    "marauder (blue) \u2192 marine": 0.8589995993210512,
+    "marauder (blue) \u2192 marauder": 0.8569707660666775,
+    "distance close*adv": 0.8567911033116578,
+    "distance close*wd": -0.0,
+    "distance close*hold*far": 0.928945344079901,
+    "distance close*hold*contact": 0.8343267753475495
+   }
+  },
+  "expectations": {
+   "E1 structure": true,
+   "E2 physics": true,
+   "E3 beats persistence and Lanchester at 2 and 4 s": true,
+   "E4 per-type beats team-level at 2 s": true,
+   "E5 reliable horizon >= 2 s": true,
+   "E6 health 2 s <= 1.2 x val": true
+  }
+ },
+ "uneven": {
+  "table": {
+   "step_r2_health_blue": {
+    "pipeline": 0.0663880714324453,
+    "persistence": -0.2791921495235967,
+    "Lanchester": -0.06439487768165697,
+    "team-level A*-2k": 0.04690173061146263
+   },
+   "step_r2_health_red": {
+    "pipeline": 0.12819080083199652,
+    "persistence": -0.2711056301583563,
+    "Lanchester": -0.06749565133724444,
+    "team-level A*-2k": 0.10965078377779292
+   },
+   "step_r2_distance": {
+    "pipeline": 0.23324462041372995,
+    "persistence": -0.018041949739857177,
+    "Lanchester": -0.018041949739857177,
+    "team-level A*-2k": 0.23833675298126655
+   },
+   "health_1s": {
+    "pipeline": 0.021727546535975747,
+    "persistence": 0.07044095897787297,
+    "Lanchester": 0.044078317838759914,
+    "team-level A*-2k": 0.023135789002634504
+   },
+   "margin_r2_1s": {
+    "pipeline": 0.4165817171977638,
+    "persistence": -0.011252872770752598,
+    "Lanchester": -0.6808287732669611,
+    "team-level A*-2k": 0.408227952785847
+   },
+   "alive_1s": {
+    "pipeline": 0.37939636085256995,
+    "persistence": 0.5073580667647741,
+    "Lanchester": 0.581789472058622,
+    "team-level A*-2k": 0.3960506240728437
+   },
+   "distance_1s": {
+    "pipeline": 0.30840718268802764,
+    "persistence": 0.38957835779258654,
+    "Lanchester": 0.38957835779258654,
+    "team-level A*-2k": 0.310473504055509
+   },
+   "health_2s": {
+    "pipeline": 0.037803357445036614,
+    "persistence": 0.13947607942107257,
+    "Lanchester": 0.07838303026970586,
+    "team-level A*-2k": 0.041239659746136255
+   },
+   "margin_r2_2s": {
+    "pipeline": 0.393134870270776,
+    "persistence": -0.016977778625520745,
+    "Lanchester": -1.1936710555507162,
+    "team-level A*-2k": 0.3694017702533603
+   },
+   "alive_2s": {
+    "pipeline": 0.5106692363208218,
+    "persistence": 1.0080597766770214,
+    "Lanchester": 0.8736682184205127,
+    "team-level A*-2k": 0.5330228299893364
+   },
+   "distance_2s": {
+    "pipeline": 0.4493415569915549,
+    "persistence": 0.6290538300877513,
+    "Lanchester": 0.6290538300877513,
+    "team-level A*-2k": 0.45488626007045246
+   },
+   "health_4s": {
+    "pipeline": 0.07000239406366583,
+    "persistence": 0.26959933365433886,
+    "Lanchester": 0.13804531791702893,
+    "team-level A*-2k": 0.07606821186190044
+   },
+   "margin_r2_4s": {
+    "pipeline": 0.20253273293010543,
+    "persistence": -0.02978644930933405,
+    "Lanchester": -2.362589361808068,
+    "team-level A*-2k": 0.14783778067442965
+   },
+   "alive_4s": {
+    "pipeline": 0.7677664683305065,
+    "persistence": 1.9588336192109779,
+    "Lanchester": 1.348947849837749,
+    "team-level A*-2k": 0.7875477035950891
+   },
+   "distance_4s": {
+    "pipeline": 0.6306503428613407,
+    "persistence": 0.9549270078597356,
+    "Lanchester": 0.9549270078597356,
+    "team-level A*-2k": 0.6376769510535808
+   },
+   "health_8s": {
+    "pipeline": 0.11838515192543718,
+    "persistence": 0.4695307280002789,
+    "Lanchester": 0.23602029637905028,
+    "team-level A*-2k": 0.12791874736632622
+   },
+   "margin_r2_8s": {
+    "pipeline": -0.07219600576085239,
+    "persistence": -0.07068093940546749,
+    "Lanchester": -4.66629649834034,
+    "team-level A*-2k": -0.18733657987997265
+   },
+   "alive_8s": {
+    "pipeline": 1.2382426516939136,
+    "persistence": 3.356422549181683,
+    "Lanchester": 2.130431150959774,
+    "team-level A*-2k": 1.2683543937512207
+   },
+   "distance_8s": {
+    "pipeline": 0.9088845638655971,
+    "persistence": 1.3490651452738454,
+    "Lanchester": 1.3490651452738454,
+    "team-level A*-2k": 0.9325826250098266
+   },
+   "battle_health_nrmse": {
+    "pipeline": 0.12242061207971976,
+    "persistence": 0.5161187902395613,
+    "Lanchester": 0.20403296513403107,
+    "team-level A*-2k": 0.13349539207847932
+   },
+   "winner_acc": {
+    "pipeline": 0.895,
+    "persistence": 0.926,
+    "Lanchester": 0.926,
+    "team-level A*-2k": 0.878
+   },
+   "brier": {
+    "pipeline": 0.105,
+    "persistence": 0.074,
+    "Lanchester": 0.074,
+    "team-level A*-2k": 0.122
+   },
+   "final_health_err": {
+    "pipeline": 0.22279243836837767,
+    "persistence": 0.9400592727182695,
+    "Lanchester": 0.4975023511201457,
+    "team-level A*-2k": 0.23480201569781983
+   },
+   "duration_err_s": {
+    "pipeline": 4.14475,
+    "persistence": 75.649125,
+    "Lanchester": 5.8475,
+    "team-level A*-2k": 4.715
+   },
+   "no_end_rate": {
+    "pipeline": 0.001,
+    "persistence": 1.0,
+    "Lanchester": 0.0,
+    "team-level A*-2k": 0.0
+   },
+   "blowup_rate": {
+    "pipeline": 0.0,
+    "persistence": 0.0,
+    "Lanchester": 0.0,
+    "team-level A*-2k": 0.0
+   },
+   "n_battles": {
+    "pipeline": 1000.0,
+    "persistence": 1000.0,
+    "Lanchester": 1000.0,
+    "team-level A*-2k": 1000.0
+   }
+  },
+  "ci_model_minus_baseline": {
+   "persistence 2s": [
+    -0.10534481353088625,
+    -0.09753720671664386
+   ],
+   "persistence 4s": [
+    -0.20769433560820894,
+    -0.19031542883309924
+   ],
+   "Lanchester 2s": [
+    -0.04233923169696168,
+    -0.03877187283707448
+   ],
+   "Lanchester 4s": [
+    -0.07177480385393115,
+    -0.06405356984049596
+   ],
+   "team-level A*-2k 2s": [
+    -0.0038552659992448124,
+    -0.0030181563850666076
+   ],
+   "team-level A*-2k 4s": [
+    -0.0071942376700511595,
+    -0.004957673745055433
+   ]
+  },
+  "horizon": 3,
+  "horizon_detail": {
+   "1 s": {
+    "margin R2": 0.4165817171977638,
+    "interval": [
+     0.3950189001106137,
+     0.4378869793561638
+    ],
+    "meets rule": true
+   },
+   "2 s": {
+    "margin R2": 0.393134870270776,
+    "interval": [
+     0.35317579547658773,
+     0.42751771355318713
+    ],
+    "meets rule": true
+   },
+   "3 s": {
+    "margin R2": 0.30189902754670506,
+    "interval": [
+     0.23954362615422445,
+     0.35395961306465235
+    ],
+    "meets rule": true
+   },
+   "4 s": {
+    "margin R2": 0.20253273293010543,
+    "interval": [
+     0.12497330579025727,
+     0.27042236118072654
+    ],
+    "meets rule": false
+   },
+   "6 s": {
+    "margin R2": 0.03355442837526157,
+    "interval": [
+     -0.0785397909272132,
+     0.130442391515612
+    ],
+    "meets rule": false
+   },
+   "8 s": {
+    "margin R2": -0.07219600576085239,
+    "interval": [
+     -0.21622840098324322,
+     0.05881199687596418
+    ],
+    "meets rule": false
+   }
+  },
+  "refit_terms": {
+   "health_blue_marine: R[marine]*s[marine]": -0.16433436107085544,
+   "health_blue_marine: R[marauder]*s[marine]": -0.16059065887882457,
+   "health_blue_marauder: R[marine]*s[marauder]": -0.06334624190297854,
+   "health_blue_marauder: R[marauder]*s[marauder]": -0.1071348406017567,
+   "health_red_marine: R[marine]*s[marine]": -0.1834943520682792,
+   "health_red_marine: R[marauder]*s[marine]": -0.16806854972742266,
+   "health_red_marauder: R[marine]*s[marauder]": -0.06530347336984992,
+   "health_red_marauder: R[marauder]*s[marauder]": -0.11047858677990527,
+   "distance: walk_r*wd": -0.3276433560494811,
+   "distance: danger*wd": 0.6543316040004556,
+   "distance: close*adv": -5.603840616131479,
+   "distance: close*hold*far": -3.0621162412765677,
+   "distance: close*hold*contact": -5.510625259944017,
+   "alive_blue_marine: p": 0.5695834030279862,
+   "alive_blue_marauder: p": 0.4534919828960456,
+   "alive_red_marine: p": 0.5142100198527327,
+   "alive_red_marine: focus": 0.12647696069881958,
+   "alive_red_marauder: p": 0.3747832692515475,
+   "alive_red_marauder: focus": 0.15218063435628326
+  },
+  "refit_gates": {
+   "G1": true,
+   "G1 detail": {
+    "health_blue_marine": 2,
+    "health_blue_marauder": 2,
+    "health_red_marine": 2,
+    "health_red_marauder": 2,
+    "distance": 5
+   },
+   "G2": true,
+   "G2 detail": []
+  },
+  "refit_physics": {
+   "fitted": {
+    "marine (red) \u2192 marine": 0.16433436107085544,
+    "marine (red) \u2192 marauder": 0.06334624190297854,
+    "marauder (red) \u2192 marine": 0.16059065887882457,
+    "marauder (red) \u2192 marauder": 0.1071348406017567,
+    "marine (blue) \u2192 marine": 0.1834943520682792,
+    "marine (blue) \u2192 marauder": 0.06530347336984992,
+    "marauder (blue) \u2192 marine": 0.16806854972742266,
+    "marauder (blue) \u2192 marauder": 0.11047858677990527,
+    "distance close*adv": 5.603840616131479,
+    "distance close*wd": -0.0,
+    "distance close*hold*far": 3.0621162412765677,
+    "distance close*hold*contact": 5.510625259944017
+   },
+   "game": {
+    "marine (red) \u2192 marine": 0.21333333333333332,
+    "marine (red) \u2192 marauder": 0.064,
+    "marauder (red) \u2192 marine": 0.19753086419753088,
+    "marauder (red) \u2192 marauder": 0.13511111111111113,
+    "marine (blue) \u2192 marine": 0.21333333333333332,
+    "marine (blue) \u2192 marauder": 0.064,
+    "marauder (blue) \u2192 marine": 0.19753086419753088,
+    "marauder (blue) \u2192 marauder": 0.13511111111111113,
+    "distance close*adv": 6.3,
+    "distance close*wd": 3.15,
+    "distance close*hold*far": 3.15,
+    "distance close*hold*contact": 6.3
+   },
+   "fitted / game": {
+    "marine (red) \u2192 marine": 0.770317317519635,
+    "marine (red) \u2192 marauder": 0.9897850297340396,
+    "marauder (red) \u2192 marine": 0.8129902105740493,
+    "marauder (red) \u2192 marauder": 0.7929387873485281,
+    "marine (blue) \u2192 marine": 0.8601297753200587,
+    "marine (blue) \u2192 marauder": 1.0203667714039049,
+    "marauder (blue) \u2192 marine": 0.8508470329950771,
+    "marauder (blue) \u2192 marauder": 0.8176869087328514,
+    "distance close*adv": 0.8894985104970602,
+    "distance close*wd": -0.0,
+    "distance close*hold*far": 0.9721003940560533,
+    "distance close*hold*contact": 0.874702422213336
+   }
+  },
+  "expectations": {
+   "E1 structure": true,
+   "E2 physics": false,
+   "E3 beats persistence and Lanchester at 2 and 4 s": true,
+   "E4 per-type beats team-level at 2 s": true
+  }
+ }
+}
