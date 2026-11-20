@@ -54,3 +54,21 @@ uneven scenario's values against the mixed val values.
   as post-hoc.
 - If the script crashes before producing results, it may be fixed and run again only if no held-out result has
   been printed. Any such fix is logged.
+
+## Amendment (21 Nov, after a dry run on val; committed before any held-out read)
+
+The dry run of the test script on the val sets (in place of the held-out sets) met 15 of 16 expectations. The
+miss was marauder physics: refitting on the 500 marauder val battles gave a withdraw closing speed of 12.8
+(game 3.15). The fitted withdraw gate (a 12-number curve_fit closure) is fragile on small sets. A comparison on
+val (`05_withdraw_movement.md`, 9 small refits per option) found that the fitted gates failed in 2 of 9 refits,
+while the scripts' rule (danger·wd, walk_R·wd, no gate) never failed and predicted as well or slightly better.
+Knut chose the rule. Changes:
+
+1. **Pipeline:** `movement_wd: rule` with each scenario's withdraw radius (marines 7.0, marauders 8.674, mixed
+   and uneven 8.0), in `configs/generalisation_pipeline.yaml`. Everything else is unchanged.
+2. **E2 physics:** the walking-speed check covers advance, hold far and hold in contact. The withdraw
+   coefficients are reported, not checked: they are effective rates, not walking speeds (Red chases withdrawing
+   Blue units). The 20% limit is **not** changed, although hold in contact was 0.775-0.84 of the game in some val
+   fits.
+3. **E6 val references:** health error at 2 s on val with the amended pipeline: marines 0.0277, marauders
+   0.0203, mixed 0.0346.

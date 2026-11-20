@@ -35,7 +35,7 @@ from sindy_wm.models.intent_model import add_controls  # noqa: E402
 from sindy_wm.models.pipeline import Layout, Pipeline, prepare  # noqa: E402
 from sindy_wm.paths import DATA_DIR  # noqa: E402
 
-VAL_H2 = {"marines": 0.0279, "marauders": 0.0203, "mixed": 0.0346}
+VAL_H2 = {"marines": 0.0277, "marauders": 0.0203, "mixed": 0.0346}  # amended pipeline (03, amendment)
 SHOW = [
     "health_1s",
     "health_2s",
@@ -67,6 +67,7 @@ def main() -> None:
         "thr_health": pc["thr_health"],
         "thr_distance": pc["thr_distance"],
         "max_reach": pc["max_reach"],
+        "movement_wd": pc.get("movement_wd", "gates"),
     }
     sc = cfg["scenarios"]
     # 1. held-out tables
@@ -92,7 +93,7 @@ def main() -> None:
         s = sc[name]
         L = Layout(tuple(t.lower() for t in s["types"]))
         tr = pd.read_parquet(DATA_DIR / "processed" / f"{s['experiment']}_typed" / "rates_train_w9.parquet")
-        fitted[name] = Pipeline(tuple(s["types"]), **kw).fit(tr)
+        fitted[name] = Pipeline(tuple(s["types"]), withdraw_radius=s["withdraw_radius"], **kw).fit(tr)
         T = team_rates(tr, L)
         team_models[name] = {
             "persistence": None,
@@ -138,7 +139,7 @@ def main() -> None:
         }
         horizon, hrows = E.horizon(Y["pipeline"][0], Th)
         # refit on the held-out set itself
-        refit = Pipeline(tuple(s["types"]), **kw).fit(prepare(st, L))
+        refit = Pipeline(tuple(s["types"]), withdraw_radius=s["withdraw_radius"], **kw).fit(prepare(st, L))
         g = gates_terms(refit)
         ph = physics(refit)
         fire = ph[~ph.index.str.startswith("distance")]["fitted / game"]

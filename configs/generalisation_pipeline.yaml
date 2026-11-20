@@ -8,9 +8,12 @@ pipeline:
   max_reach: 6.0          # SMAClite AGENT_TARGET_RANGE; pair reach = min(attack range + radii, 6)
   savgol_window: 9        # rates, per battle
   reach_offset_tau_s: 1.0
+  movement_wd: rule       # amended 21 Nov after the val dry run: withdraw movement by the scripts' rule
+                          # (danger*wd, walk_r*wd), no fitted withdraw gate (docs/generalisation/05_withdraw_movement.md)
 data: "each scenario's train set only (scripts/build_typed_states.py)"
 scenarios:
-  marines:   {experiment: exp06_intents,   types: [MARINE],           held_out: test4}
-  marauders: {experiment: exp09_marauders, types: [MARAUDER],         held_out: test}
-  mixed:     {experiment: exp08_mixed,     types: [MARINE, MARAUDER], held_out: test3}
-  uneven:    {experiment: exp10_uneven,    types: [MARINE, MARAUDER], held_out: test, fitted_on: mixed}
+  # withdraw_radius: the scripts' setting (collect_intents 7.0; collect_marauders 7 x 7.125 / 5.75; collect_mixed 8)
+  marines:   {experiment: exp06_intents,   types: [MARINE],           held_out: test4, withdraw_radius: 7.0}
+  marauders: {experiment: exp09_marauders, types: [MARAUDER],         held_out: test,  withdraw_radius: 8.674}
+  mixed:     {experiment: exp08_mixed,     types: [MARINE, MARAUDER], held_out: test3, withdraw_radius: 8.0}
+  uneven:    {experiment: exp10_uneven,    types: [MARINE, MARAUDER], held_out: test,  withdraw_radius: 8.0, fitted_on: mixed}
