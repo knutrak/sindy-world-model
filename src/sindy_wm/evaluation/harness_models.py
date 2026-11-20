@@ -39,8 +39,8 @@ SHARE = ("sa", "sk", "sf_adv", "sf_hold", "sf_wd", "so_wd", "sd")
 
 
 def lab():
-    """`notebooks/sindyc_07_lab.py`: the parameter-dict simulator B and S are defined in."""
-    path = str(PROJECT_ROOT / "notebooks")
+    """`notebooks/lib/sindyc_07_lab.py`: the parameter-dict simulator B and S are defined in."""
+    path = str(PROJECT_ROOT / "notebooks" / "lib")
     if path not in sys.path:
         sys.path.insert(0, path)
     import sindyc_07_lab

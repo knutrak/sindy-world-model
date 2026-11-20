@@ -25,7 +25,7 @@ import pandas as pd  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts"))
-sys.path.insert(0, str(REPO / "notebooks"))
+sys.path.insert(0, str(REPO / "notebooks" / "lib"))
 
 import evaluate_final as E  # noqa: E402
 import gates_post_hoc as G  # noqa: E402

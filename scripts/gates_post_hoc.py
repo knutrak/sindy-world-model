@@ -8,7 +8,7 @@ A goes through the identical procedure as a control, so differences come from th
 What differs from evaluate_final.py, for A* only (its fit has no STLSQ step for k and p):
 - G3a: 30 refits of the A* recipe on battle-resampled `train` (closures fixed, as for A).
 - G3b: A*'s own fit on SG 5 / 9 / 17 rates and in weak form (1 s, 2 s windows, the same bump test
-  functions as notebooks/weak_sindy.py): shared k by least squares on the stacked weak rows; the
+  functions as notebooks/lib/weak_sindy.py): shared k by least squares on the stacked weak rows; the
   alive law A' = c R_enemy A / H integrated against the test functions (p = c / k); the distance
   equation by STLSQ as in `fit_weak`.
 - G7 compares held-out with val, which is meaningless when held-out *is* val. It uses the test2 / val
@@ -34,7 +34,7 @@ import pandas as pd  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts"))
-sys.path.insert(0, str(REPO / "notebooks"))
+sys.path.insert(0, str(REPO / "notebooks" / "lib"))
 
 import evaluate_final as E  # noqa: E402
 from weak_sindy import bump, fit_weak, weak_rows  # noqa: E402

@@ -70,9 +70,9 @@ src/sindy_wm/            reusable code, imported by notebooks and scripts
     │                    plot_predictions (model vs. data)
     └── sweep.py         load_all_indexes, summarize, heatmap: condense an experiment folder
                          (many datasets) into one table and compare win rates/duration
-notebooks/               00_recap (tour of the whole project), 01_models_explained (how the
-                         model code works), 02_analysis/ (04_sweep_and_first_sindy,
-                         05_compare_exp01_exp02, 06_lanchester_drivers)
+notebooks/               grouped by stage: 00_overview/, 01_early_experiments/, 02_sindyc/,
+                         03_final_exploration/, 04_marauders_mixed/, 05_generalisation/, and lib/
+                         (shared helper modules); see notebooks/README.md
 scripts/
 ├── step_aggression_sweep.py   collect exp01: fixed spawn, aggression x step_mul grid
 ├── collect_data.py            collect another experiment's datasets; existing ones are skipped

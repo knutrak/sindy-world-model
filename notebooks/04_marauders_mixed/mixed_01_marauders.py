@@ -2,7 +2,7 @@
 # %% [markdown]
 # # Marines and marauders: what changes when a battle has two unit types
 #
-# Branch `mixed-marauders` (19-20 Nov). The marine model (A\*-2k, `notebooks/final_01_model_showcase`) is the
+# Branch `mixed-marauders` (19-20 Nov). The marine model (A\*-2k, `notebooks/03_final_exploration/final_01_model_showcase`) is the
 # starting point. Two data sets: **exp09** (marauders only) and **exp08** (marines + marauders, the same mix
 # on both sides, marauder share ¼, ⅓ or ½). Exploratory, on `val` and `cf`; the held-out sets (exp09 `test`,
 # exp08 `test3`) have not been read. Log: `docs/mixed/PROGRESS.md`.

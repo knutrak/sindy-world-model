@@ -34,7 +34,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "notebooks"))
+sys.path.insert(0, str(REPO / "notebooks" / "lib"))
 
 import sindyc_07_lab as lab  # noqa: E402
 from weak_sindy import fit_weak, weak_rows  # noqa: E402
