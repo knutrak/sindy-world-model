@@ -49,3 +49,31 @@ withdraw options were seen in WP2: fitted term better on margin and battle nRMSE
 - **Target choice (mixed only):** use the proportional rule (no fitted numbers) unless the fitted closure has
   both lower health error at 4 s and lower whole-battle nRMSE on mixed val.
 - Everything else is fixed by the plan (thresholds 0.15 / 0.05, SG window 9, reach cap 6, tau 1 s).
+
+## WP4: the pipeline in three scenarios on val (`02_val_table.md` / `.json`, 21 Nov)
+
+Every option passes G1, G2, G3a (light: 10 refits), G4 and G5 (better than every baseline on health at 4 s) in
+every scenario. The reliable horizon (G6) is 2 s throughout, except mixed with the fitted withdraw term (1 s / none).
+
+| val | health 4 s | margin R² 4 s | battle nRMSE | firepower / game rate | speeds / game |
+|---|---|---|---|---|---|
+| marines, wd fitted / rule | 0.0533 / 0.0534 | 0.073 / 0.029 | 0.130 / 0.134 | 0.83, 0.87 | 0.94-1.01 |
+| marauders, wd fitted / rule | 0.0386 / 0.0386 | 0.094 / 0.080 | 0.138 / 0.139 | 0.92, 0.93 | 0.84-1.09 |
+| mixed, wd rule, proportional | 0.0641 | 0.137 | 0.134 | 0.82-0.94 (all 8) | 0.84-0.98 |
+| mixed, team-level A*-2k (baseline) | 0.0718 | 0.039 | 0.141 | — | — |
+| Lanchester (marines / marauders / mixed) | 0.102 / 0.061 / 0.114 | < 0 | 0.18 / 0.17 / 0.18 | — | — |
+
+Selected terms are the same in every scenario: one firepower term per attacker type and target type (plus the
+withdraw term when fitted), five distance terms, no sign failures, no extra terms.
+
+## WP5: decisions (rules fixed beforehand) and the frozen config
+
+- **Withdraw: rule.** Mean rank 1.5 / 1.5, a tie, which the rule gives to the withdraw rule. **Caveat: the
+  tie hinges on one near-identical comparison** (marauders, health 4 s: 0.038562 rule vs 0.038580 fitted). Had
+  that one gone the other way, the fitted term would have won (1.33 vs 1.67). The fitted term is better for
+  marines (margin R² 4 s 0.073 vs 0.029) and marauders on battle nRMSE; the rule is clearly better for mixed
+  battles (health 4 s 0.064 vs 0.070, nRMSE 0.134 vs 0.143).
+- **Target choice: proportional** (no fitted numbers): health 4 s 0.0641 vs 0.0650, nRMSE 0.1337 vs 0.1377.
+- Frozen in `configs/generalisation_pipeline.yaml`. Consequence for D4: the marine model in the thesis becomes the
+  pipeline's (withdraw rule), slightly behind A*-2k on margin R² 4 s (0.029 vs 0.087) and battle nRMSE (0.134
+  vs 0.129); identical on health at 4 s.

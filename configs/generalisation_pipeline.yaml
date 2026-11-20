@@ -1,0 +1,16 @@
+# The frozen equation-discovery pipeline for the generalisation test (docs/generalisation/00_plan.md).
+# Frozen 20 Nov after WP4/WP5 on val, BEFORE any held-out set is read. Code: src/sindy_wm/models/pipeline.py.
+pipeline:
+  withdraw: rule          # Blue units don't fire while withdrawing (decision rule D1: tie 1.5 / 1.5 -> rule)
+  alloc: rule             # target choice: proportional to the target side's type shares (no fitted numbers)
+  thr_health: 0.15        # STLSQ threshold, standardised features
+  thr_distance: 0.05
+  max_reach: 6.0          # SMAClite AGENT_TARGET_RANGE; pair reach = min(attack range + radii, 6)
+  savgol_window: 9        # rates, per battle
+  reach_offset_tau_s: 1.0
+data: "each scenario's train set only (scripts/build_typed_states.py)"
+scenarios:
+  marines:   {experiment: exp06_intents,   types: [MARINE],           held_out: test4}
+  marauders: {experiment: exp09_marauders, types: [MARAUDER],         held_out: test}
+  mixed:     {experiment: exp08_mixed,     types: [MARINE, MARAUDER], held_out: test3}
+  uneven:    {experiment: exp10_uneven,    types: [MARINE, MARAUDER], held_out: test, fitted_on: mixed}
