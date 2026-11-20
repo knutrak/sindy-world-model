@@ -110,6 +110,15 @@ class OraclePlannerPolicy(Policy):
     `commit_seconds` and advance/nearest for the rest of `horizon_seconds` (or to the
     battle's end), and picks the best real health margin. What a perfect model would
     achieve with this planner.
+
+    Options added for the headroom test (docs/planning/00_headroom_plan.md); the defaults keep the
+    original behaviour:
+        withdraw_radius: passed to the intents (7.0 for marines, 8.0 in mixed battles).
+        perturb: (position, health) noise applied to each copy before its look-ahead: every unit's
+            position moves by up to +/- position in x and y, its hp by up to +/- health (a fraction).
+            Separates choosing well from knowing the future exactly.
+        objective: "margin" (Blue minus Red health, hp + shield) or "survival" (Blue units alive,
+            the margin as a tie-breaker).
     """
 
     def __init__(
@@ -118,6 +127,9 @@ class OraclePlannerPolicy(Policy):
         commit_seconds: float = 4.0,
         horizon_seconds: float = 12.0,
         candidates=CANDIDATES,
+        withdraw_radius: float = 7.0,
+        perturb: tuple[float, float] | None = None,
+        objective: str = "margin",
     ):
         self.replan_seconds, self.commit_seconds, self.horizon_seconds = (
             replan_seconds,
@@ -125,6 +137,9 @@ class OraclePlannerPolicy(Policy):
             horizon_seconds,
         )
         self.candidates = tuple(candidates)
+        if objective not in ("margin", "survival"):
+            raise ValueError(objective)
+        self.withdraw_radius, self.perturb, self.objective = withdraw_radius, perturb, objective
 
     def params(self) -> dict:
         return {
@@ -132,12 +147,27 @@ class OraclePlannerPolicy(Policy):
             "commit_seconds": self.commit_seconds,
             "horizon_seconds": self.horizon_seconds,
             "candidates": [list(c) for c in self.candidates],
+            "withdraw_radius": self.withdraw_radius,
+            "perturb": None if self.perturb is None else list(self.perturb),
+            "objective": self.objective,
         }
 
     def reset(self, seed: int | None = None) -> None:
         super().reset(seed)
         self._step = 0
-        self._current = IntentPolicy(*self.candidates[0])
+        self._current = IntentPolicy(*self.candidates[0], withdraw_radius=self.withdraw_radius)
+        self._noise = np.random.default_rng(None if seed is None else [seed, 7])
+
+    def _score(self, game) -> float:
+        if self.objective == "survival":
+            return len(game.agents) + 1e-4 * self._margin(game)
+        return self._margin(game)
+
+    def _perturb(self, game) -> None:
+        dpos, dhp = self.perturb
+        for unit in [*game.agents.values(), *game.enemies.values()]:
+            unit.pos = unit.pos + self._noise.uniform(-dpos, dpos, 2)
+            unit.hp = float(np.clip(unit.hp * (1 + self._noise.uniform(-dhp, dhp)), 1.0, unit.max_hp))
 
     @staticmethod
     def _margin(game) -> float:
@@ -149,16 +179,19 @@ class OraclePlannerPolicy(Policy):
         import copy
 
         sim = copy.deepcopy(env)
+        if self.perturb is not None:
+            self._perturb(sim.unwrapped)
         commit, steps = (
             round(self.commit_seconds / env.seconds_per_step),
             round(self.horizon_seconds / env.seconds_per_step),
         )
-        first, then = IntentPolicy(*intent), IntentPolicy("advance", "nearest")
+        first = IntentPolicy(*intent, withdraw_radius=self.withdraw_radius)
+        then = IntentPolicy("advance", "nearest", withdraw_radius=self.withdraw_radius)
         for n in range(steps):
             _, _, terminated, truncated, _ = sim.step((first if n < commit else then).act(sim))
             if terminated or truncated:
                 break
-        return self._margin(sim.unwrapped)
+        return self._score(sim.unwrapped)
 
     def act(self, env: gym.Env) -> list[int]:
         game = env.unwrapped
@@ -168,7 +201,8 @@ class OraclePlannerPolicy(Policy):
             and game.enemies
         ):
             scores = [self._lookahead(env, intent) for intent in self.candidates]
-            self._current = IntentPolicy(*self.candidates[int(np.argmax(scores))])
+            best = self.candidates[int(np.argmax(scores))]
+            self._current = IntentPolicy(*best, withdraw_radius=self.withdraw_radius)
         self._step += 1
         return self._current.act(env)
 

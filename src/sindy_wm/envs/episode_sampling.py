@@ -196,3 +196,23 @@ class UnevenMixSampler(MixedBattleSampler):
             side = [self.second_type] * k + [self.first_type] * (n - k)
             types.append(tuple(str(t) for t in rng.permutation(side)))
         return EpisodeSettings(base.unit_counts, base.start_health, base.spawn, (types[0], types[1]))
+
+
+@dataclass(frozen=True)
+class RangeAsymmetrySampler(CloseBattleSampler):
+    """Blue marauders against Red marines (headroom test, docs/planning/00_headroom_plan.md).
+
+    Counts, health and spawn are drawn as by `CloseBattleSampler`; Red's count becomes its number of
+    marines and Blue gets max(1, round(n_red / marines_per_marauder)) marauders, so the battle stays
+    roughly close (`marines_per_marauder` is calibrated in a pilot).
+    """
+
+    marines_per_marauder: float = 2.0
+    unit_size: float = 1.125
+
+    def sample(self, seed: int, bounds: tuple[float, float, float, float]) -> EpisodeSettings:
+        base = super().sample(seed, bounds)
+        n_red = base.unit_counts[1]
+        n_blue = max(1, round(n_red / self.marines_per_marauder))
+        types = (("MARAUDER",) * n_blue, ("MARINE",) * n_red)
+        return EpisodeSettings((n_blue, n_red), base.start_health, base.spawn, types)
