@@ -112,3 +112,13 @@ In the scenarios that pass:
 | P1 | The five scenarios above, or a subset? | all five; S3 and S4 are the most informative |
 | P2 | The perturbation sizes (positions ± 0.2, health ± 5%) | keep; report one larger setting (± 0.5, ± 10%) as a sensitivity check if time allows |
 | P3 | The go / no-go threshold of 5 points | keep |
+
+## Updates before running (21 Nov)
+
+- **Approved** by Knut as recommended (P1 all five scenarios, P2 ± 0.2 / ± 5%, P3 5 points).
+- **S3 calibration** (Blue marauders vs Red marines, advance/nearest, 100-200 battles each): 1.5 marines per marauder →
+  Blue wins 90%, 1.65 → 72%, 1.75 → 57%, 1.85 → 42%, 2.0 → 26%. Set to **1.8**.
+- **Timing pilot** (20 battles, S2, 9 workers): oracle 26 s per battle (15-46 s), an ordinary battle 0.8 s. 400 oracle
+  seeds per scenario would take about 3.5 h, so as planned the **oracles use 200 seeds per scenario** (about 1.8 h).
+  The fixed intents and random switching keep 400 seeds. Every comparison with an oracle is paired on the oracle's
+  200 seeds.
