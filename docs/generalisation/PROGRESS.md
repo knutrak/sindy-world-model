@@ -110,3 +110,11 @@ pre-registered upper bound of 1.0; every other entry was 0.77-0.99.
 - Uneven battles are lopsided in strength (one side has far more hp), so winner accuracy is high for every model
   (0.88-0.93) and not informative.
 - Marauder hold in contact was 0.814 (val dry run: 0.775); it passes the unchanged 20% limit on test.
+
+## WP7: write-up (21 Nov)
+
+- `REPORT.md`: claim, pipeline, how it was tested, results, what helped / didn't, caveats, open questions,
+  reproduction.
+- `06_frozen_equations.md` and `experiments/generalisation/frozen_models.py`: the frozen models, fitted on train.
+- `notebooks/generalisation_01.py` / `.ipynb`: six claims with caveats (structure, physics, prediction, per-type vs
+  team, held-out vs val, the honesty timeline).
