@@ -47,6 +47,7 @@ from sindy_wm.models.intent_model import (
     library,
     r2,
     stlsq,
+    team_shares,
 )
 from sindy_wm.states.typed import pair_reach, unit_stats
 
@@ -166,7 +167,7 @@ def team_rows(rows: pd.DataFrame, layout: Layout) -> pd.DataFrame:
     return T
 
 
-def fit_gates(rows: pd.DataFrame, scale: float) -> dict:
+def fit_gates(rows: pd.DataFrame, scale: float, skip=()) -> dict:
     """`intent_model.fit_movement_gates` with distance-like starting values scaled by `scale`."""
     X = lambda a: tuple(a[c].to_numpy() for c in ["distance", *SHAPE])  # noqa: E731
     gates = {}
@@ -180,7 +181,7 @@ def fit_gates(rows: pd.DataFrame, scale: float) -> dict:
         ),
     ]:
         a = rows[rows["movement"] == m]
-        if a.empty:
+        if a.empty or m in skip:
             continue
         a = a.sample(min(100_000, len(a)), random_state=0)
         gates[m], _ = curve_fit(f, X(a), a["d_distance"], p0=p0, maxfev=80000)
@@ -204,7 +205,16 @@ class Pipeline:
         thr_health: float = 0.15,
         thr_distance: float = 0.05,
         max_reach: float = AGENT_TARGET_RANGE,
+        movement_wd: str = "gates",
+        withdraw_radius: float | None = None,
     ):
+        """movement_wd: how the distance equation treats withdraw. "gates": A's fitted withdraw switches
+        (close*wd, flee*wd); "rule": the scripts' rule, no switch fitted: candidates danger*wd (share of Blue
+        with an enemy within `withdraw_radius`, which then walks away) and walk_r*wd (share of Red not in
+        reach, which walks towards Blue)."""
+        if movement_wd not in ("gates", "rule") or (movement_wd == "rule" and withdraw_radius is None):
+            raise ValueError("movement_wd 'rule' needs withdraw_radius")
+        self.movement_wd, self.withdraw_radius = movement_wd, withdraw_radius
         if withdraw not in ("rule", "fitted"):
             raise ValueError(withdraw)
         if len(types) > 2:
@@ -314,7 +324,7 @@ class Pipeline:
         # distance: A's movement library with the team's measured reach
         T = team_rows(rows, self.L)
         self.P_team = {
-            "gates": fit_gates(T, self.gate_scale),
+            "gates": fit_gates(T, self.gate_scale, skip=("withdraw",) if self.movement_wd == "rule" else ()),
             "form": "derived",
         }
         rho_team = float(np.mean(list(self.rho.values())))
@@ -344,23 +354,30 @@ class Pipeline:
         Xt = np.column_stack(
             [T[c].to_numpy() for c in ("health_blue", "health_red", "alive_blue", "alive_red", "distance")]
         )
-        F = library(
-            Xt,
-            T[CTRL].to_numpy(),
-            T[SHAPE].to_numpy(),
-            self.P_team,
-            T[["reach_blue", "reach_red"]].to_numpy(),
-            True,
+        F = self._dist_library(
+            Xt, T[CTRL].to_numpy(), T[SHAPE].to_numpy(), T[["reach_blue", "reach_red"]].to_numpy()
         )
         self.dist_names = list(F)
         theta = np.column_stack([F[k] for k in self.dist_names])
         cols = [
             j for j in _family_cols(self.dist_names, MOVE_FAMILY) if self.dist_names[j] not in DIST_EXCLUDE
         ]
+        if self.movement_wd == "rule":
+            cols = [j for j in cols if self.dist_names[j] not in ("close*wd", "flee*wd")]
+            cols += [self.dist_names.index("danger*wd"), self.dist_names.index("walk_r*wd")]
         cd = np.zeros(len(self.dist_names))
         cd[cols] = stlsq(theta[:, cols], T["d_distance"].to_numpy(), self.thr_distance)
         self.dist_coef = cd
         return self
+
+    def _dist_library(self, X, U, S, reach) -> dict:
+        """A's movement library; with movement_wd "rule", danger*wd uses the scenario's withdraw radius."""
+        F = library(X, U, S, self.P_team, reach, True)
+        if getattr(self, "movement_wd", "gates") == "rule":
+            p = np.array(self.P_team["share_blue"], float)
+            p[-1] = self.withdraw_radius  # derived share: rho is the last parameter
+            F["danger*wd"] = team_shares(X, S, self.P_team | {"share_blue": p})[0] * U[:, 2]
+        return F
 
     def coefficients(self) -> dict:
         out = {}
@@ -444,7 +461,7 @@ class Pipeline:
                     newX[:, L.idx("alive", s, t)] = A[(s, t)] * ratio ** (p + pf * focus)
             TX = L.team_view(X)
             reach_team = np.column_stack([sum(R[("blue", a)] for a in tt), sum(R[("red", a)] for a in tt)])
-            Fd = library(TX, u, S, self.P_team, reach_team, True)
+            Fd = self._dist_library(TX, u, S, reach_team)
             theta = np.column_stack([Fd[k] for k in self.dist_names])
             newX[:, -1] = np.maximum(X[:, -1] + DT * theta @ self.dist_coef, 0)
             X = newX
