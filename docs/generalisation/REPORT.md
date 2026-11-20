@@ -15,9 +15,10 @@ The work that led here (marauders, mixed armies, SMAClite's range limit) is in `
 
 ## 1. The claim, and the short answer
 
-> The same equation-discovery pipeline, given only a scenario's data and its units' game statistics,
-> produces equations that select the same kind of terms, have coefficients that match the game's rules, and
-> predict comparably well, for marines, for marauders, and for mixed marine + marauder armies.
+> The same equation-discovery pipeline, given only a scenario's battles and three statistics per unit type
+> (hp, attack range, size), plus SMAClite's firing limit of 6, produces equations that select the same kind of
+> terms, have coefficients that match the game's rules, and predict comparably well, for marines, for
+> marauders, and for mixed marine + marauder armies.
 
 **Short answer (hedged): supported.** In a pre-registered test, run once on four held-out sets (marines,
 marauders, mixed armies, and an uneven-mix scenario the pipeline had never seen), 19 of 20 expectations were met.
@@ -33,8 +34,25 @@ marauders, mixed armies, and an uneven-mix scenario the pipeline had never seen)
 
 ## 2. The pipeline
 
-Inputs: a scenario's battles and its unit types. Everything else is a fixed rule
-(`src/sindy_wm/models/pipeline.py`, `configs/generalisation_pipeline.yaml`):
+**Inputs:** a scenario's battles, and three statistics per unit type from SMAClite's unit files:
+
+| input | marine | marauder | used for |
+|---|---|---|---|
+| hp (+ shield) | 45 | 125 | the health unit: ten full units of the type = 1, so k reads as "target units removed per second" |
+| attack range | 5 | 6 | units in reach: centre distance ≤ attack range + both radii (the state R and the closure's ρ) |
+| size (radius) | 0.75 (0.375) | 1.125 (0.5625) | the radii in the same reach test |
+
+Two more inputs are an environment constant and a script setting, not unit statistics:
+
+- the firing limit of 6 (SMAClite's `AGENT_TARGET_RANGE`, the same for every unit), which caps the reach;
+- the withdraw radius, a setting of our scripts (7 or 8).
+
+**Not inputs:** damage, cooldown, armor, the +10 bonus against armored units, and walking speed. These are what
+the coefficients should reflect, and they are used only afterwards, in the physics check (§4.2). The pipeline
+never sees the answer. The inputs decide *what is measured*, so they matter: counted at the marauder's weapon
+range (7.125) instead of 6, the same data gave firepower at 57-64% of the game rate instead of about 92%.
+
+Everything else is a fixed rule (`src/sindy_wm/models/pipeline.py`, `configs/generalisation_pipeline.yaml`):
 
 | step | rule |
 |---|---|

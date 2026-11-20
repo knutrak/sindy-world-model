@@ -2,9 +2,15 @@
 # %% [markdown]
 # # One equation-discovery pipeline across unit types
 #
-# **Claim.** The same pipeline, given only a scenario's battles and its units' game statistics, finds equations
-# with the same structure, coefficients that match the game's rules, and comparable predictive power: for
-# marines, marauders and mixed armies, and for an uneven-mix scenario it had never seen.
+# **Claim.** The same pipeline, given only a scenario's battles and three statistics per unit type (hp, attack
+# range, size), plus SMAClite's firing limit of 6, finds equations with the same structure, coefficients that
+# match the game's rules, and comparable predictive power: for marines, marauders and mixed armies, and for an
+# uneven-mix scenario it had never seen.
+#
+# The three statistics only *define the states*: hp sets the health unit (ten full units of a type = 1), and
+# attack range + both radii, capped at 6, decide which units count as in reach. The quantities the
+# coefficients should reflect (damage, cooldown, armor, the bonus against armored units, walking speed) are
+# never given to the pipeline. They are used only afterwards, to check the fitted coefficients (section 2).
 #
 # **Evidence.** A pre-registered test, run once on four held-out sets (`docs/generalisation/03_preregistration.md`,
 # `04_test_results.md`): **19 of 20 expectations met**. Report: `docs/generalisation/REPORT.md`.
