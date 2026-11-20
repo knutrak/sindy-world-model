@@ -143,7 +143,10 @@ def main() -> None:
         g = gates_terms(refit)
         ph = physics(refit)
         fire = ph[~ph.index.str.startswith("distance")]["fitted / game"]
-        speed = ph[ph.index.str.startswith("distance")]["fitted / game"]
+        checked = ["distance close*adv", "distance close*hold*far", "distance close*hold*contact"]
+        speed = ph.loc[
+            [c for c in checked if c in ph.index], "fitted / game"
+        ]  # amendment 2: no withdraw term
         struct_ok = (
             g["G1"]
             and g["G2"]

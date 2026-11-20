@@ -77,3 +77,14 @@ withdraw term when fitted), five distance terms, no sign failures, no extra term
 - Frozen in `configs/generalisation_pipeline.yaml`. Consequence for D4: the marine model in the thesis becomes the
   pipeline's (withdraw rule), slightly behind A*-2k on margin R² 4 s (0.029 vs 0.087) and battle nRMSE (0.134
   vs 0.129); identical on health at 4 s.
+
+## WP6: withdraw movement amended, dry runs (21 Nov)
+
+- `05_withdraw_movement.md`: the fitted withdraw gate failed in 2 of 9 small refits; the scripts' rule never did and
+  predicted as well or slightly better, but its coefficients are effective rates (0.3-0.9), not walking speeds,
+  because Red chases withdrawing Blue units. Knut chose the rule. Pre-registration amended and config re-frozen
+  (`c135280`) before any held-out read.
+- Second dry run on val: found a script bug. E2 still checked the withdraw speed term, which no longer exists
+  (coefficient 0) and so failed everywhere. Fixed to check only advance, hold far and hold in contact, as the
+  amendment says. No held-out result had been produced. With the fix, the dry run's E2 is met for marines and
+  mixed; marauders still fail (hold in contact 0.775 < 0.8, limit unchanged).
