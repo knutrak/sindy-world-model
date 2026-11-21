@@ -180,13 +180,47 @@ class PipelinePlannerPolicy(Policy):
         if self._logger is None:
             self._logger = SnapshotLogger(env)
             snap = self._logger.start_episode()
+            self._snap0 = snap  # start health per unit, for the compartment states (docs/planning/13)
         else:
             snap = self._logger.snapshot(step=0)
+        self._snap = snap
         return typed_states(snap, self.types, max_reach=self.model.max_reach).iloc[0]
+
+    def live_spread(self) -> np.ndarray:
+        """The spread state (docs/planning/09) of the last live snapshot, in the reach / front order."""
+        from sindy_wm.states.spread import spread
+
+        sp = spread(self._snap.assign(episode_idx=0), self.types).iloc[0]
+        even = self.model.spread_model["measure"] == "even"
+        cols = [
+            f"{'even' if even else 'fragile'}_{side}_{t}"
+            for side in ("blue", "red")
+            for t in self.model.L.types
+        ]
+        v = sp[cols].to_numpy(float)
+        return v if even else 1 - v
+
+    def live_compartments(self) -> dict:
+        """W0, HW0, h00 (docs/planning/13) of the last live snapshot, in the reach / front order."""
+        from sindy_wm.states.compartments import compartments, unit_health
+
+        s0 = self._snap0.assign(episode_idx=0)
+        start = s0.assign(h=unit_health(s0)).set_index(["episode_idx", "team", "unit_id"])["h"]
+        c = compartments(self._snap.assign(episode_idx=0), self.types, start=start).iloc[0]
+        keys = [f"{side}_{t}" for side in ("blue", "red") for t in self.model.L.types]
+        return {
+            k0: c[[f"{k}_{x}" for x in keys]].to_numpy(float)
+            for k0, k in (("W0", "W"), ("HW0", "HW"), ("h00", "h0"))
+        }
 
     def predict(self, env) -> np.ndarray:
         """Predicted health margin at the horizon for each candidate, from the live game's state."""
         B = typed_batch_from_row(self.live_state(env), self.model.L, self._U)
+        if getattr(self.model, "spread_model", None) is not None:
+            B["spread0"] = np.repeat(self.live_spread()[None], len(self._U), 0)
+        if getattr(self.model, "compart_model", None) is not None:
+            for k, v in self.live_compartments().items():
+                B[k] = np.repeat(v[None], len(self._U), 0)
         with np.errstate(invalid="ignore", divide="ignore"):
             Y = self.model.L.team_view(self.model.rollout(B))
         return Y[:, -1, 0] - Y[:, -1, 1]

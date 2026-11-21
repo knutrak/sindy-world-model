@@ -7,6 +7,10 @@ An intent is a (movement, target) pair that the whole Blue team follows:
                          enemy in range, every unit closes in and fights (as advance)
                withdraw  walk away from any enemy closer than `withdraw_radius`
                          (and so don't shoot); stand still once out of danger
+               stand     hold position (21 Nov, docs/planning/17): never move; shoot only enemies
+                         inside the unit's own attack range (an attack order on a target that is
+                         offered but out of range would make the unit walk), else stand still.
+                         Not in MOVEMENTS / INTENTS, so the existing intent sets are unchanged
     target     nearest   each unit shoots its nearest enemy in range
                focus     the team concentrates fire on one enemy (see `TargetChoicePolicy`)
 
@@ -33,6 +37,7 @@ from sindy_wm.envs.policies import (
 )
 
 MOVEMENTS = ("advance", "hold", "withdraw")
+EXTRA_MOVEMENTS = ("stand",)  # accepted by IntentPolicy, not part of INTENTS
 TARGETS = ("nearest", "focus")
 INTENTS = tuple(product(MOVEMENTS, TARGETS))  # all six (movement, target) pairs
 
@@ -41,8 +46,8 @@ class IntentPolicy(TargetChoicePolicy):
     """The Blue team follows one intent (see the module docstring). No random actions."""
 
     def __init__(self, movement: str = "advance", target: str = "nearest", withdraw_radius: float = 7.0):
-        if movement not in MOVEMENTS:
-            raise ValueError(f"movement must be one of {MOVEMENTS}, got {movement!r}")
+        if movement not in MOVEMENTS + EXTRA_MOVEMENTS:
+            raise ValueError(f"movement must be one of {MOVEMENTS + EXTRA_MOVEMENTS}, got {movement!r}")
         if target not in TARGETS:
             raise ValueError(f"target must be one of {TARGETS}, got {target!r}")
         super().__init__(rule=target, aggression=1.0)
@@ -81,10 +86,27 @@ class IntentPolicy(TargetChoicePolicy):
                 if move != STOP:
                     return move
                 # cornered: fight (falls through to the shooting rule)
+        if self.movement == "stand":
+            return self._stand_action(game, unit, mask, focus)
         in_range = mask[FIRST_TARGET:].any()
         if in_range or self.movement == "advance" or (self.movement == "hold" and self._contact):
             return self._unit_action(game, unit, mask, focus)
         return STOP  # hold before contact, or withdrawn far enough: stand still
+
+    def _stand_action(self, game, unit, mask: np.ndarray, focus: int | None) -> int:
+        """Hold position: attack an enemy inside the unit's own attack range (by the target rule), else
+        STOP."""
+        offered = np.flatnonzero(mask[FIRST_TARGET:])
+        reach = [int(k) for k in offered if unit.has_within_attack_range(game.enemies[int(k)])]
+        if not reach:
+            return STOP
+        if self.rule == "focus" and focus in reach:
+            k = focus
+        elif self.rule == "focus":
+            k = min(reach, key=lambda k: (game.enemies[k].hp + game.enemies[k].shield, k))
+        else:
+            k = min(reach, key=lambda k: np.linalg.norm(game.enemies[k].pos - unit.pos))
+        return FIRST_TARGET + k
 
 
 class IntentSchedule(Policy):

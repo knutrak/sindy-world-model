@@ -61,3 +61,84 @@ def test_live_state_and_predictions_match_the_recorded_table(mapname, sampler, n
         np.testing.assert_allclose(row[cols].to_numpy(float), table.loc[k, cols].to_numpy(float), atol=1e-9)
         Y = L.team_view(model.rollout(typed_batch_from_row(table.loc[k], L, planner._U)))
         np.testing.assert_allclose(preds[k], Y[:, -1, 0] - Y[:, -1, 1], atol=1e-9)
+
+
+SPREAD = DATA_DIR / "processed" / "planning" / "spread_models.pkl"
+
+
+@pytest.mark.skipif(not (MODELS.exists() and SPREAD.exists()), reason="spread models not built")
+def test_spread_planner_matches_rollout_from_the_recorded_spread():
+    from sindy_wm.states.spread import spread
+
+    model = pickle.load(open(MODELS, "rb"))["mixed"]
+    model.spread_model = pickle.load(open(SPREAD, "rb"))["S2"]
+    env = _battle("mixed_m_mrd", MixedBattleSampler(), seed=5)
+    planner = PipelinePlannerPolicy(model, withdraw_radius=8.0)
+    planner.reset(5)
+    record = SnapshotLogger(env)
+    snaps = [record.start_episode()]
+    driver = IntentSchedule(withdraw_radius=8.0)
+    driver.reset(5)
+    preds = {}
+    for k in range(1, 60):
+        _, _, term, trunc, _ = env.step(driver.act(env))
+        snaps.append(record.snapshot(step=k))
+        if term or trunc:
+            break
+        if k % 8 == 0 and env.unwrapped.agents and env.unwrapped.enemies:
+            preds[k] = planner.predict(env)
+    full = pd.concat(snaps).assign(episode_idx=0)
+    table = typed_states(full.drop(columns="episode_idx"), planner.types, max_reach=model.max_reach)
+    sp = spread(full, planner.types).droplevel(0)
+    cols = [f"even_{s}_{t}" for s in ("blue", "red") for t in model.L.types]
+    for k, pred in preds.items():
+        B = typed_batch_from_row(table.loc[k], model.L, planner._U)
+        B["spread0"] = np.repeat(sp.loc[k, cols].to_numpy(float)[None], len(planner._U), 0)
+        Y = model.L.team_view(model.rollout(B))
+        np.testing.assert_allclose(pred, Y[:, -1, 0] - Y[:, -1, 1], atol=1e-9)
+    assert preds
+
+
+COMPART = DATA_DIR / "processed" / "planning" / "compart_models.pkl"
+
+
+@pytest.mark.skipif(not (MODELS.exists() and COMPART.exists()), reason="compartment models not built")
+def test_compartment_planner_matches_the_recorded_compartments_and_rollout():
+    from sindy_wm.states.compartments import compartments
+
+    model = pickle.load(open(MODELS, "rb"))["mixed"]
+    model.compart_model = {"laws": pickle.load(open(COMPART, "rb"))["S2"]["compartments"], "use_hw": True}
+    env = _battle("mixed_m_mrd", MixedBattleSampler(), seed=7)
+    planner = PipelinePlannerPolicy(model, withdraw_radius=8.0)
+    planner.reset(7)
+    record = SnapshotLogger(env)
+    snaps = [record.start_episode()]
+    planner.live_state(env)  # roster and start health at step 0, as `act` does
+    driver = IntentSchedule(withdraw_radius=8.0)
+    driver.reset(7)
+    live, preds = {}, {}
+    for k in range(1, 80):
+        _, _, term, trunc, _ = env.step(driver.act(env))
+        snaps.append(record.snapshot(step=k))
+        if term or trunc:
+            break
+        if k % 8 == 0 and env.unwrapped.agents and env.unwrapped.enemies:
+            preds[k] = planner.predict(env)
+            live[k] = planner.live_compartments()
+    full = pd.concat(snaps).assign(episode_idx=0)
+    table = typed_states(full.drop(columns="episode_idx"), planner.types, max_reach=model.max_reach)
+    comp = compartments(full, planner.types).droplevel(0)
+    keys = [f"{s}_{t}" for s in ("blue", "red") for t in model.L.types]
+    assert preds
+    for k, pred in preds.items():
+        rec = {
+            k0: comp.loc[k, [f"{n}_{x}" for x in keys]].to_numpy(float)
+            for k0, n in (("W0", "W"), ("HW0", "HW"), ("h00", "h0"))
+        }
+        for name, v in rec.items():
+            np.testing.assert_allclose(live[k][name], v, atol=1e-9)
+        B = typed_batch_from_row(table.loc[k], model.L, planner._U) | {
+            n: np.repeat(v[None], len(planner._U), 0) for n, v in rec.items()
+        }
+        Y = model.L.team_view(model.rollout(B))
+        np.testing.assert_allclose(pred, Y[:, -1, 0] - Y[:, -1, 1], atol=1e-9)

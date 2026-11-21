@@ -30,12 +30,13 @@ from functools import cached_property
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
-from scipy.special import expit, logit
+from scipy.special import expit, logit, ndtr
 
 from sindy_wm.models.intent_model import (
     ALIVE_CONTROL_TERMS,
     CTRL,
     DT,
+    FAR_GATE,
     MOVE_FAMILY,
     SHAPE,
     _close_flee_gate,
@@ -212,6 +213,172 @@ def shape_step(shape_eq: dict, d: np.ndarray, S: np.ndarray, U: np.ndarray) -> n
         F = _shape_library(d, S[:, j], U)
         S[:, j] = np.maximum(S[:, j] + DT * np.column_stack([F[k] for k in names]) @ c, 0)
     return S
+
+
+SPREAD_ALIVE_GROUPS = ("1", "(1-s)", "(1-s)^2")
+SPREAD_ALIVE_CTRL = ("1", "focus", "hold", "wd")
+SPREAD_RATE_GROUPS = ("1", "s", "r", "r*s")
+SPREAD_RATE_CTRL = ("1", "focus", "hold", "wd", "focus*far", "hold*far")
+
+
+def _ctrl(U: np.ndarray, d: np.ndarray, names) -> dict:
+    far = ndtr((d - FAR_GATE[0]) / FAR_GATE[1])
+    c = {"1": np.ones(len(U)), "focus": U[:, 3], "hold": U[:, 1], "wd": U[:, 2]}
+    c["focus*far"], c["hold*far"] = U[:, 3] * far, U[:, 1] * far
+    return {k: c[k] for k in names}
+
+
+def spread_alive_features(s: np.ndarray, U: np.ndarray, d: np.ndarray) -> dict:
+    """The spread variant's alive exponent p(s, u) = sum of coef * feature (docs/planning/09): state groups
+    1, (1 - s), (1 - s)^2, each times the controls 1, focus, hold, wd. Keys "group|control"."""
+    phi = {"1": np.ones_like(s), "(1-s)": 1 - s, "(1-s)^2": (1 - s) ** 2}
+    psi = _ctrl(U, d, SPREAD_ALIVE_CTRL)
+    return {f"{g}|{c}": phi[g] * psi[c] for g in SPREAD_ALIVE_GROUPS for c in SPREAD_ALIVE_CTRL}
+
+
+def spread_rate_features(s: np.ndarray, r: np.ndarray, U: np.ndarray, d: np.ndarray) -> dict:
+    """The spread variant's s' library: state groups 1, s, r, r*s (r = relative rate of health loss), each
+    times the controls 1, focus, hold, wd, focus*far, hold*far. Keys "group|control"."""
+    phi = {"1": np.ones_like(s), "s": s, "r": r, "r*s": r * s}
+    psi = _ctrl(U, d, SPREAD_RATE_CTRL)
+    return {f"{g}|{c}": phi[g] * psi[c] for g in SPREAD_RATE_GROUPS for c in SPREAD_RATE_CTRL}
+
+
+def group_stlsq(
+    theta: np.ndarray, y: np.ndarray, groups: list[str], threshold: float, always=()
+) -> np.ndarray:
+    """Sequentially thresholded least squares over groups of columns (sparse on the state groups, the control
+    interactions inside a kept group dense): standardised features and target; a group stays while the L2 norm
+    of its standardised coefficients is at least `threshold`. Returns coefficients in the original units."""
+    scale = theta.std(axis=0) + 1e-12
+    T, ys = theta / scale, y / (y.std() + 1e-12)
+    names = list(dict.fromkeys(groups))
+    keep = {g: True for g in names}
+    coef = np.zeros(T.shape[1])
+    for _ in range(25):
+        cols = np.array([keep[g] for g in groups])
+        coef[:] = 0
+        if cols.any():
+            A = T[:, cols]
+            coef[cols] = np.linalg.solve(A.T @ A + 1e-6 * len(A) * np.eye(A.shape[1]), A.T @ ys)
+        new = {g: g in always or np.linalg.norm(coef[np.array(groups) == g]) >= threshold for g in names}
+        if new == keep:
+            break
+        keep = new
+    return coef / scale * (y.std() + 1e-12)
+
+
+COMPART_GROUPS = {  # docs/planning/13_compartment_plan.md
+    "I": ("d(1-w)", "d(1-w)/mF", "d(1-w)rho", "dw"),
+    "KW": ("dw", "dw/mW", "W"),
+    "KF": ("d(1-w)", "d(1-w)/mF"),
+    "sigma": ("w", "w2", "w(1-mW)"),
+}
+COMPART_ALWAYS = {"I": "d(1-w)", "KW": "dw", "KF": "d(1-w)", "sigma": "w"}
+COMPART_CTRL = ("1", "focus", "hold", "wd")
+HW_GROUPS = ("d(1-w)/mF", "dw/mW", "w(1-mW)")  # the groups that need H_W
+
+
+def compart_features(law: str, d, w, Wn, mF, mW, rho, U, use_hw: bool = True) -> dict:
+    """Features of one compartment law: state groups (COMPART_GROUPS) times the controls 1, focus, hold, wd.
+    d: health loss rate (full units / s); w: wounded share; Wn: wounded units; mF, mW: healthy / wounded mean
+    health over the threshold; rho: share of units in reach. Keys "group|control"."""
+    phi = {
+        "d(1-w)": d * (1 - w),
+        "d(1-w)/mF": d * (1 - w) / np.maximum(mF, 0.5),
+        "d(1-w)rho": d * (1 - w) * rho,
+        "dw": d * w,
+        "dw/mW": d * w / np.maximum(mW, 0.05),
+        "W": Wn,
+        "w": w,
+        "w2": w**2,
+        "w(1-mW)": w * (1 - mW),
+    }
+    psi = {"1": np.ones_like(d), "focus": U[:, 3], "hold": U[:, 1], "wd": U[:, 2]}
+    groups = [g for g in COMPART_GROUPS[law] if use_hw or g not in HW_GROUPS]
+    return {f"{g}|{c}": phi[g] * psi[c] for g in groups for c in COMPART_CTRL}
+
+
+def compart_derived(A10, W10, H10, HW10, h0):
+    """From the table scales (alive and W in units / 10, health and H_W in ten full units) to counts and the
+    derived quantities of the compartment laws: (A, W, w, mF, mW) with A, W in units."""
+    A, Wn = 10 * A10, 10 * W10
+    H, HW = 10 * H10, 10 * HW10
+    w = np.divide(Wn, A, out=np.zeros_like(A), where=A > 1e-9)
+    thr = 0.5 * np.maximum(h0, 1e-3)
+    mF = np.divide(H - HW, (A - Wn) * thr, out=np.ones_like(A), where=(A - Wn) > 1e-9)
+    mW = np.divide(HW, Wn * thr, out=np.ones_like(A), where=Wn > 1e-9)
+    return A, Wn, w, mF, mW
+
+
+def compart_context(L, X, W10, U) -> dict:
+    """Wounded shares per (side, type) and per side (team), and the controls, for one rollout step."""
+    w, team = {}, {}
+    for side in SIDES:
+        Ws = As = 0
+        for t in L.types:
+            A10 = X[:, L.idx("alive", side, t)]
+            Wt = W10[:, L.pos(side, t)]
+            w[(side, t)] = np.divide(Wt, A10, out=np.zeros_like(A10), where=A10 > 1e-9)
+            Ws, As = Ws + Wt, As + A10
+        team[side] = np.divide(Ws, As, out=np.zeros_like(As), where=As > 1e-9)
+    return {"w": w, "team": team, "U": U}
+
+
+def two_level_stlsq(theta, y, groups, threshold: float, base, always=()) -> np.ndarray:
+    """STLSQ in two levels (docs/planning/15): a group (a state term with its control interactions) stays
+    while the
+    L2 norm of its standardised coefficients is at least `threshold`; inside a kept group, a non-base
+    column (a
+    control interaction) is dropped when its standardised coefficient is below threshold / 2. Returns the
+    coefficients in the original units."""
+    groups, base = np.asarray(groups), np.asarray(base, bool)
+    scale = theta.std(axis=0) + 1e-12
+    ysd = y.std() + 1e-12
+    T, ys = theta / scale, y / ysd
+    keep = np.ones(T.shape[1], bool)
+    coef = np.zeros(T.shape[1])
+    for _ in range(50):
+        coef[:] = 0
+        if keep.any():
+            A = T[:, keep]
+            coef[keep] = np.linalg.solve(A.T @ A + 1e-6 * len(A) * np.eye(A.shape[1]), A.T @ ys)
+        new = keep.copy()
+        for g in dict.fromkeys(groups):
+            cols = (groups == g) & keep
+            if not cols.any():
+                continue
+            if g not in always and np.linalg.norm(coef[cols]) < threshold:
+                new[groups == g] = False
+            else:
+                new[cols & ~base & (np.abs(coef) < threshold / 2)] = False
+        if (new == keep).all():
+            break
+        keep = new
+    coef[~keep] = 0
+    return coef / scale * ysd
+
+
+def compart_step(comp: dict, key, A10, W10, H10, H10_next, HW10, h0, R10, U):
+    """One rollout step of the compartment laws (docs/planning/13): returns alive, W and H_W (table
+    scales)."""
+    A, Wn, w, mF, mW = compart_derived(A10, W10, H10, HW10, h0)
+    d = np.maximum(H10 - H10_next, 0) * 10 / DT  # health loss, full units per second
+    rho = np.divide(R10, A10, out=np.zeros_like(A10), where=A10 > 1e-9)
+    use_hw = comp.get("use_hw", True)
+    rates = {}
+    for law, (names, c) in comp["laws"][key].items():
+        F = compart_features(law, d, w, Wn, mF, mW, rho, U, use_hw)
+        rates[law] = np.column_stack([F[k] for k in names]) @ c if names else np.zeros_like(d)
+    inflow, KW, KF = (np.maximum(rates[k], 0) for k in ("I", "KW", "KF"))
+    sig = np.clip(rates["sigma"], 0, 1)
+    none = Wn <= 1e-9
+    KW, sig = np.where(none, 0.0, KW), np.where(none, 0.0, sig)
+    A_new = np.where(H10_next <= 0, 0.0, np.maximum(A - DT * (KW + KF), 0))
+    W_new = np.clip(Wn + DT * (inflow - KW), 0, A_new)
+    HW_new = np.clip(10 * HW10 + DT * (-sig * d + inflow * 0.5 * h0), 0, 10 * H10_next)
+    HW_new = np.where(W_new <= 1e-9, 0.0, HW_new)
+    return A_new / 10, W_new / 10, HW_new / 10
 
 
 class Pipeline:
@@ -441,6 +608,12 @@ class Pipeline:
         tt, L = self.L.types, self.L
         X, S, F, U = B["X0"].astype(float).copy(), B["shape0"].astype(float).copy(), B["front0"], B["U"]
         extra = getattr(self, "intent_extra", None)  # exploratory variant, docs/planning/06_intent_variant.md
+        spread = None  # exploratory spread state per side and type, in the reach / front column order
+        if getattr(self, "spread_model", None) is not None:
+            spread = np.clip(B["spread0"].astype(float).copy(), 0.05, 1)
+        comp = getattr(self, "compart_model", None)  # exploratory, docs/planning/13_compartment_plan.md
+        if comp is not None:  # wounded units / 10 and their health (ten full units), reach / front order
+            Wc, HWc, h0c = (B[k].astype(float).copy() for k in ("W0", "HW0", "h00"))
         sh0 = self._shares(X, S, F)
         offset = {}
         for (s, a), v in sh0.items():
@@ -451,10 +624,13 @@ class Pipeline:
         for n in range(U.shape[1]):
             u = U[:, n]
             wd, focus = u[:, 2], u[:, 3]
+            if comp is not None:  # wounded shares for equations that use them (models/discovered.py)
+                self._ctx = compart_context(L, X, Wc, u)
             sh = self._shares(X, S, F)
             R = {k: X[:, L.idx("alive", *k)] * np.clip(sh[k] + offset[k] * np.exp(-n * DT), 0, 1) for k in sh}
             A = {(s, t): X[:, L.idx("alive", s, t)] for s in SIDES for t in tt}
             newX = X.copy()
+            new_spread = None if spread is None else spread.copy()
             for s in SIDES:
                 o = OTHER[s]
                 if len(tt) == 1:
@@ -483,8 +659,28 @@ class Pipeline:
                     h1 = np.maximum(h0 + DT * rate, 0)
                     ratio = np.divide(h1, h0, out=np.zeros_like(h1), where=h0 > 1e-9)
                     p, pf = self.p[(s, t)]
+                    expo = p + pf * focus
+                    if spread is not None:  # exploratory spread state (docs/planning/09_spread_state_plan.md)
+                        j = L.pos(s, t)
+                        sv, d = spread[:, j], X[:, -1]
+                        names, c = self.spread_model["alive"][(s, t)]
+                        Fa = spread_alive_features(sv, u, d)
+                        expo = np.column_stack([Fa[k] for k in names]) @ c
+                        rr = np.divide(h0 - h1, DT * h0, out=np.zeros_like(h1), where=h0 > 1e-9)
+                        names, c = self.spread_model["rate"][(s, t)]
+                        Fr = spread_rate_features(sv, rr, u, d)
+                        new_spread[:, j] = np.clip(
+                            sv + DT * np.column_stack([Fr[k] for k in names]) @ c, 0.05, 1
+                        )
                     newX[:, L.idx("health", s, t)] = h1
-                    newX[:, L.idx("alive", s, t)] = A[(s, t)] * ratio ** (p + pf * focus)
+                    newX[:, L.idx("alive", s, t)] = A[(s, t)] * ratio**expo
+                    if comp is not None:
+                        j = L.pos(s, t)
+                        a_new, w_new, hw_new = compart_step(
+                            comp, (s, t), A[(s, t)], Wc[:, j], h0, h1, HWc[:, j], h0c[:, j], R[(s, t)], u
+                        )
+                        newX[:, L.idx("alive", s, t)] = a_new
+                        Wc[:, j], HWc[:, j] = w_new, hw_new
             TX = L.team_view(X)
             reach_team = np.column_stack([sum(R[("blue", a)] for a in tt), sum(R[("red", a)] for a in tt)])
             Fd = self._dist_library(TX, u, S, reach_team)
@@ -499,5 +695,8 @@ class Pipeline:
                     S = shape_step(extra["shape"], TX[:, -1], S, u)
             newX[:, -1] = np.maximum(X[:, -1] + DT * dd, 0)
             X = newX
+            if spread is not None:
+                spread = new_spread
             out.append(X.copy())
+        self._ctx = None
         return np.stack(out, axis=1)

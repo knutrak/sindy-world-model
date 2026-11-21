@@ -118,3 +118,32 @@ def test_config_records_every_parameter():
             "danger_radius": 6.0,
         },
     }
+
+
+def test_stand_intent_never_moves_and_still_fights():
+    """Hold position (docs/planning/17): Blue units keep their place for the whole battle but shoot."""
+    import numpy as np
+
+    from sindy_wm.envs.episode_sampling import CloseBattleSampler
+    from sindy_wm.envs.intents import INTENTS, IntentPolicy
+    from sindy_wm.envs.scenarios import load_map_info, make_env, walkable_bounds
+
+    assert all(m != "stand" for m, _ in INTENTS)  # the existing intent sets are unchanged
+    s = CloseBattleSampler().sample(1, walkable_bounds(load_map_info("10m_vs_10m")))
+    for target in ("nearest", "focus"):
+        env = make_env("10m_vs_10m", step_mul=2, spawn=s.spawn, unit_counts=s.unit_counts)
+        env.reset(seed=1)
+        policy = IntentPolicy("stand", target)
+        policy.reset(1)
+        game = env.unwrapped
+        start = {k: u.pos.copy() for k, u in game.agents.items()}
+        attacks = 0
+        for _ in range(400):
+            actions = policy.act(env)
+            attacks += sum(a >= 6 for a in actions)
+            for k, u in game.agents.items():
+                assert np.linalg.norm(u.pos - start[k]) < 1e-6
+            _, _, terminated, truncated, _ = env.step(actions)
+            if terminated or truncated:
+                break
+        assert attacks > 0

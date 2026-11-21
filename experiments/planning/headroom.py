@@ -69,6 +69,10 @@ def make_policy(name: str, wd: float):
         return OraclePlannerPolicy(perturb=PERTURB, **kw)
     if name == "oracle-perturbed-reseed":
         return OraclePlannerPolicy(perturb=PERTURB, reseed=True, **kw)
+    if name == "oracle-stand":  # docs/planning/17: the five candidates plus hold position (stand)
+        from sindy_wm.envs.planner import CANDIDATES
+
+        return OraclePlannerPolicy(candidates=(*CANDIDATES, ("stand", "nearest"), ("stand", "focus")), **kw)
     if name == "oracle-survival":  # perturbed, optimising Blue units preserved (S4's natural objective)
         return OraclePlannerPolicy(perturb=PERTURB, objective="survival", **kw)
     raise ValueError(name)

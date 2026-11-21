@@ -35,11 +35,15 @@ FIRST_SEED = {"S1": 14_000_000, "S2": 14_100_000, "S3": 14_200_000, "S4": 14_300
 SMOKE_SEED = 19_700_000
 MODEL_OF = {"S1": "marines", "S2": "mixed", "S3": "mixed", "S4": "mixed", "S5": "mixed"}
 MODELS = A.DATA_DIR / "processed" / "final_exploration" / "generalisation_frozen.pkl"
+COMPART = A.OUT / "compart_models.pkl"  # docs/planning/13, fitted on train
+SPREAD = A.OUT / "spread_models.pkl"  # docs/planning/09, fitted on train
 VARIANTS = A.OUT / "intent_variants.pkl"  # focus cost c, f̄ per scenario (S1 marines, S2 mixed), from train
 POLICY_SETS = {
     "model": ["model:h3", "model:h2", "model:h4", "model-focuscost:h3"],
     "fixed": A.POLICY_SETS["fixed"],
     "oracle": ["oracle"],
+    "spread": ["model:h3", "spread:h3", "spread-focuscost:h3"],  # docs/planning/09, H6
+    "compart": ["model:h3", "compart:h3", "compart-focuscost:h3"],  # docs/planning/13, H5
 }
 _cache = {}
 
@@ -50,8 +54,19 @@ def planner(name: str, scen: str, wd: float) -> PipelinePlannerPolicy:
         _cache["variants"] = pickle.load(open(VARIANTS, "rb"))
     kind, h = name.split(":")
     m = _cache["models"][MODEL_OF[scen]]
-    if kind == "model-focuscost":
-        f = _cache["variants"]["S1" if MODEL_OF[scen] == "marines" else "S2"]
+    key = "S1" if MODEL_OF[scen] == "marines" else "S2"  # the fitted variants are per model
+    if kind.startswith("spread"):  # docs/planning/09_spread_state_plan.md
+        if "spread" not in _cache:
+            _cache["spread"] = pickle.load(open(SPREAD, "rb"))
+        m = copy.deepcopy(m)
+        m.spread_model = _cache["spread"][key]
+    if kind.startswith("compart"):  # docs/planning/13_compartment_plan.md
+        if "compart" not in _cache:
+            _cache["compart"] = pickle.load(open(COMPART, "rb"))
+        m = copy.deepcopy(m)
+        m.compart_model = {"laws": _cache["compart"][key]["compartments"], "use_hw": True}
+    if kind.endswith("focuscost"):
+        f = _cache["variants"][key]
         m = copy.deepcopy(m)
         m.focus_cost, m.focus_norm = f["c"], 1 - f["c"] * f["fbar"]
     return PipelinePlannerPolicy(m, commit_seconds=2.0, horizon_seconds=float(h[1:]), withdraw_radius=wd)
@@ -77,7 +92,8 @@ def play(job: tuple) -> dict:
         "red": sum(u.max_hp + u.max_shield for u in game.enemies.values()),
     }
     n0 = {"blue": len(game.agents), "red": len(game.enemies)}
-    policy = planner(name, scen, wd) if name.startswith("model") else A.make_policy(name, wd)
+    is_planner = name.startswith(("model", "spread", "compart"))
+    policy = planner(name, scen, wd) if is_planner else A.make_policy(name, wd)
     policy.reset(seed)
     t0, steps, won, chosen = time.time(), 0, False, {}
     while steps < max_s * 16 // A.STEP_MUL:
@@ -103,11 +119,13 @@ def play(job: tuple) -> dict:
         "exchange": (lost_r + 0.5) / (lost_b + 0.5),
         "n_blue": n0["blue"],
         "n_red": n0["red"],
+        "start_health_blue": float(s.start_health[0]),
+        "start_health_red": float(s.start_health[1]),
         "seconds": steps * A.STEP_MUL / 16,
         "wall_s": time.time() - t0,
         **{f"share_{k}": v / steps for k, v in chosen.items()},
     }
-    if name.startswith("model") and policy.log:
+    if is_planner and policy.log:
         S = np.array(policy.log)
         picks = S.argmax(1)
         top2 = np.sort(S, 1)[:, -2:]
@@ -121,10 +139,16 @@ def play(job: tuple) -> dict:
 
 
 def run(
-    scen: str, policies: list[str], n: int, workers: int, first: int | None = None, tag: str = ""
+    scen: str,
+    policies: list[str],
+    n: int,
+    workers: int,
+    first: int | None = None,
+    tag: str = "",
+    prefix: str = "phase_b_",
 ) -> None:
     A.OUT.mkdir(parents=True, exist_ok=True)
-    path = A.OUT / f"phase_b_{scen}{tag}.csv"
+    path = A.OUT / f"{prefix}{scen}{tag}.csv"
     done = set()
     if path.exists():
         old = pd.read_csv(path)
