@@ -121,9 +121,13 @@ def main() -> None:
                 thr = 0.05
                 go.append((obj, o, diff, lo, diff >= thr and lo > 0))
         decisions.append({"scenario": scen, "checks": go, "go": any(g[-1] for g in go)})
+        # an intent a battle never used is NaN in its row: count it as 0, or the mean runs over
+        # only the battles that used it and each row adds up to more than 1
+        share_cols = [c for c in t if c.startswith("share_") and c != "share_withdraw/focus"]
         shares = (
-            t[t.policy.str.startswith("oracle")]
-            .groupby("policy")[[c for c in t if c.startswith("share_")]]
+            t[t.policy.str.startswith("oracle")][["policy", *share_cols]]
+            .fillna(0.0)
+            .groupby("policy")[share_cols]
             .mean()
         )
         lines += ["Intent use by the oracles (share of steps):", "", md(shares.round(3)), ""]

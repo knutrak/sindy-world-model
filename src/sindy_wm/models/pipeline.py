@@ -41,6 +41,7 @@ from sindy_wm.models.intent_model import (
     _close_flee_gate,
     _close_gate,
     _family_cols,
+    _shape_library,
     add_controls,
     add_rates,
     derived_share,
@@ -192,6 +193,25 @@ def fit_gates(rows: pd.DataFrame, scale: float, skip=()) -> dict:
 def _alloc(pi, dfront, b):
     z = b[0] + b[1] * logit(np.clip(pi, 1e-4, 1 - 1e-4)) + b[2] * dfront
     return np.where(pi <= 0, 0.0, np.where(pi >= 1, 1.0, expit(z)))
+
+
+def intent_features(Fd: dict, TX: np.ndarray, U: np.ndarray) -> dict:
+    """Extra focus candidates for the distance equation (exploratory variant): focus split by contact, where
+    contact is the chance that at least one Blue unit has an enemy in reach (as in the movement library)."""
+    sb = np.clip(1 - Fd["walk_b"], 0, 1)
+    contact = 1 - (1 - sb) ** (10 * TX[:, 2])
+    f = U[:, 3] * (1 - U[:, 2])
+    return {"focus*contact": f * contact, "focus*far": f * (1 - contact)}
+
+
+def shape_step(shape_eq: dict, d: np.ndarray, S: np.ndarray, U: np.ndarray) -> np.ndarray:
+    """One step of the shape equations (exploratory variant): `shape_eq[j] = (names, coef)` for SHAPE
+    column j, on `_shape_library` (drift and relaxation per zone and movement)."""
+    S = S.copy()
+    for j, (names, c) in shape_eq.items():
+        F = _shape_library(d, S[:, j], U)
+        S[:, j] = np.maximum(S[:, j] + DT * np.column_stack([F[k] for k in names]) @ c, 0)
+    return S
 
 
 class Pipeline:
@@ -419,7 +439,8 @@ class Pipeline:
     def rollout(self, B: dict) -> np.ndarray:
         """Typed trajectories (N, steps+1, 4n+1); `self.L.team_view` gives the team view."""
         tt, L = self.L.types, self.L
-        X, S, F, U = B["X0"].astype(float).copy(), B["shape0"], B["front0"], B["U"]
+        X, S, F, U = B["X0"].astype(float).copy(), B["shape0"].astype(float).copy(), B["front0"], B["U"]
+        extra = getattr(self, "intent_extra", None)  # exploratory variant, docs/planning/06_intent_variant.md
         sh0 = self._shares(X, S, F)
         offset = {}
         for (s, a), v in sh0.items():
@@ -448,6 +469,11 @@ class Pipeline:
                         on1 = _alloc(pi, dfront, self.alloc_b[(o, a)]) if self.alloc == "closure" else pi
                         sig[(a, t1)], sig[(a, t0)] = on1, 1 - on1
                 R_o = {a: R[(o, a)] for a in tt}
+                if o == "blue" and getattr(self, "focus_cost", 0.0):
+                    # exploratory variant (docs/planning/04_focus_variant.md): under focus, fewer Blue units
+                    # with an enemy in reach have their own target in reach; `focus_norm` keeps the train mean
+                    scale = (1 - self.focus_cost * focus) / getattr(self, "focus_norm", 1.0)
+                    R_o = {a: v * scale for a, v in R_o.items()}
                 A_o = {a: A[(o, a)] for a in tt}
                 for t in tt:
                     terms = self._terms(R_o, sig, A_o, wd, o, t)
@@ -463,7 +489,15 @@ class Pipeline:
             reach_team = np.column_stack([sum(R[("blue", a)] for a in tt), sum(R[("red", a)] for a in tt)])
             Fd = self._dist_library(TX, u, S, reach_team)
             theta = np.column_stack([Fd[k] for k in self.dist_names])
-            newX[:, -1] = np.maximum(X[:, -1] + DT * theta @ self.dist_coef, 0)
+            dd = theta @ self.dist_coef
+            if extra:
+                G = intent_features(Fd, TX, u)
+                if extra.get("dist"):
+                    names, c = extra["dist"]
+                    dd = dd + np.column_stack([G[k] for k in names]) @ c
+                if extra.get("shape"):
+                    S = shape_step(extra["shape"], TX[:, -1], S, u)
+            newX[:, -1] = np.maximum(X[:, -1] + DT * dd, 0)
             X = newX
             out.append(X.copy())
         return np.stack(out, axis=1)

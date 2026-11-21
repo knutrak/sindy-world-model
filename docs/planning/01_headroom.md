@@ -45,10 +45,10 @@ random                  0.598   0.048           0.253         0.134
 Intent use by the oracles (share of steps):
 
 ```
-                  share_advance/nearest  share_advance/focus  share_hold/nearest  share_hold/focus  share_withdraw/nearest  share_withdraw/focus
-policy                                                                                                                                          
-oracle                            0.459                0.350               0.137             0.125                   0.282                   NaN
-oracle-perturbed                  0.211                0.255               0.227             0.229                   0.268                   NaN
+                  share_advance/nearest  share_advance/focus  share_hold/nearest  share_hold/focus  share_withdraw/nearest
+policy                                                                                                                    
+oracle                            0.457                0.306               0.033             0.018                   0.186
+oracle-perturbed                  0.186                0.236               0.196             0.201                   0.181
 ```
 
 ## S2
@@ -72,10 +72,10 @@ random                  0.598   0.053           0.243         0.162
 Intent use by the oracles (share of steps):
 
 ```
-                  share_advance/nearest  share_advance/focus  share_hold/nearest  share_hold/focus  share_withdraw/nearest  share_withdraw/focus
-policy                                                                                                                                          
-oracle                            0.512                0.306               0.137             0.083                   0.194                   NaN
-oracle-perturbed                  0.208                0.236               0.201             0.237                   0.189                   NaN
+                  share_advance/nearest  share_advance/focus  share_hold/nearest  share_hold/focus  share_withdraw/nearest
+policy                                                                                                                    
+oracle                            0.512                0.289               0.029             0.009                   0.161
+oracle-perturbed                  0.194                0.228               0.193             0.230                   0.156
 ```
 
 ## S3
@@ -99,10 +99,10 @@ random                  0.668   0.104           0.384         0.938
 Intent use by the oracles (share of steps):
 
 ```
-                  share_advance/nearest  share_advance/focus  share_hold/nearest  share_hold/focus  share_withdraw/nearest  share_withdraw/focus
-policy                                                                                                                                          
-oracle                            0.456                0.263               0.134             0.065                   0.253                   NaN
-oracle-perturbed                  0.177                0.204               0.188             0.204                   0.266                   NaN
+                  share_advance/nearest  share_advance/focus  share_hold/nearest  share_hold/focus  share_withdraw/nearest
+policy                                                                                                                    
+oracle                            0.456                0.240               0.056             0.010                   0.237
+oracle-perturbed                  0.172                0.194               0.177             0.199                   0.258
 ```
 
 ## S4
@@ -127,11 +127,11 @@ random                  0.115  -0.263           0.038        -0.548
 Intent use by the oracles (share of steps):
 
 ```
-                  share_advance/nearest  share_advance/focus  share_hold/nearest  share_hold/focus  share_withdraw/nearest  share_withdraw/focus
-policy                                                                                                                                          
-oracle                            0.502                0.248               0.127             0.072                   0.237                   NaN
-oracle-perturbed                  0.214                0.194               0.213             0.194                   0.244                   NaN
-oracle-survival                   0.156                0.140               0.212             0.199                   0.331                   NaN
+                  share_advance/nearest  share_advance/focus  share_hold/nearest  share_hold/focus  share_withdraw/nearest
+policy                                                                                                                    
+oracle                            0.502                0.233               0.045             0.013                   0.207
+oracle-perturbed                  0.207                0.185               0.208             0.183                   0.217
+oracle-survival                   0.153                0.134               0.209             0.192                   0.311
 ```
 
 ## S5
@@ -155,10 +155,10 @@ random                  0.558   0.060           0.317         0.190
 Intent use by the oracles (share of steps):
 
 ```
-                  share_advance/nearest  share_advance/focus  share_hold/nearest  share_hold/focus  share_withdraw/nearest  share_withdraw/focus
-policy                                                                                                                                          
-oracle                            0.492                0.298               0.138             0.084                   0.206                   NaN
-oracle-perturbed                  0.221                0.229               0.211             0.224                   0.206                   NaN
+                  share_advance/nearest  share_advance/focus  share_hold/nearest  share_hold/focus  share_withdraw/nearest
+policy                                                                                                                    
+oracle                            0.492                0.281               0.036             0.013                   0.177
+oracle-perturbed                  0.202                0.215               0.196             0.213                   0.174
 ```
 
 ## Headroom per scenario and objective
