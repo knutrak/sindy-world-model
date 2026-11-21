@@ -122,3 +122,9 @@ In the scenarios that pass:
   seeds per scenario would take about 3.5 h, so as planned the **oracles use 200 seeds per scenario** (about 1.8 h).
   The fixed intents and random switching keep 400 seeds. Every comparison with an oracle is paired on the oracle's
   200 seeds.
+
+## Deviation found after the run (21 Nov)
+
+The perturbed copies were meant to get their own random seed. The code perturbs positions and health only, so
+the copies kept the real game's stream for SMAClite's per-tick unit-order shuffle. A check with own streams on
+100 paired seeds in S1 and S3 found no consistent difference (`01_headroom.md`, notes); the results stand.

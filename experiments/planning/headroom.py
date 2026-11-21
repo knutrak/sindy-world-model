@@ -53,6 +53,7 @@ POLICY_SETS = {
     "fixed": [f"fixed:{m}/{t}" for m, t in INTENTS] + ["random"],
     "oracle": ["oracle", "oracle-perturbed"],
     "survival": ["oracle-survival"],
+    "reseed": ["oracle-perturbed-reseed"],  # check: copies with their own unit-order shuffle stream
 }
 
 
@@ -66,6 +67,8 @@ def make_policy(name: str, wd: float):
         return OraclePlannerPolicy(**kw)
     if name == "oracle-perturbed":
         return OraclePlannerPolicy(perturb=PERTURB, **kw)
+    if name == "oracle-perturbed-reseed":
+        return OraclePlannerPolicy(perturb=PERTURB, reseed=True, **kw)
     if name == "oracle-survival":  # perturbed, optimising Blue units preserved (S4's natural objective)
         return OraclePlannerPolicy(perturb=PERTURB, objective="survival", **kw)
     raise ValueError(name)
@@ -123,9 +126,9 @@ def play(job: tuple) -> dict:
     }
 
 
-def run(scen: str, policies: list[str], n: int, workers: int) -> pd.DataFrame:
+def run(scen: str, policies: list[str], n: int, workers: int, tag: str = "") -> pd.DataFrame:
     OUT.mkdir(parents=True, exist_ok=True)
-    path = OUT / f"headroom_{scen}.csv"
+    path = OUT / f"headroom_{scen}{tag}.csv"
     done = set()
     if path.exists():
         old = pd.read_csv(path)
@@ -148,6 +151,7 @@ def main() -> None:
     parser.add_argument("--n", type=int, default=400)
     parser.add_argument("--policies", nargs="+", default=["fixed"])
     parser.add_argument("--workers", type=int, default=9)
+    parser.add_argument("--tag", default="", help="suffix for the output file, e.g. _reseed")
     parser.add_argument("--ratios", type=float, nargs="+", default=[1.5, 2.0, 2.5, 3.0], help="calibrate")
     args = parser.parse_args()
     if args.what == "calibrate":
@@ -177,7 +181,7 @@ def main() -> None:
         print(res.groupby("policy")[["wall_s", "seconds"]].describe().round(2).to_string())
     else:
         policies = [p for key in args.policies for p in POLICY_SETS.get(key, [key])]
-        t = run(args.scenario, policies, args.n, args.workers)
+        t = run(args.scenario, policies, args.n, args.workers, args.tag)
         print(
             t.groupby("policy")[["won", "margin", "blue_preserved", "exchange"]].mean().round(3).to_string()
         )

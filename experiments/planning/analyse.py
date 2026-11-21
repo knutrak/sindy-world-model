@@ -56,12 +56,18 @@ def main() -> None:
         "- **The survival oracle cannot value a sustained withdraw:** each candidate is played for 2 s, then",
         "  advance/nearest to the 8 s horizon, so withdrawing only ever looks like a 2 s delay. Its O3 check",
         "  below says little about how much a survival-minded planner could gain.",
+        "- **Deviation from the plan, checked.** The plan gave each perturbed copy its own random seed; the code",
+        "  only perturbed positions and health, so copies shared the real game's stream for SMAClite's per-tick",
+        "  unit-order shuffle (its only in-battle randomness). Rerun with own streams (`reseed=True`, 100 paired",
+        "  seeds, `reseed_check.py`): win change S1 −0.07 [−0.15, +0.01], S3 +0.05 [+0.01, +0.10]; margin within",
+        "  ±0.013, intervals across 0. No consistent extra foresight; headroom over the best fixed intent stays",
+        "  +0.11 [+0.02, +0.19] (S1) and +0.47 [+0.38, +0.57] (S3) on win. The results below are kept as run.",
         "- **Withdraw ignores the target rule,** so the oracles have five distinct candidates; withdraw is",
         "  logged as withdraw/nearest.",
         "",
     ]
     summary, decisions = [], []
-    for path in sorted(IN.glob("headroom_S*.csv")):
+    for path in sorted(IN.glob("headroom_S[0-9].csv")):
         t = pd.read_csv(path)
         assert not t.duplicated(["seed", "policy"]).any(), f"duplicate rows in {path}"
         scen = t["scenario"].iloc[0]

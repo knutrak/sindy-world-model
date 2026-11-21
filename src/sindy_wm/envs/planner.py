@@ -119,6 +119,8 @@ class OraclePlannerPolicy(Policy):
             Separates choosing well from knowing the future exactly.
         objective: "margin" (Blue minus Red health, hp + shield) or "survival" (Blue units alive,
             the margin as a tie-breaker).
+        reseed: give each copy its own stream for SMAClite's per-tick unit-order shuffle (its only
+            in-battle randomness), so the copies do not share the real game's future order.
     """
 
     def __init__(
@@ -130,6 +132,7 @@ class OraclePlannerPolicy(Policy):
         withdraw_radius: float = 7.0,
         perturb: tuple[float, float] | None = None,
         objective: str = "margin",
+        reseed: bool = False,
     ):
         self.replan_seconds, self.commit_seconds, self.horizon_seconds = (
             replan_seconds,
@@ -140,6 +143,7 @@ class OraclePlannerPolicy(Policy):
         if objective not in ("margin", "survival"):
             raise ValueError(objective)
         self.withdraw_radius, self.perturb, self.objective = withdraw_radius, perturb, objective
+        self.reseed = reseed
 
     def params(self) -> dict:
         return {
@@ -150,6 +154,7 @@ class OraclePlannerPolicy(Policy):
             "withdraw_radius": self.withdraw_radius,
             "perturb": None if self.perturb is None else list(self.perturb),
             "objective": self.objective,
+            "reseed": self.reseed,
         }
 
     def reset(self, seed: int | None = None) -> None:
@@ -181,6 +186,8 @@ class OraclePlannerPolicy(Policy):
         sim = copy.deepcopy(env)
         if self.perturb is not None:
             self._perturb(sim.unwrapped)
+        if self.reseed:
+            sim.unwrapped._np_random = np.random.default_rng(self._noise.integers(2**63))
         commit, steps = (
             round(self.commit_seconds / env.seconds_per_step),
             round(self.horizon_seconds / env.seconds_per_step),
