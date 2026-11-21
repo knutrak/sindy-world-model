@@ -1,6 +1,6 @@
-# How much can planning gain, and where? Headroom test (plan, draft 21 Nov 2026)
+# How much can planning gain, and where? Headroom test (plan, 20 Nov 2026)
 
-**Status: draft for Knut's approval. Nothing collected or run.**
+**Status: approved 20 Nov; Phase A run 20-21 Nov, results in `01_headroom.md`. Phase B not approved yet.**
 
 ## Why
 
@@ -113,7 +113,7 @@ In the scenarios that pass:
 | P2 | The perturbation sizes (positions ± 0.2, health ± 5%) | keep; report one larger setting (± 0.5, ± 10%) as a sensitivity check if time allows |
 | P3 | The go / no-go threshold of 5 points | keep |
 
-## Updates before running (21 Nov)
+## Updates before running (20 Nov)
 
 - **Approved** by Knut as recommended (P1 all five scenarios, P2 ± 0.2 / ± 5%, P3 5 points).
 - **S3 calibration** (Blue marauders vs Red marines, advance/nearest, 100-200 battles each): 1.5 marines per marauder →
