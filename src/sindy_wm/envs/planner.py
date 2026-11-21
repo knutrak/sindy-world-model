@@ -103,6 +103,114 @@ class ModelPlannerPolicy(Policy):
         return {"movement": self._current.movement, "target": self._current.target}
 
 
+def typed_batch_from_row(row, L, U: np.ndarray) -> dict:
+    """A `Pipeline.rollout` batch: one per-type state row (`states.typed.typed_states` columns), repeated
+    once per control sequence in U (n, steps, 4)."""
+    n = len(U)
+
+    def rep(cols, fill=None):
+        v = np.array([[float(row[c]) for c in cols]], float)
+        if fill is not None:
+            v = np.nan_to_num(v, nan=fill)
+        return np.repeat(v, n, 0)
+
+    return {
+        "X0": rep(L.x_cols),
+        "shape0": rep(SHAPE, 0.0),
+        "front0": rep(L.front_cols, 0.0),
+        "reach0": rep(L.r_cols),
+        "U": U,
+    }
+
+
+class PipelinePlannerPolicy(Policy):
+    """Chooses among `candidates` with a frozen `models.pipeline.Pipeline` (docs/planning/07_phase_b_plan.md).
+
+    Every `replan_seconds` it reads the per-type state from the live game (one snapshot -> `typed_states`,
+    reach capped at the model's `max_reach`), rolls the model forward once per candidate (the candidate for
+    `commit_seconds`, then advance/nearest to `horizon_seconds`), and plays the candidate with the best
+    predicted health margin (Blue − Red, team view) at the horizon. `log` keeps the scores of every re-plan.
+    """
+
+    def __init__(
+        self,
+        model,
+        replan_seconds: float = 1.0,
+        commit_seconds: float = 2.0,
+        horizon_seconds: float = 3.0,
+        withdraw_radius: float = 7.0,
+        candidates=CANDIDATES,
+    ):
+        self.model = model
+        self.replan_seconds, self.commit_seconds, self.horizon_seconds = (
+            replan_seconds,
+            commit_seconds,
+            horizon_seconds,
+        )
+        self.withdraw_radius = withdraw_radius
+        self.candidates = tuple(candidates)
+        self.types = tuple(t.upper() for t in model.L.types)
+        steps, commit = round(horizon_seconds / DT), round(commit_seconds / DT)
+        default = control_vector("advance", "nearest")
+        self._U = np.stack([np.repeat(default[None], steps, 0) for _ in self.candidates])
+        for j, intent in enumerate(self.candidates):
+            self._U[j, :commit] = control_vector(*intent)
+
+    def params(self) -> dict:
+        return {
+            "replan_seconds": self.replan_seconds,
+            "commit_seconds": self.commit_seconds,
+            "horizon_seconds": self.horizon_seconds,
+            "withdraw_radius": self.withdraw_radius,
+            "candidates": [list(c) for c in self.candidates],
+        }
+
+    def reset(self, seed: int | None = None) -> None:
+        super().reset(seed)
+        self._step = 0
+        self._logger = None
+        self._current = IntentPolicy(*self.candidates[0], withdraw_radius=self.withdraw_radius)
+        self.log = []
+
+    def live_state(self, env):
+        """The per-type state row of the live game (the roster is recorded on the first call, at step 0)."""
+        from sindy_wm.envs.smaclite_snapshot import SnapshotLogger
+        from sindy_wm.states.typed import typed_states
+
+        if self._logger is None:
+            self._logger = SnapshotLogger(env)
+            snap = self._logger.start_episode()
+        else:
+            snap = self._logger.snapshot(step=0)
+        return typed_states(snap, self.types, max_reach=self.model.max_reach).iloc[0]
+
+    def predict(self, env) -> np.ndarray:
+        """Predicted health margin at the horizon for each candidate, from the live game's state."""
+        B = typed_batch_from_row(self.live_state(env), self.model.L, self._U)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            Y = self.model.L.team_view(self.model.rollout(B))
+        return Y[:, -1, 0] - Y[:, -1, 1]
+
+    def act(self, env: gym.Env) -> list[int]:
+        game = env.unwrapped
+        if self._logger is None:
+            self.live_state(env)  # record the roster while every unit is alive
+        if (
+            self._step % max(1, round(self.replan_seconds / env.seconds_per_step)) == 0
+            and game.agents
+            and game.enemies
+        ):
+            scores = self.predict(env)
+            best = int(np.argmax(scores))
+            self.log.append(scores)
+            self._current = IntentPolicy(*self.candidates[best], withdraw_radius=self.withdraw_radius)
+        self._step += 1
+        return self._current.act(env)
+
+    def setting(self) -> dict:
+        return {"movement": self._current.movement, "target": self._current.target}
+
+
 class OraclePlannerPolicy(Policy):
     """The same planning scheme with the *real simulator* as the world model: an upper bound.
 
