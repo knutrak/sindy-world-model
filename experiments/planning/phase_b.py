@@ -69,6 +69,27 @@ def planner(name: str, scen: str, wd: float) -> PipelinePlannerPolicy:
         f = _cache["variants"][key]
         m = copy.deepcopy(m)
         m.focus_cost, m.focus_norm = f["c"], 1 - f["c"] * f["fbar"]
+    if kind == "wfire":  # docs/planning/25: Blue keeps this share of its fire while withdrawing (train)
+        m = copy.deepcopy(m)
+        m.withdraw_fire = {"marines": 0.093, "mixed": 0.127}[MODEL_OF[scen]]
+    if kind == "terminal":  # docs/planning/25: score by the projected final margin
+        from sindy_wm.envs.planner import team_firepower
+
+        p = PipelinePlannerPolicy(m, commit_seconds=2.0, horizon_seconds=float(h[1:]), withdraw_radius=wd)
+        p.terminal = team_firepower(m)
+        return p
+    if kind == "gated":  # docs/planning/22: default = Phase A's best fixed intent, tau per model
+        import json
+
+        from analyse_phase_b import BEST_FIXED
+
+        from sindy_wm.envs.planner import GatedPlannerPolicy
+
+        tau = json.load(open(A.OUT / "gated_tau.json"))[MODEL_OF[scen]]["tau"]
+        default = tuple(BEST_FIXED[scen].removeprefix("fixed:").split("/"))
+        return GatedPlannerPolicy(
+            m, default=default, tau=tau, commit_seconds=2.0, horizon_seconds=float(h[1:]), withdraw_radius=wd
+        )
     return PipelinePlannerPolicy(m, commit_seconds=2.0, horizon_seconds=float(h[1:]), withdraw_radius=wd)
 
 
@@ -92,7 +113,7 @@ def play(job: tuple) -> dict:
         "red": sum(u.max_hp + u.max_shield for u in game.enemies.values()),
     }
     n0 = {"blue": len(game.agents), "red": len(game.enemies)}
-    is_planner = name.startswith(("model", "spread", "compart"))
+    is_planner = name.startswith(("model", "spread", "compart", "gated", "wfire", "terminal"))
     policy = planner(name, scen, wd) if is_planner else A.make_policy(name, wd)
     policy.reset(seed)
     t0, steps, won, chosen = time.time(), 0, False, {}
@@ -125,6 +146,8 @@ def play(job: tuple) -> dict:
         "wall_s": time.time() - t0,
         **{f"share_{k}": v / steps for k, v in chosen.items()},
     }
+    if hasattr(policy, "deviations") and policy.log:
+        row["deviate_share"] = policy.deviations / len(policy.log)
     if is_planner and policy.log:
         S = np.array(policy.log)
         picks = S.argmax(1)

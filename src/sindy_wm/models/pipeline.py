@@ -438,7 +438,8 @@ class Pipeline:
         L = {}
         blue_rule = o == "blue" and self.withdraw == "rule"
         for a in self.L.types:
-            R = R_o[a] * (1 - wd) if blue_rule else R_o[a]
+            # withdraw_fire (exploratory, docs/planning/25): the share of Blue's fire kept while withdrawing
+            R = R_o[a] * (1 - wd * (1 - getattr(self, "withdraw_fire", 0.0))) if blue_rule else R_o[a]
             for t2 in self.L.types:
                 L[f"R[{a}]*s[{t2}]"] = R * sig[(a, t2)]
             if o == "blue" and self.withdraw == "fitted":
@@ -624,6 +625,8 @@ class Pipeline:
         for n in range(U.shape[1]):
             u = U[:, n]
             wd, focus = u[:, 2], u[:, 3]
+            if "shape_traj" in B:  # diagnostic (docs/planning/24): the true formation shape at every step
+                S = np.nan_to_num(B["shape_traj"][:, min(n, B["shape_traj"].shape[1] - 1)])
             if comp is not None:  # wounded shares for equations that use them (models/discovered.py)
                 self._ctx = compart_context(L, X, Wc, u)
             sh = self._shares(X, S, F)

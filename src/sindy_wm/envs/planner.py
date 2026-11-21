@@ -123,6 +123,32 @@ def typed_batch_from_row(row, L, U: np.ndarray) -> dict:
     }
 
 
+def lanchester_value(Z: np.ndarray, k_blue: float, k_red: float) -> np.ndarray:
+    """Square-law projection of the final margin from a team-view state Z (..., [H_B, H_R, A_B, A_R, d]):
+    strengths S = k A H; the stronger side keeps H sqrt(1 - S_weak / S_strong) (docs/planning/25)."""
+    hb, hr, ab, ar = Z[..., 0], Z[..., 1], Z[..., 2], Z[..., 3]
+    sb, sr = k_blue * ab * hb, k_red * ar * hr
+    with np.errstate(invalid="ignore", divide="ignore"):
+        blue = hb * np.sqrt(np.clip(1 - np.divide(sr, sb, out=np.ones_like(sb), where=sb > 0), 0, 1))
+        red = hr * np.sqrt(np.clip(1 - np.divide(sb, sr, out=np.ones_like(sr), where=sr > 0), 0, 1))
+    return blue - red
+
+
+def team_firepower(model) -> tuple[float, float]:
+    """k_blue, k_red: the mean reach coefficient in the other side's health equations (docs/planning/25)."""
+    out = {}
+    for side, target in (("blue", "red"), ("red", "blue")):
+        vals = [
+            abs(v)
+            for (s, _), c in model.coef.items()
+            if s == target
+            for k, v in c.items()
+            if v and k.startswith("R[")
+        ]
+        out[side] = float(np.mean(vals)) if vals else 0.0
+    return out["blue"], out["red"]
+
+
 class PipelinePlannerPolicy(Policy):
     """Chooses among `candidates` with a frozen `models.pipeline.Pipeline` (docs/planning/07_phase_b_plan.md).
 
@@ -223,6 +249,8 @@ class PipelinePlannerPolicy(Policy):
                 B[k] = np.repeat(v[None], len(self._U), 0)
         with np.errstate(invalid="ignore", divide="ignore"):
             Y = self.model.L.team_view(self.model.rollout(B))
+        if getattr(self, "terminal", None) is not None:  # docs/planning/25: projected final margin
+            return lanchester_value(Y[:, -1], *self.terminal)
         return Y[:, -1, 0] - Y[:, -1, 1]
 
     def act(self, env: gym.Env) -> list[int]:
@@ -243,6 +271,44 @@ class PipelinePlannerPolicy(Policy):
 
     def setting(self) -> dict:
         return {"movement": self._current.movement, "target": self._current.target}
+
+
+class GatedPlannerPolicy(PipelinePlannerPolicy):
+    """`PipelinePlannerPolicy` that plays a default intent unless the model predicts another candidate
+    beats it by
+    more than `tau` (docs/planning/22_gated_planner_plan.md). `deviations` counts the re-plans off the
+    default."""
+
+    def __init__(self, model, default=("hold", "focus"), tau: float = 0.0, **kw):
+        super().__init__(model, **kw)
+        self.default, self.tau = tuple(default), float(tau)
+        self._d = self.candidates.index(self.default)
+
+    def params(self) -> dict:
+        return super().params() | {"default": list(self.default), "tau": self.tau}
+
+    def reset(self, seed: int | None = None) -> None:
+        super().reset(seed)
+        self.deviations = 0
+        self._current = IntentPolicy(*self.default, withdraw_radius=self.withdraw_radius)
+
+    def act(self, env: gym.Env) -> list[int]:
+        game = env.unwrapped
+        if self._logger is None:
+            self.live_state(env)
+        if (
+            self._step % max(1, round(self.replan_seconds / env.seconds_per_step)) == 0
+            and game.agents
+            and game.enemies
+        ):
+            scores = self.predict(env)
+            self.log.append(scores)
+            best = int(np.argmax(scores))
+            pick = best if scores[best] - scores[self._d] > self.tau else self._d
+            self.deviations += int(pick != self._d)
+            self._current = IntentPolicy(*self.candidates[pick], withdraw_radius=self.withdraw_radius)
+        self._step += 1
+        return self._current.act(env)
 
 
 class OraclePlannerPolicy(Policy):
@@ -275,6 +341,7 @@ class OraclePlannerPolicy(Policy):
         perturb: tuple[float, float] | None = None,
         objective: str = "margin",
         reseed: bool = False,
+        shared_noise: bool = False,
     ):
         self.replan_seconds, self.commit_seconds, self.horizon_seconds = (
             replan_seconds,
@@ -286,6 +353,9 @@ class OraclePlannerPolicy(Policy):
             raise ValueError(objective)
         self.withdraw_radius, self.perturb, self.objective = withdraw_radius, perturb, objective
         self.reseed = reseed
+        # one perturbation draw per re-plan, applied to every candidate's copy (as a model's error is shared
+        # by the candidates it compares); by default each copy gets its own draw
+        self.shared_noise = shared_noise
 
     def params(self) -> dict:
         return {
@@ -297,6 +367,7 @@ class OraclePlannerPolicy(Policy):
             "perturb": None if self.perturb is None else list(self.perturb),
             "objective": self.objective,
             "reseed": self.reseed,
+            "shared_noise": self.shared_noise,
         }
 
     def reset(self, seed: int | None = None) -> None:
@@ -304,6 +375,7 @@ class OraclePlannerPolicy(Policy):
         self._step = 0
         self._current = IntentPolicy(*self.candidates[0], withdraw_radius=self.withdraw_radius)
         self._noise = np.random.default_rng(None if seed is None else [seed, 7])
+        self.score_log, self._draw = [], None
 
     def _score(self, game) -> float:
         if self.objective == "survival":
@@ -312,9 +384,24 @@ class OraclePlannerPolicy(Policy):
 
     def _perturb(self, game) -> None:
         dpos, dhp = self.perturb
-        for unit in [*game.agents.values(), *game.enemies.values()]:
-            unit.pos = unit.pos + self._noise.uniform(-dpos, dpos, 2)
-            unit.hp = float(np.clip(unit.hp * (1 + self._noise.uniform(-dhp, dhp)), 1.0, unit.max_hp))
+        draw = self._draw if self.shared_noise else None
+        units = [
+            *(("a", k, u) for k, u in game.agents.items()),
+            *(("e", k, u) for k, u in game.enemies.items()),
+        ]
+        for side, k, unit in units:
+            if draw is not None:
+                shift, scale = draw[(side, k)]
+            else:
+                shift, scale = self._noise.uniform(-dpos, dpos, 2), self._noise.uniform(-dhp, dhp)
+            unit.pos = unit.pos + shift
+            unit.hp = float(np.clip(unit.hp * (1 + scale), 1.0, unit.max_hp))
+
+    def _new_draw(self, game) -> None:
+        """One shared perturbation per unit for this re-plan (shared_noise)."""
+        dpos, dhp = self.perturb
+        keys = [*(("a", k) for k in game.agents), *(("e", k) for k in game.enemies)]
+        self._draw = {k: (self._noise.uniform(-dpos, dpos, 2), self._noise.uniform(-dhp, dhp)) for k in keys}
 
     @staticmethod
     def _margin(game) -> float:
@@ -349,7 +436,10 @@ class OraclePlannerPolicy(Policy):
             and game.agents
             and game.enemies
         ):
+            if self.perturb is not None and self.shared_noise:
+                self._new_draw(game)
             scores = [self._lookahead(env, intent) for intent in self.candidates]
+            self.score_log.append(scores)
             best = self.candidates[int(np.argmax(scores))]
             self._current = IntentPolicy(*best, withdraw_radius=self.withdraw_radius)
         self._step += 1

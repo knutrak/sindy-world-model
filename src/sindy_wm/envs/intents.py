@@ -7,6 +7,8 @@ An intent is a (movement, target) pair that the whole Blue team follows:
                          enemy in range, every unit closes in and fights (as advance)
                withdraw  walk away from any enemy closer than `withdraw_radius`
                          (and so don't shoot); stand still once out of danger
+               kite      (22 Nov, docs/planning/26) shoot when the weapon is ready, step away from the
+                         nearest enemy while it reloads, advance with nothing in range
                stand     hold position (21 Nov, docs/planning/17): never move; shoot only enemies
                          inside the unit's own attack range (an attack order on a target that is
                          offered but out of range would make the unit walk), else stand still.
@@ -37,7 +39,7 @@ from sindy_wm.envs.policies import (
 )
 
 MOVEMENTS = ("advance", "hold", "withdraw")
-EXTRA_MOVEMENTS = ("stand",)  # accepted by IntentPolicy, not part of INTENTS
+EXTRA_MOVEMENTS = ("stand", "kite")  # accepted by IntentPolicy, not part of INTENTS
 TARGETS = ("nearest", "focus")
 INTENTS = tuple(product(MOVEMENTS, TARGETS))  # all six (movement, target) pairs
 
@@ -88,6 +90,8 @@ class IntentPolicy(TargetChoicePolicy):
                 # cornered: fight (falls through to the shooting rule)
         if self.movement == "stand":
             return self._stand_action(game, unit, mask, focus)
+        if self.movement == "kite":
+            return self._kite_action(game, unit, mask, focus)
         in_range = mask[FIRST_TARGET:].any()
         if in_range or self.movement == "advance" or (self.movement == "hold" and self._contact):
             return self._unit_action(game, unit, mask, focus)
@@ -107,6 +111,23 @@ class IntentPolicy(TargetChoicePolicy):
         else:
             k = min(reach, key=lambda k: np.linalg.norm(game.enemies[k].pos - unit.pos))
         return FIRST_TARGET + k
+
+    def _kite_action(self, game, unit, mask: np.ndarray, focus: int | None) -> int:
+        """Kite (docs/planning/26): with an enemy inside the unit's own range, shoot when the weapon is ready
+        (by the target rule) and step away from the nearest enemy while it reloads; otherwise advance."""
+        offered = np.flatnonzero(mask[FIRST_TARGET:])
+        reach = [int(k) for k in offered if unit.has_within_attack_range(game.enemies[int(k)])]
+        if not reach:
+            return self._unit_action(game, unit, mask, focus)
+        if unit.cooldown > KITE_READY:
+            enemy = _nearest(game.enemies.values(), unit.pos)
+            move = _move_along(unit.pos - enemy.pos, mask)
+            if move != STOP:
+                return move
+        return self._stand_action(game, unit, mask, focus)
+
+
+KITE_READY = 0.125  # seconds of cooldown left at which a kiting unit turns to fire (one step)
 
 
 class IntentSchedule(Policy):

@@ -17,6 +17,7 @@ from multiprocessing import Pool
 
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 from sindy_wm.envs.episode import _set_start_health  # noqa: E402
@@ -54,6 +55,7 @@ POLICY_SETS = {
     "oracle": ["oracle", "oracle-perturbed"],
     "survival": ["oracle-survival"],
     "reseed": ["oracle-perturbed-reseed"],  # check: copies with their own unit-order shuffle stream
+    "shared": ["oracle-perturbed-shared"],  # one noise draw per re-plan, shared by the candidates (21 Nov)
 }
 
 
@@ -67,8 +69,14 @@ def make_policy(name: str, wd: float):
         return OraclePlannerPolicy(**kw)
     if name == "oracle-perturbed":
         return OraclePlannerPolicy(perturb=PERTURB, **kw)
+    if name == "oracle-perturbed-shared":  # one draw per re-plan, shared by the five copies (21 Nov)
+        return OraclePlannerPolicy(perturb=PERTURB, shared_noise=True, **kw)
     if name == "oracle-perturbed-reseed":
         return OraclePlannerPolicy(perturb=PERTURB, reseed=True, **kw)
+    if name == "oracle-kite":  # docs/planning/26: the five candidates plus kite
+        from sindy_wm.envs.planner import CANDIDATES
+
+        return OraclePlannerPolicy(candidates=(*CANDIDATES, ("kite", "nearest"), ("kite", "focus")), **kw)
     if name == "oracle-stand":  # docs/planning/17: the five candidates plus hold position (stand)
         from sindy_wm.envs.planner import CANDIDATES
 
@@ -127,6 +135,22 @@ def play(job: tuple) -> dict:
         "seconds": steps * STEP_MUL / 16,
         "wall_s": time.time() - t0,
         **{f"share_{k}": v / steps for k, v in chosen.items()},
+        **score_summary(policy),
+    }
+
+
+def score_summary(policy) -> dict:
+    """For oracles: the candidates' scores per re-plan, summarised (gap best - second, in hp)."""
+    log = getattr(policy, "score_log", None)
+    if not log:
+        return {}
+    S = np.sort(np.array(log, float), axis=1)
+    gap = S[:, -1] - S[:, -2]
+    return {
+        "replans": len(S),
+        "gap_median": float(np.median(gap)),
+        "gap_mean": float(gap.mean()),
+        "near_tie_share": float((gap < 1.0).mean()),
     }
 
 

@@ -160,3 +160,34 @@ knowing the future exactly.
 | notebooks, grouped by stage | `notebooks/README.md` |
 | headroom data (not in git) | `data/processed/planning/headroom_S*.csv`, `*_reseed.csv` |
 | tags | `final-exploration-2026-11-19`, `generalisation-test-2026-11-21` |
+
+## 7. Update after 21-22 Nov (read this first)
+
+**Decision waiting for Knut: a full recollection with the kite intent.** By the rule fixed before its pilot (`26`,
+`27`), kite justifies one: as a fixed intent it wins 98.5% (S1), 88.5% (S2), 98.5% (S3), 34% (S4), 59% (S5),
+beating every earlier fixed intent and, in S1, the old exact oracle (94%). It shifts every RQ5 baseline, and SMAClite
+may make kiting cheaper than a more detailed simulator would, so it was not started.
+
+**Where the results are:** `docs/planning/21_rq5_report.md` collects everything from Phase A on, with pointers;
+plans and results are `docs/planning/09`-`30` (pre-registered ones say so at the top).
+
+**What is now known (details in `21`):**
+- In contact, hold and advance are the same battle (99%): five candidates are three distinct choices.
+- The planner's choices are mostly near-ties; even the game's copies put the top two within 1 hp in 61-73% of
+  re-plans. Changing the alive law (spread, compartments) changes which twin is picked, not the outcome.
+- The exact oracle's key move is a short step back at first contact while Red is strung out. The model planner
+  does it in S3 (its +13 to +17 points, replicated three times) and almost never in S1 (2-4 points below hold/focus).
+- The model's error grows with Red's depth (up to 2.4×), but the true team-level shape removes only 5-10% of it:
+  the missing information is finer than depth and width.
+- Tried and not helping the planner: focus cost, alive-weighted scores, shape dynamics, spread state, compartments
+  (bolted on and discovered), a confidence gate (S1 −1.5, S3 +8 vs fixed), a square-law terminal value (worse), the
+  withdraw-firing share (ties). Hold position (`stand`) adds nothing.
+- Phase A's headroom holds with shared noise (`29`).
+
+**Code:** optional hooks in `pipeline.py` (focus_cost, intent_extra, spread_model, compart_model, withdraw_fire,
+shape_traj; all off by default), `models/discovered.py`, `states/spread.py`, `states/compartments.py`, planners in
+`envs/planner.py` (PipelinePlannerPolicy, GatedPlannerPolicy, `terminal`), intents `stand` and `kite` outside
+`INTENTS`. The frozen pipeline is unchanged and stays the tested model.
+
+**Working rules added:** keep experiments short and state run times first; data from seeds 13-18 x00 000 + and
+19 x00 000 + is used (see the plans for which).
