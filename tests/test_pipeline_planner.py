@@ -142,3 +142,46 @@ def test_compartment_planner_matches_the_recorded_compartments_and_rollout():
         }
         Y = model.L.team_view(model.rollout(B))
         np.testing.assert_allclose(pred, Y[:, -1, 0] - Y[:, -1, 1], atol=1e-9)
+
+
+MUSIGMA = DATA_DIR / "processed" / "planning" / "musigma_models.pkl"
+
+
+@pytest.mark.skipif(not (MODELS.exists() and MUSIGMA.exists()), reason="μ, σ models not built")
+def test_mu_sigma_planner_matches_the_recorded_margins_and_rollout():
+    """docs/planning/34: live μ, σ equal the margin table of the recorded battle, and the planner's scores
+    equal the rollout from that table, with kite among the candidates."""
+    from sindy_wm.envs.planner import CANDIDATES
+    from sindy_wm.states.margins import margins
+
+    model = pickle.load(open(MUSIGMA, "rb"))["mixed"]
+    env = _battle("mixed_m_mrd", MixedBattleSampler(), seed=7)
+    cands = (*CANDIDATES, ("kite", "nearest"), ("kite", "focus"))
+    planner = PipelinePlannerPolicy(model, withdraw_radius=8.0, candidates=cands)
+    planner.reset(7)
+    assert planner._U.shape[-1] == 5
+    record = SnapshotLogger(env)
+    snaps = [record.start_episode()]
+    driver = IntentSchedule(withdraw_radius=8.0)
+    driver.reset(7)
+    preds, live = {}, {}
+    for k in range(1, 60):
+        _, _, term, trunc, _ = env.step(driver.act(env))
+        snaps.append(record.snapshot(step=k))
+        if term or trunc:
+            break
+        if k % 8 == 0 and env.unwrapped.agents and env.unwrapped.enemies:
+            preds[k] = planner.predict(env)
+            live[k] = planner.live_margins()
+    full = pd.concat(snaps)
+    table = typed_states(full, planner.types, max_reach=model.max_reach)
+    mg = margins(full, planner.types)
+    keys = [f"{s}_{t}" for s in ("blue", "red") for t in model.L.types]
+    for k, pred in preds.items():
+        np.testing.assert_allclose(live[k]["mu0"], mg.loc[k, [f"mu_{x}" for x in keys]].to_numpy(float))
+        B = typed_batch_from_row(table.loc[k], model.L, planner._U)
+        B["mu0"] = np.repeat(live[k]["mu0"][None], len(planner._U), 0)
+        B["sd0"] = np.repeat(live[k]["sd0"][None], len(planner._U), 0)
+        Y = model.L.team_view(model.rollout(B))
+        np.testing.assert_allclose(pred, Y[:, -1, 0] - Y[:, -1, 1], atol=1e-9)
+    assert preds

@@ -72,6 +72,14 @@ def planner(name: str, scen: str, wd: float) -> PipelinePlannerPolicy:
     if kind == "wfire":  # docs/planning/25: Blue keeps this share of its fire while withdrawing (train)
         m = copy.deepcopy(m)
         m.withdraw_fire = {"marines": 0.093, "mixed": 0.127}[MODEL_OF[scen]]
+    if kind == "musigma":  # docs/planning/34: reach from μ, σ states (clipped); kite among mixed candidates
+        if "musigma" not in _cache:
+            _cache["musigma"] = pickle.load(open(A.OUT / "musigma_models.pkl", "rb"))
+        ms = _cache["musigma"][MODEL_OF[scen]]
+        cands = CANDIDATES + ((("kite", "nearest"), ("kite", "focus")) if MODEL_OF[scen] == "mixed" else ())
+        return PipelinePlannerPolicy(
+            ms, commit_seconds=2.0, horizon_seconds=float(h[1:]), withdraw_radius=wd, candidates=cands
+        )
     if kind == "terminal":  # docs/planning/25: score by the projected final margin
         from sindy_wm.envs.planner import team_firepower
 
@@ -113,7 +121,7 @@ def play(job: tuple) -> dict:
         "red": sum(u.max_hp + u.max_shield for u in game.enemies.values()),
     }
     n0 = {"blue": len(game.agents), "red": len(game.enemies)}
-    is_planner = name.startswith(("model", "spread", "compart", "gated", "wfire", "terminal"))
+    is_planner = name.startswith(("model", "spread", "compart", "gated", "wfire", "terminal", "musigma"))
     policy = planner(name, scen, wd) if is_planner else A.make_policy(name, wd)
     policy.reset(seed)
     t0, steps, won, chosen = time.time(), 0, False, {}
@@ -146,6 +154,8 @@ def play(job: tuple) -> dict:
         "wall_s": time.time() - t0,
         **{f"share_{k}": v / steps for k, v in chosen.items()},
     }
+    if getattr(policy, "clip_log", None):  # docs/planning/34: share of candidate rollouts where a clip binds
+        row["clip_share"] = float(np.mean(policy.clip_log))
     if hasattr(policy, "deviations") and policy.log:
         row["deviate_share"] = policy.deviations / len(policy.log)
     if is_planner and policy.log:
@@ -156,7 +166,11 @@ def play(job: tuple) -> dict:
             "replans": len(S),
             "switches": int((np.diff(picks) != 0).sum()),
             "gap_best_second": float((top2[:, 1] - top2[:, 0]).mean()),
-            **{f"pick_{'/'.join(c)}": float((picks == j).mean()) for j, c in enumerate(CANDIDATES)},
+            # within 1 hp: team health is in ten full units of the first type (docs/planning/34)
+            "near_tie_share": float(
+                ((top2[:, 1] - top2[:, 0]) * 10 * policy.model.L.hp[policy.model.L.types[0]] < 1).mean()
+            ),
+            **{f"pick_{'/'.join(c)}": float((picks == j).mean()) for j, c in enumerate(policy.candidates)},
         }
     return row
 

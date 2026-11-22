@@ -164,3 +164,12 @@ term in health; the distance equation got a kite gate equal to advance's. K1 (ol
 the frozen model and worse than always kite/focus (regret 0.052 vs 0.046 at 2 s, 0.086 vs 0.067 at 4 s). K4 not
 run. The unthresholded kite terms: Red's fire per unit in reach barely changes under kite, Blue's rises 11-76%
 (just below the threshold); the reach closure overpredicts Blue's reach on kite steps.
+
+## 16. Closed loop with μ, σ reach states (`34`, `35`) (pre-reg.)
+
+Planner with reach from μ, σ (`generalisation/11`, clipped to the training range), kite among its seven candidates in
+mixed. Fresh seeds 21 x00 000 +, 400 per scenario. Against the best fixed kite: S2 −9.5, S4 −9.0, S5 −4.0 (all
+lose); against the frozen planner: S2 +17.2, S4 +13.0 (beat), S1, S3, S5 tie. It picks kite in 42-53% of re-plans
+and switches 6-7 times per battle. The pre-registered statement "planning with the world model is useful in this
+testbed" does not hold.
+

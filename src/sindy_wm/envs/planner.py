@@ -240,6 +240,15 @@ class PipelinePlannerPolicy(Policy):
             for k0, k in (("W0", "W"), ("HW0", "HW"), ("h00", "h0"))
         }
 
+    def live_margins(self) -> dict:
+        """mu0, sd0: mean and spread of the reach margins (states/margins.py) of the last live snapshot,
+        in the reach / front order (docs/planning/34)."""
+        from sindy_wm.states.margins import margins
+
+        r = margins(self._snap, self.types).iloc[0]
+        keys = [f"{side}_{t}" for side in ("blue", "red") for t in self.model.L.types]
+        return {k0: r[[f"{k}_{x}" for x in keys]].to_numpy(float) for k0, k in (("mu0", "mu"), ("sd0", "sd"))}
+
     def predict(self, env) -> np.ndarray:
         """Predicted health margin at the horizon for each candidate, from the live game's state."""
         B = typed_batch_from_row(self.live_state(env), self.model.L, self._U)
@@ -248,8 +257,17 @@ class PipelinePlannerPolicy(Policy):
         if getattr(self.model, "compart_model", None) is not None:
             for k, v in self.live_compartments().items():
                 B[k] = np.repeat(v[None], len(self._U), 0)
+        if getattr(self.model, "ms_names", None) is not None:  # μ, σ reach states (docs/planning/34)
+            for k, v in self.live_margins().items():
+                B[k] = np.repeat(v[None], len(self._U), 0)
         with np.errstate(invalid="ignore", divide="ignore"):
             Y = self.model.L.team_view(self.model.rollout(B))
+        if (
+            getattr(self.model, "clipped", None) is not None
+            and getattr(self.model, "bounds", None) is not None
+        ):
+            self.clip_log = getattr(self, "clip_log", [])
+            self.clip_log.append(float(self.model.clipped.mean()))
         if getattr(self, "terminal", None) is not None:  # docs/planning/25: projected final margin
             return lanchester_value(Y[:, -1], *self.terminal)
         return Y[:, -1, 0] - Y[:, -1, 1]

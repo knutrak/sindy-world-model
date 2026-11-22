@@ -568,6 +568,12 @@ class Pipeline:
     def _fit_extra_gates(self, T: pd.DataFrame) -> None:
         """Hook for variants with extra movements (models/kite.py)."""
 
+    def _reach(self, n, X, S, F, u, sh, offset, B) -> dict:
+        """Units in reach per (side, attacker type) at rollout step n: the closure's share plus the measured
+        start offset decaying in 1 s. A hook for variants with reach as a state (models/reach_state.py)."""
+        L = self.L
+        return {k: X[:, L.idx("alive", *k)] * np.clip(sh[k] + offset[k] * np.exp(-n * DT), 0, 1) for k in sh}
+
     def _dist_library(self, X, U, S, reach) -> dict:
         """A's movement library; with movement_wd "rule", danger*wd uses the scenario's withdraw radius."""
         F = library(X, U, S, self.P_team, reach, True)
@@ -641,7 +647,7 @@ class Pipeline:
             if comp is not None:  # wounded shares for equations that use them (models/discovered.py)
                 self._ctx = compart_context(L, X, Wc, u)
             sh = self._shares(X, S, F)
-            R = {k: X[:, L.idx("alive", *k)] * np.clip(sh[k] + offset[k] * np.exp(-n * DT), 0, 1) for k in sh}
+            R = self._reach(n, X, S, F, u, sh, offset, B)
             A = {(s, t): X[:, L.idx("alive", s, t)] for s in SIDES for t in tt}
             newX = X.copy()
             new_spread = None if spread is None else spread.copy()

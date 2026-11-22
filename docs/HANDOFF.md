@@ -1,4 +1,4 @@
-# Handoff: where the work stands (21 Nov 2026)
+# Handoff: where the work stands (22 Nov 2026; sections 7 and 8 are the latest)
 
 A note for starting a new chat. It records **why** things were decided and **what is open**. The results
 themselves are in the documents linked below. Branch `main`; everything is committed.
@@ -31,7 +31,7 @@ Project description: NTNU/FFI, "master_Knut". The research questions:
 | RQ2 | state representation | per-type states (health, alive, reach per side and unit type, plus distance) |
 | RQ3 | predictive performance | beats persistence and Lanchester; reliable 2-3 s |
 | RQ4 | applicability across scenarios | the generalisation pipeline, held-out test 19/20 |
-| RQ5 | **key question:** does an LLM agent decide better with the world model | headroom shown (Phase A); the model planner not yet tested (Phase B) |
+| RQ5 | **key question:** does an LLM agent decide better with the world model | headroom shown (Phase A); the model planner ties or loses except S3 (Phase B); kite and S4 open (sections 7-8) |
 
 - Phase 1 runs to the end of 2026. Step 7 is "package the model behind a clean world-model interface".
 - FFI (§2.5) wants a **repeatable pipeline from simulator data to a world model**, usable on other simulators
@@ -161,9 +161,10 @@ knowing the future exactly.
 | headroom data (not in git) | `data/processed/planning/headroom_S*.csv`, `*_reseed.csv` |
 | tags | `final-exploration-2026-11-19`, `generalisation-test-2026-11-21` |
 
-## 7. Update after 21-22 Nov (read this first)
+## 7. Update after 21-22 Nov
 
-**Decision waiting for Knut: a full recollection with the kite intent.** By the rule fixed before its pilot (`26`,
+**(Resolved 22 Nov, see section 8: a small kite collection and refit were run instead.)** The decision then
+was a full recollection with the kite intent. By the rule fixed before its pilot (`26`,
 `27`), kite justifies one: as a fixed intent it wins 98.5% (S1), 88.5% (S2), 98.5% (S3), 34% (S4), 59% (S5),
 beating every earlier fixed intent and, in S1, the old exact oracle (94%). It shifts every RQ5 baseline, and SMAClite
 may make kiting cheaper than a more detailed simulator would, so it was not started.
@@ -191,3 +192,88 @@ shape_traj; all off by default), `models/discovered.py`, `states/spread.py`, `st
 
 **Working rules added:** keep experiments short and state run times first; data from seeds 13-18 x00 000 + and
 19 x00 000 + is used (see the plans for which).
+
+## 8. Update 22 Nov: the kite intent (read this first)
+
+**Where the results are:** `docs/planning/31` (mechanism), `32` (refit plan, pre-registered, approved as drafted),
+`33` (refit results), and `21` sections 14-15.
+
+**Why kite wins (`31`, exploratory, 100 seeds per set-up, pilot seeds 19 7x0 000):**
+- The gain is the step back. Kite's firing rule alone (shoot only inside own range, no step back) plays like
+  advance.
+- Stepping back costs Red 0.05-0.17 of its firing duty: Red's weapons are ready with no Blue unit in range more
+  often, because Red walks after Blue. Blue's duty rises.
+- Kiting is strong for either side in SMAClite: a kiting Red beats an advancing Blue (S1 Blue 66 → 34%, S2 65 → 27%).
+- Not explained: with both sides kiting Blue still wins 86-100%. Red's kite is built from SMAClite commands, not
+  an exact copy of Blue's, so this row is not trusted yet.
+
+**What Knut said, and what it decided:**
+- RQ5 does not fade; its baseline becomes the strongest simple rule (kite). Knut: beating uneven matches (S4) with
+  the world model and planner would be a result in itself.
+- S4 so far (`01`, `27`): best fixed 10.5% (hold/focus), fixed kite 34%, exact oracle 65%; on 100 seeds the oracle
+  with kite added wins 79% against 67%. The model planners have captured about 0% of S4's headroom. S4 is outside the
+  training strength range (0.6-0.8 vs 0.85-1.18).
+- Withdraw when weak (`RetreatPolicy`) was only tested in October (F26: 15% vs 63% wins, 60 battles), never in
+  S1-S5 or as an oracle candidate.
+
+**The kite refit (`32`, `33`, pre-registered):**
+- Data exp11 (mixed only): 4 × 500 train battles with kite in the schedule (weights 0.35 / 0.20 / 0.15 / 0.30),
+  300 val, and `cf_kite_nearest`, `cf_kite_focus` on exp08's cf seeds. Kite was 6.6% of training steps with exp08.
+- **No kite term survived in the health equations**, even at the halved threshold; the distance equation got
+  close·kite −5.47, equal to advance's −5.45. The model predicts kite as advance.
+- K1 passes (old movements unchanged), K2 passes (kite error 1.16 × advance at 2 s), **K3 fails** (regret 0.052 vs
+  0.046 for always kite/focus at 2 s, 0.086 vs 0.067 at 4 s), so **K4 (closed loop, S4 main) was not run**.
+- Diagnostic (no threshold): Red's fire per Red unit in reach barely changes under kite (+5 to +8%), Blue's rises
+  11-76% (standardised 0.022-0.063, just below 0.075). The reach closure overpredicts Blue units in reach on kite
+  steps (0.38 vs 0.32 measured). A kite candidate is the true best in 51-69% of counterfactual states.
+
+**Open questions for Knut (not decided):**
+1. The kite effect seems to sit in reach, which is a closure, not in the sparse health terms. Is a kite term in the
+   reach closure still discovery, or a hand-built fix?
+2. The Red-health kite terms were just below the threshold. Would a rerun with more kite data be a fair new
+   pre-registered variant, or tuning until it passes?
+3. Should the new kite data use underdog strength ratios, so S4 is inside training? Deferred in `32` (Q2): two
+   changes at once can't be told apart.
+4. Can a 1 s team-level model represent a sub-second per-unit tactic at all?
+5. Should the opponent be part of the design: a Red that attack-moves and one that kites?
+
+**Code:** `models/kite.py` (`KitePipeline`, `CTRL_K`, `add_kite`, `control_vector_k`); hooks in `pipeline.py` with
+unchanged defaults (`batch(ctrl=)`, `ctrl_cols`, `_health_stlsq`, `_fit_extra_gates`, `self._u` per rollout step;
+`tests/test_kite_variant.py` checks the frozen path is unchanged); `IntentSchedule` takes a fourth weight (kite);
+`PipelinePlannerPolicy` uses the model's own `control_vector` if it has one; `scripts/collect_kite.py`;
+`experiments/planning/kite_mechanism.py`, `kite_refit.py`. Kite model: `data/processed/planning/kite_model.pkl`.
+
+**Seeds:** 19 700 000-19 720 099 used (mechanism check); exp11 uses 20 000 000-20 001 999 (train) and
+20 100 000-20 100 299 (val); 21 x00 000 + was reserved for K4 and is unused.
+
+**Commits:** `a65cf01` (kite code and plan) and `1724f8c` (refit results), not pushed: Knut pushes.
+
+**Reach as a state from a generic library (`generalisation/07`, `08`, pre-registered, 22 Nov evening):** degree 2
+and 3 polynomials of the state, distance gates on a fixed grid, deaths, all × the five intents; two-level STLSQ in
+weak form (and one-step). R2 fails everywhere (54-232 groups kept, ≤ 8 asked; 2-22% blow-ups), R3 fails (reach
+better at 1-2 s by up to 14%, not at 4 s). R4: given the closure as a feature, the kite reach bias drops from
++0.30 to under 0.1 units. By the plan: no sparse reach equation found from a generic library; the closure stays.
+Code: `models/reach_state.py`, `Pipeline._reach` hook (default unchanged), `experiments/generalisation/reach_state.py`.
+
+**μ, σ reach states (`generalisation/09`-`11`, 22 Nov night):** each unit's reach margin (distance to the nearest
+enemy minus pair reach); its mean μ and spread σ per side and type. Feasibility (`09`, exploratory): with measured μ,
+σ, reach error is 35% (marines) and 50% (mixed) lower than the closure. Model (`10` pre-registered, `11` results):
+generic library × intents, weak form, with and without p. M1 (sparse) fails: 26-51 groups. M2 (rollouts) fails:
+reach better at 1-2 s, blow-ups 12-18%. M3 (kite bias) fails. **M4 (intent ranking) passes:** regret below frozen at
+2 and 4 s in both scenarios, and below always kite/focus at 2 s in mixed; always advance/nearest still better at
+1-2 s in marines. By the plan: no pipeline v2; a closed-loop planner test is the next step (not planned yet).
+Code: `states/margins.py`, `scripts/build_margin_states.py`, `models/mu_sigma.py`,
+`experiments/generalisation/mu_sigma.py`, `reach_distribution.py`.
+
+**Closed loop with μ, σ (`planning/34`, `35`, pre-registered, 22 Nov night):** the μ, σ planner (7 candidates incl.
+kite in mixed) loses to fixed kite in S2 (−9.5), S4 (−9.0) and S5 (−4.0); it beats the frozen planner in S2 (+17)
+and S4 (+13). RQ5's pre-registered statement does not hold. Better ranking (M4) became more wins than the frozen
+planner, but not more than the best simple rule. Code: `experiments/planning/closed34.py`, `kind == "musigma"` in
+`phase_b.py`, `PipelinePlannerPolicy.live_margins`.
+
+
+**Decision (Knut, 22 Nov night): stop developing the world model here.** The frozen pipeline stays the product;
+reach is reported as the known limit (μ, σ carry the information, no sparse law found; literature: range-dependent
+attrition (Bonder-Farrell), spatial PDE Lanchester models (Protopopescu 1989, Keane 2011), weak-SINDy mean-field
+learning (Messenger & Bortz) needs far more units than the 6-14 per side here). Next: commit, update the supervisor
+doc, the world-model interface (Phase 1 step 7), and writing.
