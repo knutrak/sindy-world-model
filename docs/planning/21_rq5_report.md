@@ -155,3 +155,12 @@ Pilot seeds 19 7x0 000, 100 per scenario and set-up. Kite's firing rule without 
 the step back costs Red 0.05-0.17 of its firing duty while Blue's rises. A kiting Red beats an advancing Blue
 (S1 Blue 66 → 34%, S2 65 → 27%), so kiting is strong for either side in SMAClite. With both sides kiting Blue still
 wins 86-100%, not yet explained (Red's kite is implemented through commands, not an exact copy).
+
+## 15. Kite in the world model (`32`, `33`) (pre-reg.)
+
+Refit with kite as a fifth control (exp08 train + 2,000 new battles with kite, 6.6% of steps). STLSQ kept no kite
+term in health; the distance equation got a kite gate equal to advance's. K1 (old movements unchanged) and K2
+(kite error ≤ 1.5 × advance) pass; K3 fails: on the counterfactual sets with kite added, the variant ranks like
+the frozen model and worse than always kite/focus (regret 0.052 vs 0.046 at 2 s, 0.086 vs 0.067 at 4 s). K4 not
+run. The unthresholded kite terms: Red's fire per unit in reach barely changes under kite, Blue's rises 11-76%
+(just below the threshold); the reach closure overpredicts Blue's reach on kite steps.

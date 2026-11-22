@@ -85,3 +85,9 @@ starts.
 | Q2 | Widen the strength ratio in the new kite shards so S4 is inside training? | not now: two changes at once can't be told apart; a second variant later if K4 fails |
 | Q3 | Kite weight 0.30 in the new shards (about 8% of all training steps)? | yes; if STLSQ drops kite, report that rather than raise it |
 | Q4 | Make S4 the main test for this variant? | yes, flagged as out of training range |
+
+## Amendments
+
+- **22 Nov, before any kite data was read:** K3 uses **seven** candidates, not eight. exp08's typed counterfactual
+  sets have no withdraw/focus: it plays the same battle as withdraw/nearest, since Blue doesn't fire while
+  withdrawing, and the earlier ranking work (`02`-`06`) used the same five sets.
