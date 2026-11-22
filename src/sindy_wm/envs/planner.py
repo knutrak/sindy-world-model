@@ -257,7 +257,8 @@ class PipelinePlannerPolicy(Policy):
         if getattr(self.model, "compart_model", None) is not None:
             for k, v in self.live_compartments().items():
                 B[k] = np.repeat(v[None], len(self._U), 0)
-        if getattr(self.model, "ms_names", None) is not None:  # μ, σ reach states (docs/planning/34)
+        # μ, σ reach states (docs/planning/34), or a model that takes them as inputs (docs/planning/36)
+        if getattr(self.model, "ms_names", None) is not None or getattr(self.model, "needs_margins", False):
             for k, v in self.live_margins().items():
                 B[k] = np.repeat(v[None], len(self._U), 0)
         with np.errstate(invalid="ignore", divide="ignore"):

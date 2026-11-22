@@ -277,3 +277,10 @@ reach is reported as the known limit (μ, σ carry the information, no sparse la
 attrition (Bonder-Farrell), spatial PDE Lanchester models (Protopopescu 1989, Keane 2011), weak-SINDy mean-field
 learning (Messenger & Bortz) needs far more units than the 6-14 per side here). Next: commit, update the supervisor
 doc, the world-model interface (Phase 1 step 7), and writing.
+
+**Black-box comparison (`planning/36`, `37`, pre-registered, 22 Nov night):** a typed MLP world model, much better
+offline (margin R² at 4 s 0.54-0.61), loses to fixed kite in S2/S4/S5 by 19-55 points and to the μ, σ planner
+everywhere. By the plan's fixed interpretation: the setup limits planning, not the interpretable model. The SINDy
+planners were the more robust ones in closed loop. Code: `models/typed_mlp.py`, `experiments/planning/black_box.py`,
+`kind == "mlp"` in `phase_b.py`.
+

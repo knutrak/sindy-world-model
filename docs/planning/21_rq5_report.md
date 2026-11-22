@@ -173,3 +173,11 @@ lose); against the frozen planner: S2 +17.2, S4 +13.0 (beat), S1, S3, S5 tie. It
 and switches 6-7 times per battle. The pre-registered statement "planning with the world model is useful in this
 testbed" does not hold.
 
+## 17. A black-box world model in the same planner (`36`, `37`) (pre-reg.)
+
+A typed MLP world model with the same inputs as the μ, σ planner (state, shape, reach, μ, σ, five controls),
+trained on 3 s rollouts. Offline it is clearly better (val margin R² at 4 s 0.54-0.61 vs 0.08-0.19 frozen; ranking
+regret 35-57% lower). In closed loop on `34`'s seeds it loses to fixed kite in S2, S4, S5 (−55, −19, −36) and to the
+μ, σ planner in every scenario. By the fixed interpretation: the setup, not the interpretable model, limits planning.
+Better offline accuracy did not carry into closed loop; the SINDy planners were the more robust ones.
+

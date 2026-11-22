@@ -80,6 +80,20 @@ def planner(name: str, scen: str, wd: float) -> PipelinePlannerPolicy:
         return PipelinePlannerPolicy(
             ms, commit_seconds=2.0, horizon_seconds=float(h[1:]), withdraw_radius=wd, candidates=cands
         )
+    if kind == "mlp":  # docs/planning/36: black-box typed world model, same candidates as "musigma"
+        if "mlp" not in _cache:
+            import torch
+
+            torch.set_num_threads(1)
+            _cache["mlp"] = pickle.load(open(A.OUT / "mlp_models.pkl", "rb"))
+        cands = CANDIDATES + ((("kite", "nearest"), ("kite", "focus")) if MODEL_OF[scen] == "mixed" else ())
+        return PipelinePlannerPolicy(
+            _cache["mlp"][MODEL_OF[scen]],
+            commit_seconds=2.0,
+            horizon_seconds=float(h[1:]),
+            withdraw_radius=wd,
+            candidates=cands,
+        )
     if kind == "terminal":  # docs/planning/25: score by the projected final margin
         from sindy_wm.envs.planner import team_firepower
 
@@ -121,7 +135,9 @@ def play(job: tuple) -> dict:
         "red": sum(u.max_hp + u.max_shield for u in game.enemies.values()),
     }
     n0 = {"blue": len(game.agents), "red": len(game.enemies)}
-    is_planner = name.startswith(("model", "spread", "compart", "gated", "wfire", "terminal", "musigma"))
+    is_planner = name.startswith(
+        ("model", "spread", "compart", "gated", "wfire", "terminal", "musigma", "mlp")
+    )
     policy = planner(name, scen, wd) if is_planner else A.make_policy(name, wd)
     policy.reset(seed)
     t0, steps, won, chosen = time.time(), 0, False, {}

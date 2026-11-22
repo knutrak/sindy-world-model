@@ -122,6 +122,7 @@ def main():
     p.add_argument("scenario", nargs="?")
     p.add_argument("--n", type=int, default=400)
     p.add_argument("--workers", type=int, default=8)
+    p.add_argument("--mlp", action="store_true", help="only the black-box planner (docs/planning/36)")
     a = p.parse_args()
     if a.what == "analyse":
         return analyse()
@@ -131,7 +132,8 @@ def main():
             d = pd.read_csv(A.OUT / f"closed34_{scen}_smoke.csv")
             print(d.groupby("policy")[["won", "wall_s"]].mean().round(2).to_string(), flush=True)
         return
-    PB.run(a.scenario, policies(a.scenario), a.n, a.workers, FIRST[a.scenario], prefix="closed34_")
+    pols = ["mlp:h3"] if a.mlp else policies(a.scenario)
+    PB.run(a.scenario, pols, a.n, a.workers, FIRST[a.scenario], prefix="closed34_")
 
 
 if __name__ == "__main__":

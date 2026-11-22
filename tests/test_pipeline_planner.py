@@ -185,3 +185,43 @@ def test_mu_sigma_planner_matches_the_recorded_margins_and_rollout():
         Y = model.L.team_view(model.rollout(B))
         np.testing.assert_allclose(pred, Y[:, -1, 0] - Y[:, -1, 1], atol=1e-9)
     assert preds
+
+
+MLP = DATA_DIR / "processed" / "planning" / "mlp_models.pkl"
+
+
+@pytest.mark.skipif(not MLP.exists(), reason="black-box models not built")
+def test_black_box_planner_matches_its_rollout():
+    """docs/planning/36: the planner gives the typed MLP the live state, μ, σ and five controls, and its
+    scores equal the model's rollout from the recorded tables."""
+    from sindy_wm.envs.planner import CANDIDATES
+    from sindy_wm.states.margins import margins
+
+    model = pickle.load(open(MLP, "rb"))["mixed"]
+    env = _battle("mixed_m_mrd", MixedBattleSampler(), seed=9)
+    cands = (*CANDIDATES, ("kite", "nearest"), ("kite", "focus"))
+    planner = PipelinePlannerPolicy(model, withdraw_radius=8.0, candidates=cands)
+    planner.reset(9)
+    record = SnapshotLogger(env)
+    snaps = [record.start_episode()]
+    driver = IntentSchedule(withdraw_radius=8.0)
+    driver.reset(9)
+    preds = {}
+    for k in range(1, 60):
+        _, _, term, trunc, _ = env.step(driver.act(env))
+        snaps.append(record.snapshot(step=k))
+        if term or trunc:
+            break
+        if k % 8 == 0 and env.unwrapped.agents and env.unwrapped.enemies:
+            preds[k] = planner.predict(env)
+    full = pd.concat(snaps)
+    table = typed_states(full, planner.types, max_reach=model.max_reach)
+    mg = margins(full, planner.types)
+    keys = [f"{s}_{t}" for s in ("blue", "red") for t in model.L.types]
+    for k, pred in preds.items():
+        B = typed_batch_from_row(table.loc[k], model.L, planner._U)
+        for k0, c in (("mu0", "mu"), ("sd0", "sd")):
+            B[k0] = np.repeat(mg.loc[k, [f"{c}_{x}" for x in keys]].to_numpy(float)[None], len(planner._U), 0)
+        Y = model.L.team_view(model.rollout(B))
+        np.testing.assert_allclose(pred, Y[:, -1, 0] - Y[:, -1, 1], atol=1e-6)
+    assert preds
