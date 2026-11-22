@@ -136,7 +136,8 @@ class IntentSchedule(Policy):
     Args:
         segment_seconds: (min, max) duration of each segment; None keeps the first
             intent for the whole episode.
-        movement_weights: Probabilities of advance / hold / withdraw for each new segment.
+        movement_weights: Probabilities of advance / hold / withdraw for each new segment; a fourth weight
+            adds kite (docs/planning/32). Three weights draw exactly as before.
         branch_intent: If given, this (movement, target) is played from the branch
             moment to the end of the episode.
         branch_seconds: (min, max) the branch moment is drawn from, per episode.
@@ -153,7 +154,7 @@ class IntentSchedule(Policy):
     def __init__(
         self,
         segment_seconds: tuple[float, float] | None = (1.0, 4.0),
-        movement_weights: tuple[float, float, float] = (0.5, 0.3, 0.2),
+        movement_weights: tuple[float, ...] = (0.5, 0.3, 0.2),
         branch_intent: tuple[str, str] | None = None,
         branch_seconds: tuple[float, float] = (0.0, 0.0),
         withdraw_radius: float = 7.0,
@@ -207,7 +208,8 @@ class IntentSchedule(Policy):
             self._reverted = True
             self._segment += 1
         elif not self._branched and self._step >= self._next_switch:
-            movement = MOVEMENTS[int(self._schedule_rng.choice(3, p=self.movement_weights))]
+            names = MOVEMENTS if len(self.movement_weights) == 3 else (*MOVEMENTS, "kite")
+            movement = names[int(self._schedule_rng.choice(len(names), p=self.movement_weights))]
             target = TARGETS[int(self._schedule_rng.integers(2))]
             self._current = IntentPolicy(movement, target, withdraw_radius=self.withdraw_radius)
             if self.segment_seconds is None:

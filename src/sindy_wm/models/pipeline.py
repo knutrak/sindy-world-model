@@ -105,12 +105,13 @@ class Layout:
         return np.stack(out, axis=-1)
 
     # ---- batches ----
-    def batch(self, states: pd.DataFrame, horizon=64, every=8, history=8, min_future=8) -> dict:
-        """Start points (as `make_batch`): X0, U, Y (typed), shape0, front0, reach0, plus the team view."""
+    def batch(self, states: pd.DataFrame, horizon=64, every=8, history=8, min_future=8, ctrl=None) -> dict:
+        """Start points (as `make_batch`): X0, U, Y (typed), shape0, front0, reach0, plus the team view.
+        `ctrl`: the control columns of U (default CTRL; the kite variant adds "kite", docs/planning/32)."""
         keys = ["X0", "U", "Y", "shape0", "front0", "reach0", "ep", "k0"]
         out = {k: [] for k in keys}
         for ep, g in states.groupby(level=0, sort=False):
-            S, C = g[self.x_cols].to_numpy(float), g[CTRL].to_numpy(float)
+            S, C = g[self.x_cols].to_numpy(float), g[ctrl or CTRL].to_numpy(float)
             Sh, Fr, R = (
                 g[SHAPE].to_numpy(float),
                 g[self.front_cols].to_numpy(float),
@@ -384,6 +385,8 @@ def compart_step(comp: dict, key, A10, W10, H10, H10_next, HW10, h0, R10, U):
 class Pipeline:
     """The scenario-independent model (see the module docstring)."""
 
+    ctrl_cols = CTRL  # the kite variant (models/kite.py) adds a fifth control
+
     def __init__(
         self,
         types: tuple[str, ...],
@@ -501,7 +504,7 @@ class Pipeline:
             for t in tt:
                 L = self._terms(R_o, sig, A_o, wd, o, t)
                 theta = np.column_stack(list(L.values()))
-                c = stlsq(theta, rows[f"d_health_{s}_{t}"].to_numpy(), self.thr_health)
+                c = self._health_stlsq(theta, rows[f"d_health_{s}_{t}"].to_numpy(), list(L))
                 self.coef[(s, t)] = dict(zip(L, c, strict=True))
                 h, al = rows[f"health_{s}_{t}"].to_numpy(), rows[f"alive_{s}_{t}"].to_numpy()
                 ok = (h > 0.03) & (al > 0)
@@ -537,13 +540,14 @@ class Pipeline:
                 maxfev=20000,
             )
             self.P_team[f"share_{side}"] = np.append(p, rho_team)
+        self._fit_extra_gates(T)
         if "withdraw" not in self.P_team["gates"]:  # no withdraw steps in the data: a gate that is never used
             self.P_team["gates"]["withdraw"] = np.array([0, 99, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0], float)
         Xt = np.column_stack(
             [T[c].to_numpy() for c in ("health_blue", "health_red", "alive_blue", "alive_red", "distance")]
         )
         F = self._dist_library(
-            Xt, T[CTRL].to_numpy(), T[SHAPE].to_numpy(), T[["reach_blue", "reach_red"]].to_numpy()
+            Xt, T[self.ctrl_cols].to_numpy(), T[SHAPE].to_numpy(), T[["reach_blue", "reach_red"]].to_numpy()
         )
         self.dist_names = list(F)
         theta = np.column_stack([F[k] for k in self.dist_names])
@@ -557,6 +561,12 @@ class Pipeline:
         cd[cols] = stlsq(theta[:, cols], T["d_distance"].to_numpy(), self.thr_distance)
         self.dist_coef = cd
         return self
+
+    def _health_stlsq(self, theta: np.ndarray, y: np.ndarray, names: list[str]) -> np.ndarray:
+        return stlsq(theta, y, self.thr_health)
+
+    def _fit_extra_gates(self, T: pd.DataFrame) -> None:
+        """Hook for variants with extra movements (models/kite.py)."""
 
     def _dist_library(self, X, U, S, reach) -> dict:
         """A's movement library; with movement_wd "rule", danger*wd uses the scenario's withdraw radius."""
@@ -624,6 +634,7 @@ class Pipeline:
         out = [X.copy()]
         for n in range(U.shape[1]):
             u = U[:, n]
+            self._u = u  # the step's controls, for variants whose terms use more of them (models/kite.py)
             wd, focus = u[:, 2], u[:, 3]
             if "shape_traj" in B:  # diagnostic (docs/planning/24): the true formation shape at every step
                 S = np.nan_to_num(B["shape_traj"][:, min(n, B["shape_traj"].shape[1] - 1)])

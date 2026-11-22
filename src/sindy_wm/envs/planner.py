@@ -177,10 +177,11 @@ class PipelinePlannerPolicy(Policy):
         self.candidates = tuple(candidates)
         self.types = tuple(t.upper() for t in model.L.types)
         steps, commit = round(horizon_seconds / DT), round(commit_seconds / DT)
-        default = control_vector("advance", "nearest")
+        vec = getattr(model, "control_vector", control_vector)  # the kite variant has five controls
+        default = vec("advance", "nearest")
         self._U = np.stack([np.repeat(default[None], steps, 0) for _ in self.candidates])
         for j, intent in enumerate(self.candidates):
-            self._U[j, :commit] = control_vector(*intent)
+            self._U[j, :commit] = vec(*intent)
 
     def params(self) -> dict:
         return {

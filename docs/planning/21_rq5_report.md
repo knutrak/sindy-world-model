@@ -148,3 +148,10 @@ Same seeds as section 11. Against Phase A's best fixed intent / against the unga
 
 The terminal value nearly stops withdrawals (S3: 18% → 3% of re-plans); the withdraw-firing fix changes almost no
 decisions.
+
+## 14. Why kite wins (`31`, exploratory)
+
+Pilot seeds 19 7x0 000, 100 per scenario and set-up. Kite's firing rule without the step back plays like advance;
+the step back costs Red 0.05-0.17 of its firing duty while Blue's rises. A kiting Red beats an advancing Blue
+(S1 Blue 66 → 34%, S2 65 → 27%), so kiting is strong for either side in SMAClite. With both sides kiting Blue still
+wins 86-100%, not yet explained (Red's kite is implemented through commands, not an exact copy).
