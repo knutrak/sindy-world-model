@@ -217,3 +217,11 @@ The focus-cost correction (`04`) shifts picks to nearest (S1 31% → 62%) but do
 S4, S5; S3 −2.8). The earlier team-level picture replicates on fresh seeds (23 x00 000): μ, σ planner ties the best
 fixed intent; matched ceiling +25 to +29 points in S1-S4.
 
+## 23. A richer decision space: per-type roles and target priority (`48`, `49`) (pre-reg.)
+
+27 combinations (marines and marauders each advance / stand / withdraw; target nearest, marines first, marauders
+first), S2, S4, S5, 200 paired seeds. The best fixed combination is both types advancing with nearest targets, near-best
+everywhere. A perfect model choosing among the 27 gains no more over it than a perfect model choosing among the five
+team intents gains over the best team intent (differences +1, +4, −3 points); the two oracles tie. The richer menu
+adds no room: what a planner can exploit here is the timing of a few team-level behaviours.
+

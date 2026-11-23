@@ -305,3 +305,7 @@ schedule; give Red its own seed stream first.
   So the gap is not target choice but timing of hold / advance / withdraw.
 - Nothing from 23 Nov after `b75c361` is committed; `40`-`47` and their code await Knut's review.
 
+**Richer decision space (`planning/48`, `49`, pre-registered, 23 Nov):** per-type roles and target-type priority
+(`envs/roles.py`, 27 combinations; oracle candidates may now be role names) add no room for a planner: the 27-choice
+oracle ties the 5-choice oracle, and "both types advance, nearest" is the best fixed choice everywhere.
+

@@ -395,7 +395,7 @@ class OraclePlannerPolicy(Policy):
             "replan_seconds": self.replan_seconds,
             "commit_seconds": self.commit_seconds,
             "horizon_seconds": self.horizon_seconds,
-            "candidates": [list(c) for c in self.candidates],
+            "candidates": [c if isinstance(c, str) else list(c) for c in self.candidates],
             "withdraw_radius": self.withdraw_radius,
             "perturb": None if self.perturb is None else list(self.perturb),
             "objective": self.objective,
@@ -406,7 +406,7 @@ class OraclePlannerPolicy(Policy):
     def reset(self, seed: int | None = None) -> None:
         super().reset(seed)
         self._step = 0
-        self._current = IntentPolicy(*self.candidates[0], withdraw_radius=self.withdraw_radius)
+        self._current = self._make(self.candidates[0])
         self._noise = np.random.default_rng(None if seed is None else [seed, 7])
         self.score_log, self._draw = [], None
 
@@ -454,7 +454,7 @@ class OraclePlannerPolicy(Policy):
             round(self.commit_seconds / env.seconds_per_step),
             round(self.horizon_seconds / env.seconds_per_step),
         )
-        first = IntentPolicy(*intent, withdraw_radius=self.withdraw_radius)
+        first = self._make(intent)
         then = IntentPolicy("advance", "nearest", withdraw_radius=self.withdraw_radius)
         for n in range(steps):
             _, _, terminated, truncated, _ = sim.step((first if n < commit else then).act(sim))
@@ -474,9 +474,17 @@ class OraclePlannerPolicy(Policy):
             scores = [self._lookahead(env, intent) for intent in self.candidates]
             self.score_log.append(scores)
             best = self.candidates[int(np.argmax(scores))]
-            self._current = IntentPolicy(*best, withdraw_radius=self.withdraw_radius)
+            self._current = self._make(best)
         self._step += 1
         return self._current.act(env)
+
+    def _make(self, intent):
+        """A candidate: a (movement, target) intent, or a role name (docs/planning/48, `envs/roles.py`)."""
+        if isinstance(intent, str):
+            from sindy_wm.envs.roles import RolePolicy
+
+            return RolePolicy.from_name(intent, withdraw_radius=self.withdraw_radius)
+        return IntentPolicy(*intent, withdraw_radius=self.withdraw_radius)
 
     def setting(self) -> dict:
         return {"movement": self._current.movement, "target": self._current.target}

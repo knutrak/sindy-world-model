@@ -77,6 +77,14 @@ def make_policy(name: str, wd: float):
         from sindy_wm.envs.planner import CANDIDATES
 
         return OraclePlannerPolicy(candidates=(*CANDIDATES, ("kite", "nearest"), ("kite", "focus")), **kw)
+    if name.startswith("role:"):  # docs/planning/48: per-type roles and target-type priority
+        from sindy_wm.envs.roles import RolePolicy
+
+        return RolePolicy.from_name(name, withdraw_radius=wd)
+    if name == "oracle27-h3":  # docs/planning/48: the 27 role combinations, the planners' settings
+        from sindy_wm.envs.roles import ROLE_NAMES
+
+        return OraclePlannerPolicy(candidates=ROLE_NAMES, **dict(kw, horizon_seconds=3.0))
     if name in ("oracle5-h3", "oracle5-h8"):  # docs/planning/42: five team-level candidates
         return OraclePlannerPolicy(**dict(kw, horizon_seconds=float(name[-1])))
     if name in ("oracle7-h3", "oracle7-h8"):  # docs/planning/38: the planners' settings, horizon 3 s or 8 s
