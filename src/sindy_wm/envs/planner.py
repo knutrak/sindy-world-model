@@ -488,3 +488,103 @@ class OraclePlannerPolicy(Policy):
 
     def setting(self) -> dict:
         return {"movement": self._current.movement, "target": self._current.target}
+
+
+class GeometryOraclePolicy(OraclePlannerPolicy):
+    """Perfect geometry, SINDy damage (docs/planning/50): each candidate is played in a copy of the game only
+    to record, step by step, how many units of each side and type have an enemy within reach; the frozen
+    pipeline then rolls forward from the live state with that reach in place of its closure, and the
+    candidate with the best predicted health margin is played."""
+
+    def __init__(self, model, **kw):
+        super().__init__(**kw)
+        self.model = model
+        self._pp = PipelinePlannerPolicy(model, withdraw_radius=self.withdraw_radius)
+
+    def reset(self, seed: int | None = None) -> None:
+        super().reset(seed)
+        self._pp.reset(seed)
+        self.log = self.score_log
+
+    def _reach_traj(self, env, intent, steps: int) -> np.ndarray:
+        import copy
+
+        from sindy_wm.states.typed import pair_reach
+
+        L = self.model.L
+        sim = copy.deepcopy(env)
+        commit = round(self.commit_seconds / env.seconds_per_step)
+        first = self._make(intent)
+        then = IntentPolicy("advance", "nearest", withdraw_radius=self.withdraw_radius)
+        out = np.zeros((steps, 2 * L.n))
+        for n in range(steps):
+            g = sim.unwrapped
+            for side, own, foe in (("blue", g.agents, g.enemies), ("red", g.enemies, g.agents)):
+                foes = list(foe.values())
+                for u in own.values():
+                    t = getattr(u.type, "name", str(u.type)).lower()
+                    if t not in L.types:
+                        continue
+                    if any(
+                        np.linalg.norm(u.pos - v.pos)
+                        <= min(
+                            pair_reach(t.upper(), getattr(v.type, "name", str(v.type)).upper()),
+                            self.model.max_reach,
+                        )
+                        for v in foes
+                    ):
+                        out[n, L.pos(side, t)] += 0.1
+            _, _, terminated, truncated, _ = sim.step((first if n < commit else then).act(sim))
+            if terminated or truncated:
+                out[n + 1 :] = out[n]
+                break
+        return out
+
+    def act(self, env: gym.Env) -> list[int]:
+        game = env.unwrapped
+        if self._pp._logger is None:
+            self._pp.live_state(env)
+        if (
+            self._step % max(1, round(self.replan_seconds / env.seconds_per_step)) == 0
+            and game.agents
+            and game.enemies
+        ):
+            from sindy_wm.models.pipeline import Pipeline
+
+            row = self._pp.live_state(env)
+            steps = round(self.horizon_seconds / DT)
+            commit = round(self.commit_seconds / DT)
+            scores = []
+            for intent in self.candidates:
+                U = np.repeat(control_vector("advance", "nearest")[None], steps, 0)
+                U[:commit] = control_vector(*intent)
+                B = typed_batch_from_row(row, self.model.L, U[None])
+                B["reach_true"] = self._reach_traj(env, intent, steps)[None]
+                with np.errstate(invalid="ignore", divide="ignore"):
+                    Y = self.model.L.team_view(_TrueReach.wrap(self.model).rollout(B))
+                scores.append(float(Y[0, -1, 0] - Y[0, -1, 1]))
+            del Pipeline
+            self.score_log.append(scores)
+            self._current = self._make(self.candidates[int(np.argmax(scores))])
+        self._step += 1
+        return self._current.act(env)
+
+
+class _TrueReach:
+    """The frozen pipeline with its reach replaced by B["reach_true"] (steps, keys), docs/planning/50."""
+
+    @staticmethod
+    def wrap(model):
+        import copy
+
+        from sindy_wm.models.pipeline import Pipeline
+
+        class TrueReachPipeline(type(model)):
+            def _reach(self, n, X, S, F, u, sh, offset, B):
+                R = B["reach_true"]
+                return {k: R[:, min(n, R.shape[1] - 1), self.L.pos(*k)] for k in sh}
+
+        m = copy.copy(model)
+        m.__class__ = TrueReachPipeline
+        assert isinstance(m, Pipeline)
+        return m

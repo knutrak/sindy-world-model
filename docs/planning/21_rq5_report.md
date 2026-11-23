@@ -225,3 +225,12 @@ everywhere. A perfect model choosing among the 27 gains no more over it than a p
 team intents gains over the best team intent (differences +1, +4, −3 points); the two oracles tie. The richer menu
 adds no room: what a planner can exploit here is the timing of a few team-level behaviours.
 
+## 24. Perfect geometry, SINDy damage (`50`, `51`) (read-out fixed before the run)
+
+A planner that takes reach from copies of the real game but predicts health and deaths with the frozen SINDy
+pipeline loses to the best fixed team intent in S1, S2, S3 and S5 (−10.5 to −23.5 points). Its scores correlate
+0.96 with the true outcomes and it agrees with the perfect model 56% of the time (world-model planners 27-32%), but
+small damage errors flip close decisions, notably towards withdrawing. Caveat: true reach mixed with the model's own
+unit counts can be inconsistent. Reading: fixing geometry alone is not enough; damage and deaths must be predicted
+consistently with it.
+

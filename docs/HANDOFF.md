@@ -321,3 +321,29 @@ advancing or holding, away when withdrawing). The walk/stop switch is predicted 
 by collision avoidance. Only marines' Red passes all criteria; U2 is not run. Next step for next semester: model
 collision avoidance (crowding) in the hybrid law.
 
+**Unit-level hybrid world model (`generalisation/16`, `17`, 23 Nov):** units moved by the hybrid law (switch
+classifiers, speed 3.15, heading by intent), damage at the frozen firepower. H1 fails: reach error 1.1-1.6 × the
+closure's (worse), H2 margin error 1.1-2.0 × frozen; H3/H4 (planner) not run. Cause: no collision avoidance, so
+simulated units arrive together where real ones queue and arrive piecemeal. Next semester's first step: add a
+separation (no-overlap) rule.
+
+**Hybrid plus separation (`generalisation/18`, `19`, 23 Nov):** a no-overlap step brings marines' margin error to
+1.03-1.06 × frozen (from 1.12-1.21 ×) but reach stays 1.07-1.55 × worse than the closure; H1 fails again, planner not
+run. Per-unit walk/stop and targeting errors compound within the first second.
+
+
+**Overnight hybrid run (`generalisation/20`), stopped by Knut on 23 Nov at 17:18 before finishing:** completed H1/H2
+for variants base and S (saved in `data/processed/generalisation/overnight20.json`); R was running. To resume, rerun
+`uv run --extra explore experiments/generalisation/overnight20.py all` (it redoes every stage; about 1-3 h). Nothing
+since `be726b7` is committed (docs `16`-`20`, `models/hybrid.py`, the overnight scripts).
+
+**Overnight hybrid run completed (`generalisation/20`, `21`, 23 Nov evening):** no variant passes H1. SMAClite's
+steering (R) brings the unit-level model level with the closure on reach (marines 0.98 / 1.02 / 0.92 × at
+1/2/4 s) and with frozen on the margin; T changes nothing; S makes it worse. H3/H4 not run.
+
+**Perfect geometry + SINDy damage (`planning/50`, `51`, 23 Nov evening):** with true reach from game copies, the
+SINDy planner still loses to the best fixed intent in four of five scenarios; scores correlate 0.96 with the truth
+and agree with the perfect model 56%, but damage errors flip close calls. Fixing geometry alone is not enough. Code:
+`GeometryOraclePolicy` in `envs/planner.py`, `kind == "geo5"` in `phase_b.py`, `experiments/planning/geo50.py`.
+Nothing since `be726b7` is committed.
+

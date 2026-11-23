@@ -86,6 +86,7 @@ def episode_rows(snap: pd.DataFrame, ctrl: pd.DataFrame, wd: float) -> pd.DataFr
             v = vel[t + 1, i]
             vpar = float(v @ e)
             sp = float(np.linalg.norm(v))
+            sp_prev = float(np.linalg.norm(vel[t, i]))  # docs/generalisation/20, fix S
             k = col.get(
                 tkey[t, i], -1
             )  # own target if alive, else the nearest enemy (docs/generalisation/15)
@@ -107,6 +108,7 @@ def episode_rows(snap: pd.DataFrame, ctrl: pd.DataFrame, wd: float) -> pd.DataFr
                     float(np.linalg.norm(v - vpar * e)),
                     sp,
                     cos_head,
+                    sp_prev,
                 )
             )
     return pd.DataFrame(
@@ -125,6 +127,7 @@ def episode_rows(snap: pd.DataFrame, ctrl: pd.DataFrame, wd: float) -> pd.DataFr
             "vperp",
             "speed",
             "cos_head",
+            "speed_prev",
         ],
     )
 

@@ -106,6 +106,18 @@ def planner(name: str, scen: str, wd: float) -> PipelinePlannerPolicy:
             withdraw_radius=wd,
             candidates=cands,
         )
+    if kind == "geo5":  # docs/planning/50: perfect geometry from game copies, SINDy damage
+        from sindy_wm.envs.planner import GeometryOraclePolicy
+
+        return GeometryOraclePolicy(
+            m, commit_seconds=2.0, horizon_seconds=float(h[1:]), withdraw_radius=wd, candidates=CANDIDATES
+        )
+    if kind == "hybrid":  # docs/generalisation/20: the selected unit-level hybrid world model
+        from sindy_wm.models.hybrid import HybridPlannerPolicy
+
+        if "hybrid" not in _cache:
+            _cache["hybrid"] = pickle.load(open(A.OUT / "hybrid_selected.pkl", "rb"))
+        return HybridPlannerPolicy(_cache["hybrid"][MODEL_OF[scen]], CANDIDATES, withdraw_radius=wd)
     if kind == "terminal":  # docs/planning/25: score by the projected final margin
         from sindy_wm.envs.planner import team_firepower
 
@@ -148,7 +160,7 @@ def play(job: tuple) -> dict:
     }
     n0 = {"blue": len(game.agents), "red": len(game.enemies)}
     is_planner = name.startswith(
-        ("model", "spread", "compart", "gated", "wfire", "terminal", "musigma", "mlp")
+        ("model", "spread", "compart", "gated", "wfire", "terminal", "musigma", "mlp", "hybrid", "geo5")
     )
     policy = planner(name, scen, wd) if is_planner else A.make_policy(name, wd)
     policy.reset(seed)
@@ -195,7 +207,9 @@ def play(job: tuple) -> dict:
             "switches": int((np.diff(picks) != 0).sum()),
             "gap_best_second": float((top2[:, 1] - top2[:, 0]).mean()),
             # within 1 hp: team health is in ten full units of the first type (docs/planning/34)
-            "near_tie_share": float(
+            "near_tie_share": float("nan")
+            if not hasattr(policy, "model")
+            else float(
                 ((top2[:, 1] - top2[:, 0]) * 10 * policy.model.L.hp[policy.model.L.types[0]] < 1).mean()
             ),
             **{f"pick_{'/'.join(c)}": float((picks == j).mean()) for j, c in enumerate(policy.candidates)},
