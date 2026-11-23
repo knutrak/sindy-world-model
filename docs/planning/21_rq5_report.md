@@ -190,3 +190,30 @@ corrected). The best world-model planner (μ, σ) is 13.5-36 points below the 3 
 the MLP planner's chosen intents gain 0.006-0.012 team health units less per second than predicted; the μ, σ
 planner's do not.
 
+## 19. A Red with Blue's intents, and the payoff table (`40`, `41`) (pre-reg.)
+
+Red plays Blue's intent code through a mirrored view (same masks and firing limit; symmetry gate passed: 50.5% and
+53.7%). In a 7 × 7 table of fixed Blue intents against fixed Red behaviours (scripted attack-move + 6 mirrored
+intents), 200 paired seeds per cell in S1, S2, S4: **kite is near-dominant against every Red in all three** (largest
+shortfall 0-1 point); knowing Red's intent adds about 0 points over fixed kite. Red is harder to beat when it can
+use Blue's intents (best Blue rule S1 97.5% → 77.2%, S2 89.5% → 74.5%, S4 32.5% → 25.8%). Planning has room only
+through timing within a battle (section 18), not through adapting to the opponent's intent.
+
+## 20. Team level only, with a matched ceiling (`42`, `43`) (pre-reg.)
+
+Five team-level candidates (no kite), `34`'s seeds. The μ, σ planner ties the best fixed team intent in S1, S2, S5
+(−1.0, +3.8, +1.2), beats it in S3 (+9.8) and S4 (+3.2); a perfect model with the same settings (3 s) beats it by
++25.0, +27.8, +32.0, +24.5, +8.2 points (8 s: +26 to +57). Share of the matched ceiling captured: 0-31%.
+
+## 21. Where the models disagree with the perfect model (`44`, `45`) (exploratory)
+
+On 8,594 team-level decisions (oracle replays): agreement μ, σ 32%, frozen 27% (chance about 33%); regret 8.3 / 9.7 hp
+per decision. The perfect model picks a nearest intent in 66% of decisions; the models over-prefer focus, and the
+μ, σ model often withdraws where the perfect model holds.
+
+## 22. Focus cost on the μ, σ planner, fresh seeds (`46`, `47`) (pre-reg.)
+
+The focus-cost correction (`04`) shifts picks to nearest (S1 31% → 62%) but does not change wins (ties in S1, S2,
+S4, S5; S3 −2.8). The earlier team-level picture replicates on fresh seeds (23 x00 000): μ, σ planner ties the best
+fixed intent; matched ceiling +25 to +29 points in S1-S4.
+

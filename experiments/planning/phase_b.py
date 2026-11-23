@@ -72,11 +72,23 @@ def planner(name: str, scen: str, wd: float) -> PipelinePlannerPolicy:
     if kind == "wfire":  # docs/planning/25: Blue keeps this share of its fire while withdrawing (train)
         m = copy.deepcopy(m)
         m.withdraw_fire = {"marines": 0.093, "mixed": 0.127}[MODEL_OF[scen]]
-    if kind == "musigma":  # docs/planning/34: reach from μ, σ states (clipped); kite among mixed candidates
+    if kind in (
+        "musigma",
+        "musigma5",
+        "musigma5-focuscost",
+    ):  # docs/planning/34: reach from μ, σ states (clipped); kite among mixed candidates
         if "musigma" not in _cache:
             _cache["musigma"] = pickle.load(open(A.OUT / "musigma_models.pkl", "rb"))
         ms = _cache["musigma"][MODEL_OF[scen]]
         cands = CANDIDATES + ((("kite", "nearest"), ("kite", "focus")) if MODEL_OF[scen] == "mixed" else ())
+        if kind.startswith("musigma5"):  # docs/planning/42: the five team-level candidates only
+            cands = CANDIDATES
+        if kind == "musigma5-focuscost":  # docs/planning/46: `04`'s focus cost on the μ, σ model
+            if "variants" not in _cache:
+                _cache["variants"] = pickle.load(open(VARIANTS, "rb"))
+            f = _cache["variants"]["S1" if MODEL_OF[scen] == "marines" else "S2"]
+            ms = copy.deepcopy(ms)
+            ms.focus_cost, ms.focus_norm = f["c"], 1 - f["c"] * f["fbar"]
         return PipelinePlannerPolicy(
             ms, commit_seconds=2.0, horizon_seconds=float(h[1:]), withdraw_radius=wd, candidates=cands
         )

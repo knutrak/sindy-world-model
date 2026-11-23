@@ -290,3 +290,18 @@ oracle) with 7 candidates and a 3 s horizon beats fixed kite in S2 (+8), S4 (+27
 the 3 s oracle. The MLP planner is measurably optimistic about its choices (exploitation), the μ, σ planner is not.
 Supervisor doc corrected accordingly.
 
+**Mirrored Red and payoff table (`planning/40`, `41`, pre-registered, 23 Nov):** `envs/mirror.py` lets Red play
+Blue's intents (symmetry gate passed). Kite is near-dominant against every Red behaviour in S1, S2, S4; adaptation
+headroom about 0 points. Red is harder to beat when it can kite. Note for any later data collection with a switching
+Red: `MirrorRed.reset(seed)` passes the battle seed to Red's policy, so an `IntentSchedule` Red would copy Blue's
+schedule; give Red its own seed stream first.
+
+**Team level only (`planning/42`-`47`, 23 Nov, run partly on Knut's standing instruction while on a break):**
+- `43` (pre-reg.): five team-level candidates; the μ, σ planner ties the best fixed team intent in S1, S2, S5, gains
+  in S3/S4; the matched perfect model (3 s) is +25-32 points above it (S5 +8). Share captured 0-31%.
+- `45` (exploratory): models agree with the perfect model's picks about at chance (27-32%); they over-prefer focus
+  while the perfect model picks nearest 66% of the time; μ, σ often withdraws where the perfect model holds.
+- `47` (pre-reg., fresh seeds 23 x00 000): the focus-cost correction moves picks to nearest but does not change wins.
+  So the gap is not target choice but timing of hold / advance / withdraw.
+- Nothing from 23 Nov after `b75c361` is committed; `40`-`47` and their code await Knut's review.
+
