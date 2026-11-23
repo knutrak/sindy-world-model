@@ -284,3 +284,9 @@ everywhere. By the plan's fixed interpretation: the setup limits planning, not t
 planners were the more robust ones in closed loop. Code: `models/typed_mlp.py`, `experiments/planning/black_box.py`,
 `kind == "mlp"` in `phase_b.py`.
 
+**Oracle with the planners' settings (`planning/38`, `39`, pre-registered, 23 Nov):** a perfect model (exact
+oracle) with 7 candidates and a 3 s horizon beats fixed kite in S2 (+8), S4 (+27), S5 (+9.5). This **corrects**
+`37`'s "the setup limits planning": model accuracy is what limits planning; the μ, σ planner is 13.5-36 points below
+the 3 s oracle. The MLP planner is measurably optimistic about its choices (exploitation), the μ, σ planner is not.
+Supervisor doc corrected accordingly.
+

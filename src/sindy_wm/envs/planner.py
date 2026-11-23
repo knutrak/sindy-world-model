@@ -263,6 +263,7 @@ class PipelinePlannerPolicy(Policy):
                 B[k] = np.repeat(v[None], len(self._U), 0)
         with np.errstate(invalid="ignore", divide="ignore"):
             Y = self.model.L.team_view(self.model.rollout(B))
+        self._Y = Y  # the last rollouts, for the optional trace (docs/planning/38)
         if (
             getattr(self.model, "clipped", None) is not None
             and getattr(self.model, "bounds", None) is not None
@@ -285,6 +286,18 @@ class PipelinePlannerPolicy(Policy):
             scores = self.predict(env)
             best = int(np.argmax(scores))
             self.log.append(scores)
+            if getattr(self, "trace", False):  # docs/planning/38: predicted 1 s gains, margin now, choice
+                Y, k1 = self._Y, round(1.0 / DT)
+                now = float(Y[0, 0, 0] - Y[0, 0, 1])
+                self.trace_log = getattr(self, "trace_log", [])
+                self.trace_log.append(
+                    {
+                        "step": self._step,
+                        "now": now,
+                        "pred1": (Y[:, k1, 0] - Y[:, k1, 1] - now).tolist(),
+                        "chosen": best,
+                    }
+                )
             self._current = IntentPolicy(*self.candidates[best], withdraw_radius=self.withdraw_radius)
         self._step += 1
         return self._current.act(env)

@@ -178,6 +178,15 @@ testbed" does not hold.
 A typed MLP world model with the same inputs as the μ, σ planner (state, shape, reach, μ, σ, five controls),
 trained on 3 s rollouts. Offline it is clearly better (val margin R² at 4 s 0.54-0.61 vs 0.08-0.19 frozen; ranking
 regret 35-57% lower). In closed loop on `34`'s seeds it loses to fixed kite in S2, S4, S5 (−55, −19, −36) and to the
-μ, σ planner in every scenario. By the fixed interpretation: the setup, not the interpretable model, limits planning.
+μ, σ planner in every scenario. By the fixed interpretation then: the setup limits planning (**corrected by section 18**).
 Better offline accuracy did not carry into closed loop; the SINDy planners were the more robust ones.
+
+## 18. The oracle with the planners' settings, and exploitation (`38`, `39`) (pre-reg.)
+
+The exact oracle with the world-model planners' settings (7 candidates, re-plan 1 s, commit 2 s, **3 s horizon**)
+beats fixed kite in S2 (+8.0), S4 (+27.0) and S5 (+9.5); with 8 s, +8.8 / +46.0 / +20.5. So a perfect model would beat
+the dominant rule with this setup: **model accuracy, not the setup, limits planning** (section 17's reading
+corrected). The best world-model planner (μ, σ) is 13.5-36 points below the 3 s oracle. Exploitation is measured:
+the MLP planner's chosen intents gain 0.006-0.012 team health units less per second than predicted; the μ, σ
+planner's do not.
 

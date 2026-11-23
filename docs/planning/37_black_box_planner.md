@@ -103,3 +103,12 @@ Facts beside the rules:
   checked: whether the planner's own states and intent sequences lie outside what the MLP was trained on, so that
   the planner picks intents whose predicted gains are model errors (a known failure of planning with learned
   models). Start points at step 0 were also not in the MLP's training starts (history 8 steps).
+
+## Correction (23 Nov, after `38` / `39`)
+
+The interpretation fixed in `36` ("the setup limits planning") is contradicted by `39`: an exact oracle with the
+planners' own settings (3 s horizon, 7 candidates) beats fixed kite in S2, S4 and S5 (+8 to +27 points). So a
+perfect model would plan better than the dominant rule with this setup; the world models' remaining errors are what
+hold planning back. The black box's failure is partly measured exploitation: its chosen intents gain less than
+predicted (`39`, E), while the μ, σ planner's do not. The facts in this document stand; the "setup limits planning"
+reading does not.

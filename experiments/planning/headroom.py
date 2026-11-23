@@ -77,6 +77,11 @@ def make_policy(name: str, wd: float):
         from sindy_wm.envs.planner import CANDIDATES
 
         return OraclePlannerPolicy(candidates=(*CANDIDATES, ("kite", "nearest"), ("kite", "focus")), **kw)
+    if name in ("oracle7-h3", "oracle7-h8"):  # docs/planning/38: the planners' settings, horizon 3 s or 8 s
+        from sindy_wm.envs.planner import CANDIDATES
+
+        kw = dict(kw, horizon_seconds=float(name[-1]))
+        return OraclePlannerPolicy(candidates=(*CANDIDATES, ("kite", "nearest"), ("kite", "focus")), **kw)
     if name == "oracle-stand":  # docs/planning/17: the five candidates plus hold position (stand)
         from sindy_wm.envs.planner import CANDIDATES
 
