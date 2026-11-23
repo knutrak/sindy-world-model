@@ -309,3 +309,8 @@ schedule; give Red its own seed stream first.
 (`envs/roles.py`, 27 combinations; oracle candidates may now be role names) add no room for a planner: the 27-choice
 oracle ties the 5-choice oracle, and "both types advance, nearest" is the best fixed choice everywhere.
 
+**Unit-level geometry, route 1 (`generalisation/13`, `14`, pre-registered, 23 Nov):** stage U1 (sparse per-unit
+movement laws from recorded velocities) fails for every side and type (val R² 0.13-0.57, 11-62 terms); U2/U3 not
+run. Diagnostic: movement is a walk/stop switch (full speed 3.15 or stopped) plus collision avoidance; Red walks
+straight at its nearest enemy. A hybrid (switching) law is the reading for next semester.
+
