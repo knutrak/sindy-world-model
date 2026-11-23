@@ -314,3 +314,10 @@ movement laws from recorded velocities) fails for every side and type (val R² 0
 run. Diagnostic: movement is a walk/stop switch (full speed 3.15 or stopped) plus collision avoidance; Red walks
 straight at its nearest enemy. A hybrid (switching) law is the reading for next semester.
 
+**Hybrid movement law check (`generalisation/15`, exploratory, criteria fixed first, 23 Nov):** walk speed is exactly
+3.15 everywhere; Red heads straight at its target (cos 0.96-0.99); Blue's heading is intent-dependent (towards when
+advancing or holding, away when withdrawing). The walk/stop switch is predicted at 95-97% for marines with 8 terms
+(target in range, out of range, danger under withdraw), but only 83-88% for mixed Red, where 28% of steps are slowed
+by collision avoidance. Only marines' Red passes all criteria; U2 is not run. Next step for next semester: model
+collision avoidance (crowding) in the hybrid law.
+

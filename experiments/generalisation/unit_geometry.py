@@ -52,13 +52,15 @@ def episode_rows(snap: pd.DataFrame, ctrl: pd.DataFrame, wd: float) -> pd.DataFr
     keys = units.index.to_numpy()
     piv = {
         c: snap.pivot(index="step", columns="unit_key", values=c).reindex(index=steps, columns=keys)
-        for c in ("x", "y", "vx", "vy", "cooldown", "alive", "target_in_range")
+        for c in ("x", "y", "vx", "vy", "cooldown", "alive", "target_in_range", "tkey")
     }
     pos = np.stack([piv["x"].to_numpy(float), piv["y"].to_numpy(float)], -1)
     vel = np.stack([piv["vx"].to_numpy(float), piv["vy"].to_numpy(float)], -1)
     alive = piv["alive"].fillna(False).to_numpy(bool)
     cd = piv["cooldown"].to_numpy(float)
     tir = piv["target_in_range"].fillna(False).to_numpy(bool)
+    tkey = piv["tkey"].fillna("").to_numpy(object)
+    col = {k: n for n, k in enumerate(keys)}
     team = units.team.to_numpy()
     utype = units.unit_type.to_numpy()
     blue, red = team == "blue", team == "red"
@@ -83,6 +85,13 @@ def episode_rows(snap: pd.DataFrame, ctrl: pd.DataFrame, wd: float) -> pd.DataFr
             e = e / n if n > 0 else np.array([1.0, 0.0])
             v = vel[t + 1, i]
             vpar = float(v @ e)
+            sp = float(np.linalg.norm(v))
+            k = col.get(
+                tkey[t, i], -1
+            )  # own target if alive, else the nearest enemy (docs/generalisation/15)
+            h = pos[t, k] - pos[t, i] if k >= 0 and al[k] else pos[t, j[i]] - pos[t, i]
+            hn = np.linalg.norm(h)
+            cos_head = float(v @ h / (sp * hn)) if sp > 1e-6 and hn > 1e-6 else np.nan
             out.append(
                 (
                     team[i],
@@ -96,6 +105,8 @@ def episode_rows(snap: pd.DataFrame, ctrl: pd.DataFrame, wd: float) -> pd.DataFr
                     tg,
                     vpar,
                     float(np.linalg.norm(v - vpar * e)),
+                    sp,
+                    cos_head,
                 )
             )
     return pd.DataFrame(
@@ -112,6 +123,8 @@ def episode_rows(snap: pd.DataFrame, ctrl: pd.DataFrame, wd: float) -> pd.DataFr
             "target",
             "vpar",
             "vperp",
+            "speed",
+            "cos_head",
         ],
     )
 
@@ -124,6 +137,9 @@ def job(args) -> pd.DataFrame:
     parts = []
     for ep, g in snaps.groupby("episode_idx"):
         g = g.assign(unit_key=g.team + "_" + g.unit_id.astype(str))
+        g = g.assign(
+            tkey=np.where(g.target_id >= 0, g.target_team.astype(str) + "_" + g.target_id.astype(str), "")
+        )
         cc = ctrl[ctrl.episode_idx == ep].set_index("step")[["movement", "target"]]
         r = episode_rows(g, cc, wd)
         r["battle"] = f"{exp}/{name}/{ep}"
@@ -223,10 +239,71 @@ def u1():
     json.dump(rows_out, open(OUT / "u1.json", "w"), indent=1, default=float)
 
 
+def hybrid():
+    """docs/generalisation/15: walk/stop switch classifier (L1 logistic, <= 8 terms; depth-3 tree alongside),
+    walk speed and heading, per side and type."""
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.tree import DecisionTreeClassifier
+
+    rows_out = []
+    for scen in SETS:
+        tr = pd.read_parquet(OUT / f"{scen}_train.parquet")
+        va = pd.read_parquet(OUT / f"{scen}_val.parquet")
+        for side in ("blue", "red"):
+            ctrls = [c for c in CTRL_BLUE if scen == "mixed" or c != "kite"] if side == "blue" else ["1"]
+            names = [f"{g}·{c}" for g in GROUPS for c in ctrls]
+            for typ in sorted(tr.type.unique()):
+                a, b = tr[(tr.team == side) & (tr.type == typ)], va[(va.team == side) & (va.type == typ)]
+                share = {"walk": (b.speed > 2.9).mean(), "stop": (b.speed < 0.3).mean()}
+                a2, b2 = a[(a.speed > 2.9) | (a.speed < 0.3)], b[(b.speed > 2.9) | (b.speed < 0.3)]
+                Xa, Xb = design(a2, side, ctrls), design(b2, side, ctrls)
+                ya, yb = (a2.speed > 2.9).to_numpy(int), (b2.speed > 2.9).to_numpy(int)
+                sub = np.random.default_rng(0).choice(len(ya), min(200_000, len(ya)), replace=False)
+                mu, sd = Xa[sub].mean(0), Xa[sub].std(0) + 1e-9
+                best = None
+                for C in (1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 0.1, 0.3, 1.0):
+                    clf = LogisticRegression(penalty="l1", C=C, solver="saga", max_iter=300, tol=1e-3)
+                    clf.fit((Xa[sub] - mu) / sd, ya[sub])
+                    nz = int((clf.coef_ != 0).sum())
+                    if nz <= 8:
+                        acc = float((clf.predict((Xb - mu) / sd) == yb).mean())
+                        best = (C, nz, acc, clf)
+                tree = DecisionTreeClassifier(max_depth=3, random_state=0).fit(Xa[sub], ya[sub])
+                tree_acc = float((tree.predict(Xb) == yb).mean())
+                walk = b[b.speed > 2.9]
+                med_speed, med_cos = float(walk.speed.median()), float(walk.cos_head.median())
+                C, nz, acc, clf = best if best else (None, 0, float("nan"), None)
+                terms = (
+                    {names[k]: float(v) for k, v in enumerate(clf.coef_[0]) if v} if clf is not None else {}
+                )
+                ok = acc >= 0.9 and abs(med_speed - SPEED) <= 0.05 * SPEED and med_cos >= 0.95
+                rows_out.append(
+                    {
+                        "scenario": scen,
+                        "side": side,
+                        "type": typ,
+                        "walk share": share["walk"],
+                        "stop share": share["stop"],
+                        "in between": 1 - share["walk"] - share["stop"],
+                        "switch accuracy (L1, <= 8 terms)": acc,
+                        "terms": nz,
+                        "C": C,
+                        "tree depth 3 accuracy": tree_acc,
+                        "majority class": max(yb.mean(), 1 - yb.mean()),
+                        "walk speed (median)": med_speed,
+                        "walk heading cos (median)": med_cos,
+                        "passes": bool(ok),
+                        "switch terms (standardised)": " ".join(f"{v:+.2f}·{k}" for k, v in terms.items()),
+                    }
+                )
+                print(rows_out[-1], flush=True)
+    json.dump(rows_out, open(OUT / "hybrid.json", "w"), indent=1, default=float)
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("what", choices=["rows", "u1"])
-    {"rows": rows, "u1": u1}[p.parse_args().what]()
+    p.add_argument("what", choices=["rows", "u1", "hybrid"])
+    {"rows": rows, "u1": u1, "hybrid": hybrid}[p.parse_args().what]()
 
 
 if __name__ == "__main__":
