@@ -39,7 +39,10 @@ from sindy_wm.envs.policies import (
 )
 
 MOVEMENTS = ("advance", "hold", "withdraw")
-EXTRA_MOVEMENTS = ("stand", "kite")  # accepted by IntentPolicy, not part of INTENTS
+EXTRA_MOVEMENTS = ("stand", "kite", "spread", "flank")  # accepted by IntentPolicy, not part of INTENTS
+SPREAD_R = 2.2  # docs/counters/00: the baneling splash radius
+FLANK_W, FLANK_ARRIVE, FLANK_MAX_S = 7.0, 3.5, 10.0  # docs/counters/02: waypoint offset, arrival, timeout
+FLANK_STALL = (1.0, 0.3)  # docs/counters/02 amendment 2: attack if the half got < 0.3 closer in the last 1 s
 TARGETS = ("nearest", "focus")
 INTENTS = tuple(product(MOVEMENTS, TARGETS))  # all six (movement, target) pairs
 
@@ -47,7 +50,13 @@ INTENTS = tuple(product(MOVEMENTS, TARGETS))  # all six (movement, target) pairs
 class IntentPolicy(TargetChoicePolicy):
     """The Blue team follows one intent (see the module docstring). No random actions."""
 
-    def __init__(self, movement: str = "advance", target: str = "nearest", withdraw_radius: float = 7.0):
+    def __init__(
+        self,
+        movement: str = "advance",
+        target: str = "nearest",
+        withdraw_radius: float = 7.0,
+        bounds: tuple[float, float, float, float] | None = None,
+    ):
         if movement not in MOVEMENTS + EXTRA_MOVEMENTS:
             raise ValueError(f"movement must be one of {MOVEMENTS + EXTRA_MOVEMENTS}, got {movement!r}")
         if target not in TARGETS:
@@ -56,6 +65,14 @@ class IntentPolicy(TargetChoicePolicy):
         self.movement = movement
         self.target = target
         self.withdraw_radius = withdraw_radius
+        self.bounds = bounds  # (x0, x1, y0, y1), used by flank to keep its waypoints on the map
+        self._flank = None
+        self._step = 0
+
+    def reset(self, seed: int | None = None) -> None:
+        super().reset(seed)
+        self._flank = None
+        self._step = 0
 
     def params(self) -> dict:
         return {"movement": self.movement, "target": self.target, "withdraw_radius": self.withdraw_radius}
@@ -68,6 +85,9 @@ class IntentPolicy(TargetChoicePolicy):
         self._contact = any(
             mask[FIRST_TARGET:].any() for agent_id, mask in enumerate(masks) if agent_id in game.agents
         )
+        if self.movement == "flank":
+            self._flank_update(env, game)
+        self._step += 1
         actions = []
         for agent_id, mask in enumerate(masks):
             unit = game.agents.get(agent_id)
@@ -92,6 +112,10 @@ class IntentPolicy(TargetChoicePolicy):
             return self._stand_action(game, unit, mask, focus)
         if self.movement == "kite":
             return self._kite_action(game, unit, mask, focus)
+        if self.movement == "spread":
+            return self._spread_action(game, unit, mask, focus)
+        if self.movement == "flank":
+            return self._flank_action(game, unit, mask, focus)
         in_range = mask[FIRST_TARGET:].any()
         if in_range or self.movement == "advance" or (self.movement == "hold" and self._contact):
             return self._unit_action(game, unit, mask, focus)
@@ -111,6 +135,78 @@ class IntentPolicy(TargetChoicePolicy):
         else:
             k = min(reach, key=lambda k: np.linalg.norm(game.enemies[k].pos - unit.pos))
         return FIRST_TARGET + k
+
+    def _spread_action(self, game, unit, mask: np.ndarray, focus: int | None) -> int:
+        """Spread (docs/counters/00): as advance, but a unit that cannot fire this step steps away from a
+        friend closer than SPREAD_R (the baneling splash radius)."""
+        offered = np.flatnonzero(mask[FIRST_TARGET:])
+        can_fire = unit.cooldown <= KITE_READY and any(
+            unit.has_within_attack_range(game.enemies[int(k)]) for k in offered
+        )
+        if not can_fire:
+            friends = [u for u in game.agents.values() if u is not unit]
+            if friends:
+                f = _nearest(friends, unit.pos)
+                if np.linalg.norm(f.pos - unit.pos) < SPREAD_R:
+                    move = _move_along(unit.pos - f.pos, mask)
+                    if move != STOP:
+                        return move
+        return self._unit_action(game, unit, mask, focus)
+
+    def _flank_update(self, env, game) -> None:
+        """Flank (docs/counters/02): at the first step, split the team into two halves across the line to the
+        enemy and fix a waypoint beside the enemy for each; a half attacks once it arrives or after
+        FLANK_MAX_S."""
+        if self._flank is None:
+            ids = list(game.agents)
+            pos = np.array([game.agents[i].pos for i in ids])
+            c = pos.mean(0)
+            e = np.mean([u.pos for u in game.enemies.values()], axis=0)
+            a = (e - c) / max(np.linalg.norm(e - c), 1e-9)
+            perp = np.array([-a[1], a[0]])
+            order = np.argsort((pos - c) @ perp)
+            half = len(ids) // 2
+            groups = {-1: [ids[k] for k in order[:half]], 1: [ids[k] for k in order[half:]]}
+            way = {}
+            for side in (-1, 1):
+                w = e + side * FLANK_W * perp
+                if self.bounds is not None:
+                    x0, x1, y0, y1 = self.bounds
+                    w = np.array([np.clip(w[0], x0 + 1, x1 - 1), np.clip(w[1], y0 + 1, y1 - 1)])
+                way[side] = w
+            self._flank = {
+                "side": {i: s for s, g in groups.items() for i in g},
+                "way": way,
+                "groups": groups,
+                "attack": {-1: not groups[-1], 1: not groups[1]},
+                "hist": {-1: [], 1: []},
+            }
+        f = self._flank
+        late = self._step * env.seconds_per_step >= FLANK_MAX_S
+        lag = max(1, round(FLANK_STALL[0] / env.seconds_per_step))
+        for side, g in f["groups"].items():
+            alive = [game.agents[i].pos for i in g if i in game.agents]
+            if f["attack"][side]:
+                continue
+            if late or not alive:
+                f["attack"][side] = True
+                continue
+            d = float(np.linalg.norm(np.mean(alive, axis=0) - f["way"][side]))
+            h = f["hist"][side]
+            h.append(d)
+            if d <= FLANK_ARRIVE or (len(h) > lag and h[-1 - lag] - d < FLANK_STALL[1]):
+                f["attack"][side] = True
+
+    def _flank_action(self, game, unit, mask: np.ndarray, focus: int | None) -> int:
+        """Flank, per unit: walk to the half's waypoint (fight only an enemy inside the unit's own range);
+        advance once the half attacks."""
+        f = self._flank
+        side = f["side"][unit.id_in_faction]
+        offered = np.flatnonzero(mask[FIRST_TARGET:])
+        if f["attack"][side] or any(unit.has_within_attack_range(game.enemies[int(k)]) for k in offered):
+            return self._unit_action(game, unit, mask, focus)
+        move = _move_along(f["way"][side] - unit.pos, mask)
+        return move if move != STOP else self._unit_action(game, unit, mask, focus)
 
     def _kite_action(self, game, unit, mask: np.ndarray, focus: int | None) -> int:
         """Kite (docs/planning/26): with an enemy inside the unit's own range, shoot when the weapon is ready
