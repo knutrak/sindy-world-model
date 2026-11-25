@@ -34,6 +34,8 @@ Notes:
 ```
 src/sindy_wm/            reusable code, imported by notebooks and scripts
 ├── paths.py             standard project paths (PROJECT_ROOT, RAW_DIR, SCENARIO_DIR, ...)
+├── world_model.py       WorldModel: load a frozen model, observe a battle, predict, compare intents
+│                        (docs/world_model.md; models in configs/world_models/)
 ├── provenance.py        code_info(), file_sha256(): which code and inputs produced a result
 ├── envs/                everything that talks to SMAClite
 │   ├── scenarios.py     make_env(): create environments by scenario name, optionally with
@@ -108,6 +110,19 @@ plot_level_a(states, title="5m_vs_5m, seed 0")
 
 In notebooks, set `plt.rcParams["animation.html"] = "jshtml"` so that
 `animate_positions(episode.snapshots)` plays inline.
+
+## Using the world model
+
+```python
+from sindy_wm.world_model import WorldModel
+
+wm = WorldModel.load("marines")          # or "marauders", "mixed"
+state = wm.observe(env)                  # or wm.state_from_units(units)
+print(wm.predict(state, "hold/focus", horizon=2.0).to_text())
+print(wm.compare(state))
+```
+
+Try `uv run scripts/world_model_demo.py`. Calls, limits and accuracy: [docs/world_model.md](docs/world_model.md).
 
 ## Collecting datasets
 

@@ -1,0 +1,188 @@
+{
+ "format": 1,
+ "name": "marauders",
+ "info": {
+  "source": "docs/generalisation/06_frozen_equations.md",
+  "train": "exp09_marauders/train",
+  "held_out": "exp09_marauders/test",
+  "reliable_horizon_s": 3,
+  "held_out_error": {
+   "horizon_s": [
+    1,
+    2,
+    4
+   ],
+   "hp": [
+    14.520124539616807,
+    24.82490523908468,
+    46.47966466934758
+   ],
+   "units": [
+    0.38956338671986473,
+    0.49192010398519426,
+    0.7212500833213318
+   ],
+   "distance": [
+    0.3071216434119562,
+    0.4378153415527748,
+    0.5873015691115303
+   ]
+  }
+ },
+ "equations": [
+  "H_B^marauder' = -0.1245\u00b7R[marauder]*s[marauder]",
+  "H_R^marauder' = -0.1257\u00b7R[marauder]*s[marauder]",
+  "(ln A_B^marauder)' = (0.614) \u00b7 (ln H_B^marauder)'",
+  "(ln A_R^marauder)' = (0.535 +0.159\u00b7focus) \u00b7 (ln H_R^marauder)'",
+  "d' = -0.337\u00b7walk_r*wd +0.915\u00b7danger*wd -5.613\u00b7close*adv -3.417\u00b7close*hold*far -5.285\u00b7close*hold*contact"
+ ],
+ "model": {
+  "types": [
+   "marauder"
+  ],
+  "spec": {
+   "withdraw": "rule",
+   "alloc": "rule",
+   "thr_health": 0.15,
+   "thr_distance": 0.05,
+   "max_reach": 6.0,
+   "movement_wd": "rule",
+   "withdraw_radius": 8.674
+  },
+  "rho": {
+   "marauder": 6.0
+  },
+  "health": {
+   "blue:marauder": {
+    "R[marauder]*s[marauder]": -0.12453235994019009,
+    "A[marauder]": 0.0,
+    "1": 0.0
+   },
+   "red:marauder": {
+    "R[marauder]*s[marauder]": -0.12565780198434248,
+    "A[marauder]": 0.0,
+    "1": 0.0
+   }
+  },
+  "alive": {
+   "blue:marauder": [
+    0.6139651156061325,
+    0.0
+   ],
+   "red:marauder": [
+    0.5348418501232604,
+    0.15881547251757158
+   ]
+  },
+  "distance": {
+   "Rb": 0.0,
+   "Rr": 0.0,
+   "Ab": 0.0,
+   "Ar": 0.0,
+   "Rb*hold": 0.0,
+   "Rr*hold": 0.0,
+   "Ab*hold": 0.0,
+   "Ar*hold": 0.0,
+   "Rb*wd": 0.0,
+   "Rr*wd": 0.0,
+   "Ab*wd": 0.0,
+   "Ar*wd": 0.0,
+   "Rb*focus": 0.0,
+   "Rr*focus": 0.0,
+   "Ab*focus": 0.0,
+   "Ar*focus": 0.0,
+   "gate": 0.0,
+   "near": 0.0,
+   "walk_r": 0.0,
+   "walk_b": 0.0,
+   "danger": 0.0,
+   "gate*adv": 0.0,
+   "near*adv": 0.0,
+   "walk_r*adv": 0.0,
+   "walk_b*adv": 0.0,
+   "danger*adv": 0.0,
+   "gate*hold": 0.0,
+   "near*hold": 0.0,
+   "walk_r*hold": 0.0,
+   "walk_b*hold": 0.0,
+   "danger*hold": 0.0,
+   "gate*wd": 0.0,
+   "near*wd": 0.0,
+   "walk_r*wd": -0.3367135908350344,
+   "walk_b*wd": 0.0,
+   "danger*wd": 0.9150839294369941,
+   "close*adv": -5.613029920530297,
+   "close*hold": 0.0,
+   "close*wd": 0.0,
+   "flee*wd": 0.0,
+   "close*hold*far": -3.417235632665253,
+   "close*hold*contact": -5.284834549407845,
+   "walk_b*hold*contact": 0.0,
+   "1": 0.0
+  },
+  "reach_closure": {
+   "blue:marauder": [
+    0.9573596872438518,
+    0.7137073623805813,
+    1.0804380643307394
+   ],
+   "red:marauder": [
+    1.1620250551152145,
+    0.5215912907000683,
+    1.3587983879390557
+   ]
+  },
+  "target_choice": {},
+  "team_closure": {
+   "form": "derived",
+   "gates": {
+    "advance": [
+     5.6169537046917775,
+     8.265087107785053,
+     -0.26048911898153404,
+     0.0893867908109273,
+     -0.10096905716047706,
+     0.8295729293765377,
+     1.4715599639743742,
+     -2.347615900462341e-08
+    ],
+    "hold": [
+     3.672949331714585,
+     17.51055041118887,
+     -1.8304976666819766,
+     -5.888897694549675,
+     1.8539199685856538,
+     -2.1688953024860087,
+     3.0665701008337383,
+     0.00013686777909041047
+    ],
+    "withdraw": [
+     0.0,
+     99.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0
+    ]
+   },
+   "share_blue": [
+    0.9566677246628577,
+    0.7138283489017959,
+    1.0800329208266402,
+    6.0
+   ],
+   "share_red": [
+    1.1656864993732072,
+    0.5220993276462884,
+    1.3586552324555505,
+    6.0
+   ]
+  }
+ }
+}

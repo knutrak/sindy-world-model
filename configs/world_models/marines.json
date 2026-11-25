@@ -1,0 +1,188 @@
+{
+ "format": 1,
+ "name": "marines",
+ "info": {
+  "source": "docs/generalisation/06_frozen_equations.md",
+  "train": "exp06_intents/train",
+  "held_out": "exp06_intents/test4",
+  "reliable_horizon_s": 2,
+  "held_out_error": {
+   "horizon_s": [
+    1,
+    2,
+    4
+   ],
+   "hp": [
+    7.230931358217889,
+    12.358868901214345,
+    22.80722818389451
+   ],
+   "units": [
+    0.419488109187106,
+    0.5617560418450713,
+    0.9020491852414301
+   ],
+   "distance": [
+    0.25751170376403365,
+    0.36251007737144886,
+    0.5013717583279311
+   ]
+  }
+ },
+ "equations": [
+  "H_B^marine' = -0.1770\u00b7R[marine]*s[marine]",
+  "H_R^marine' = -0.1861\u00b7R[marine]*s[marine]",
+  "(ln A_B^marine)' = (0.662) \u00b7 (ln H_B^marine)'",
+  "(ln A_R^marine)' = (0.562 +0.260\u00b7focus) \u00b7 (ln H_R^marine)'",
+  "d' = -0.485\u00b7walk_r*wd +0.575\u00b7danger*wd -6.008\u00b7close*adv -3.183\u00b7close*hold*far -5.915\u00b7close*hold*contact"
+ ],
+ "model": {
+  "types": [
+   "marine"
+  ],
+  "spec": {
+   "withdraw": "rule",
+   "alloc": "rule",
+   "thr_health": 0.15,
+   "thr_distance": 0.05,
+   "max_reach": 6.0,
+   "movement_wd": "rule",
+   "withdraw_radius": 7.0
+  },
+  "rho": {
+   "marine": 5.75
+  },
+  "health": {
+   "blue:marine": {
+    "R[marine]*s[marine]": -0.1770129786509012,
+    "A[marine]": 0.0,
+    "1": 0.0
+   },
+   "red:marine": {
+    "R[marine]*s[marine]": -0.18613803141095853,
+    "A[marine]": 0.0,
+    "1": 0.0
+   }
+  },
+  "alive": {
+   "blue:marine": [
+    0.6624848921668081,
+    0.0
+   ],
+   "red:marine": [
+    0.5622510752372326,
+    0.26001151022934915
+   ]
+  },
+  "distance": {
+   "Rb": 0.0,
+   "Rr": 0.0,
+   "Ab": 0.0,
+   "Ar": 0.0,
+   "Rb*hold": 0.0,
+   "Rr*hold": 0.0,
+   "Ab*hold": 0.0,
+   "Ar*hold": 0.0,
+   "Rb*wd": 0.0,
+   "Rr*wd": 0.0,
+   "Ab*wd": 0.0,
+   "Ar*wd": 0.0,
+   "Rb*focus": 0.0,
+   "Rr*focus": 0.0,
+   "Ab*focus": 0.0,
+   "Ar*focus": 0.0,
+   "gate": 0.0,
+   "near": 0.0,
+   "walk_r": 0.0,
+   "walk_b": 0.0,
+   "danger": 0.0,
+   "gate*adv": 0.0,
+   "near*adv": 0.0,
+   "walk_r*adv": 0.0,
+   "walk_b*adv": 0.0,
+   "danger*adv": 0.0,
+   "gate*hold": 0.0,
+   "near*hold": 0.0,
+   "walk_r*hold": 0.0,
+   "walk_b*hold": 0.0,
+   "danger*hold": 0.0,
+   "gate*wd": 0.0,
+   "near*wd": 0.0,
+   "walk_r*wd": -0.48451170185691333,
+   "walk_b*wd": 0.0,
+   "danger*wd": 0.5747837710768201,
+   "close*adv": -6.007677811651678,
+   "close*hold": 0.0,
+   "close*wd": 0.0,
+   "flee*wd": 0.0,
+   "close*hold*far": -3.1830571295413765,
+   "close*hold*contact": -5.914731006993068,
+   "walk_b*hold*contact": 0.0,
+   "1": 0.0
+  },
+  "reach_closure": {
+   "blue:marine": [
+    1.007040380173586,
+    0.6885346370780998,
+    1.0859692653256834
+   ],
+   "red:marine": [
+    1.3493789977540493,
+    0.5374839717736494,
+    1.4098750513027485
+   ]
+  },
+  "target_choice": {},
+  "team_closure": {
+   "form": "derived",
+   "gates": {
+    "advance": [
+     6.014420895162868,
+     7.409824717546061,
+     -0.45614274017018935,
+     0.23971429917205747,
+     0.0770196756415517,
+     0.33140407636873115,
+     0.9991646959597948,
+     3.122728727459163e-05
+    ],
+    "hold": [
+     3.2839191072616893,
+     11.267454496540617,
+     -0.8868026513874244,
+     -4.154818661398154,
+     1.200760807036558,
+     -2.1943489131851783,
+     1.2297016704681332,
+     5.3339477590904025e-05
+    ],
+    "withdraw": [
+     0.0,
+     99.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0
+    ]
+   },
+   "share_blue": [
+    1.0049123524863819,
+    0.687085506902581,
+    1.0800297317281062,
+    5.75
+   ],
+   "share_red": [
+    1.3320762881783652,
+    0.541702817983272,
+    1.4113737851541879,
+    5.75
+   ]
+  }
+ }
+}
