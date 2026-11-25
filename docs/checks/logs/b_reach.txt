@@ -1,0 +1,29 @@
+8946 starts {'X0': (8946, 5), 'U': (8946, 64, 4), 'Y': (8946, 65, 5), 'Yshape': (8946, 65, 4), 'Yreach': (8946, 65, 2), 'slope': (8946, 5), 'ep': (8946,), 'k0': (8946,), 'shape0': (8946, 4), 'reach0': (8946, 2), 'group': (8946,)}
+Y (8946, 65, 5) Yreach (8946, 65, 2)
+                             health 1s  margin R2 1s  health 2s  margin R2 2s  health 4s  margin R2 4s  health 8s  margin R2 8s
+A            own closure         0.017         0.436      0.029         0.404      0.055         0.073      0.098        -0.656
+             measured share      0.014         0.597      0.021         0.707      0.032         0.644      0.044         0.483
+A with B's k own closure         0.018         0.462      0.029         0.472      0.052         0.213      0.093        -0.451
+             measured share      0.016         0.590      0.024         0.700      0.036         0.635      0.049         0.403
+B with A's k own closure         0.017         0.445      0.028         0.433      0.052         0.140      0.091        -0.721
+             measured share      0.014         0.596      0.021         0.708      0.032         0.647      0.045         0.479
+B            own closure         0.018         0.471      0.029         0.499      0.052         0.281      0.087        -0.440
+             measured share      0.017         0.590      0.026         0.702      0.040         0.645      0.054         0.452
+S            own closure         0.018         0.488      0.029         0.553      0.050         0.411      0.082        -0.094
+
+signed bias in units in reach (model - measured), x10 units, and in shares; by horizon
+A 1 blue +0.33 red +0.18 | signed loss error (model-true health) blue +0.0011 red +0.0003
+A 2 blue +0.57 red +0.32 | signed loss error (model-true health) blue -0.0020 red -0.0043
+A 4 blue +0.66 red +0.32 | signed loss error (model-true health) blue -0.0113 red -0.0156
+B 1 blue +0.29 red +0.11 | signed loss error (model-true health) blue +0.0087 red +0.0066
+B 2 blue +0.40 red +0.21 | signed loss error (model-true health) blue +0.0148 red +0.0098
+B 4 blue +0.48 red +0.35 | signed loss error (model-true health) blue +0.0215 red +0.0131
+S 1 blue +0.12 red +0.06 | signed loss error (model-true health) blue +0.0092 red +0.0078
+S 2 blue +0.22 red +0.15 | signed loss error (model-true health) blue +0.0162 red +0.0128
+S 4 blue +0.33 red +0.27 | signed loss error (model-true health) blue +0.0267 red +0.0192
+1 Blue loss k on measured reach 0.182, on A's predicted reach 0.173 corr 0.896 0.851
+1 Red loss k on measured reach 0.189, on A's predicted reach 0.176 corr 0.851 0.821
+2 Blue loss k on measured reach 0.182, on A's predicted reach 0.167 corr 0.945 0.869
+2 Red loss k on measured reach 0.188, on A's predicted reach 0.167 corr 0.914 0.879
+4 Blue loss k on measured reach 0.183, on A's predicted reach 0.161 corr 0.969 0.850
+4 Red loss k on measured reach 0.189, on A's predicted reach 0.158 corr 0.942 0.881

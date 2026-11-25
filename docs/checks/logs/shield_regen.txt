@@ -1,0 +1,16 @@
+
+== blue loses; health unit = 10 stalkers (1600 hp); regen if every unit regenerates: +0.0125 per unit of A (tens)
+  R only                           {'R': -0.0679} effect [0.563] R2 0.2419 k/game 0.86
+  R + own alive                    {'R': -0.0611, 'A_own': -0.0043} effect [0.508, 0.053] R2 0.2459 k/game 0.77
+  R + own missing health           {'R': -0.0644, 'missing': -0.0064} effect [0.534, 0.03] R2 0.2434 k/game 0.82
+  R + opponent alive (in library)  {'R': -0.0575, 'A_opp': -0.0065} effect [0.477, 0.077] R2 0.2500 k/game 0.73
+  R + constant                     {'R': -0.0601, '1': -0.0036} effect [0.499, 0.13] R2 0.2492 k/game 0.76
+  STLSQ 0.15 / 0.05 / 0.02 on all: [{'R': np.float64(-0.0679), 'A_own': np.float64(0.0), 'missing': np.float64(0.0), 'A_opp': np.float64(0.0), '1': np.float64(0.0)}, {'R': np.float64(-0.057), 'A_own': np.float64(0.0), 'missing': np.float64(0.0), 'A_opp': np.float64(-0.0043), '1': np.float64(-0.0019)}, {'R': np.float64(-0.0577), 'A_own': np.float64(0.0), 'missing': np.float64(0.0091), 'A_opp': np.float64(-0.0053), '1': np.float64(-0.0031)}]
+
+== red loses; health unit = 10 stalkers (1600 hp); regen if every unit regenerates: +0.0125 per unit of A (tens)
+  R only                           {'R': -0.0693} effect [0.578] R2 0.3047 k/game 0.88
+  R + own alive                    {'R': -0.0681, 'A_own': -0.0009} effect [0.569, 0.009] R2 0.3049 k/game 0.86
+  R + own missing health           {'R': -0.0695, 'missing': 0.0006} effect [0.581, 0.002] R2 0.3047 k/game 0.88
+  R + opponent alive (in library)  {'R': -0.0651, 'A_opp': -0.003} effect [0.544, 0.032] R2 0.3061 k/game 0.82
+  R + constant                     {'R': -0.0662, '1': -0.0017} effect [0.553, 0.051] R2 0.3059 k/game 0.84
+  STLSQ 0.15 / 0.05 / 0.02 on all: [{'R': np.float64(-0.0693), 'A_own': np.float64(0.0), 'missing': np.float64(0.0), 'A_opp': np.float64(0.0), '1': np.float64(0.0)}, {'R': np.float64(-0.0662), 'A_own': np.float64(0.0), 'missing': np.float64(0.0), 'A_opp': np.float64(0.0), '1': np.float64(-0.0017)}, {'R': np.float64(-0.0652), 'A_own': np.float64(0.0), 'missing': np.float64(0.0132), 'A_opp': np.float64(-0.0035), '1': np.float64(-0.0027)}]

@@ -1,0 +1,14 @@
+Using the numpy RVO2 port
+step(0.5s?) seconds_per_step None
+t  0 red med hp 150 en 50.3 tgt None      | blue med hp 150 en 50.3 tgt None      | red 10 blue 10 | aimed at red med 0, at blue med 0 | red med to nearest blue 10.5
+t  6 red med hp 150 en 46.0 tgt marine    | blue med hp 150 en 45.0 tgt marine    | red  9 blue  9 | aimed at red med 0, at blue med 0 | red med to nearest blue 6.8
+t 12 red med hp 150 en 38.7 tgt marine    | blue med hp 150 en 37.7 tgt marine    | red  8 blue  8 | aimed at red med 0, at blue med 0 | red med to nearest blue 7.4
+t 18 red med hp 150 en 31.3 tgt marine    | blue med hp 150 en 30.3 tgt marine    | red  6 blue  8 | aimed at red med 0, at blue med 0 | red med to nearest blue 7.4
+t 24 red med hp 150 en 24.0 tgt marine    | blue med hp 150 en 23.0 tgt marine    | red  5 blue  6 | aimed at red med 0, at blue med 0 | red med to nearest blue 7.6
+t 30 red med hp 150 en 16.7 tgt marine    | blue med hp 150 en 15.7 tgt marine    | red  4 blue  5 | aimed at red med 0, at blue med 0 | red med to nearest blue 6.3
+t 36 red med hp 150 en 11.4 tgt None      | blue med hp 150 en  9.4 tgt marine    | red  1 blue  5 | aimed at red med 0, at blue med 0 | red med to nearest blue 2.5
+t 42 red med hp  75 en 13.1 tgt None      | blue med hp 150 en  8.1 tgt marauder  | red  1 blue  5 | aimed at red med 4, at blue med 0 | red med to nearest blue 1.9
+t 48 red med hp  50 en 14.8 tgt None      | blue med hp 150 en  8.8 tgt marauder  | red  1 blue  5 | aimed at red med 1, at blue med 0 | red med to nearest blue 5.7
+t 54 red med hp  25 en 16.5 tgt None      | blue med hp 150 en  6.5 tgt marauder  | red  1 blue  5 | aimed at red med 1, at blue med 0 | red med to nearest blue 5.7
+t 60 red med hp   0 en 18.1 tgt None      | blue med hp 150 en  0.0 tgt marauder  | red  0 blue  5 | aimed at red med 1, at blue med 0 | red med to nearest blue 5.7
+(60, 0, 18.0859375, None, 150, 0.0, 0, 5, 1, np.float32(5.6699886), 'marauder', 0)

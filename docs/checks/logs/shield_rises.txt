@@ -1,0 +1,9 @@
+360911 ['health_blue_stalker', 'alive_blue_stalker', 'health_red_stalker', 'alive_red_stalker', 'reach_blue_stalker', 'reach_red_stalker', 'fire_blue_stalker_stalker', 'fire_red_stalker_stalker', 'front_blue_stalker', 'front_red_stalker']
+blue before first contact: 0.01 of steps; rises in 0.97; gained 0.02 hp per step, lost 0.00
+blue in contact, enemy in reach: 0.76 of steps; rises in 0.37; gained 0.31 hp per step, lost 4.26
+blue later, no enemy in reach: 0.23 of steps; rises in 0.50; gained 0.08 hp per step, lost 0.09
+   total regained / lost: 0.094 | mean gain when rising hp/s 8.04
+red before first contact: 0.01 of steps; rises in 0.99; gained 0.02 hp per step, lost -0.00
+red in contact, enemy in reach: 0.76 of steps; rises in 0.40; gained 0.32 hp per step, lost 4.87
+red later, no enemy in reach: 0.23 of steps; rises in 0.56; gained 0.09 hp per step, lost -0.00
+   total regained / lost: 0.089 | mean gain when rising hp/s 7.88

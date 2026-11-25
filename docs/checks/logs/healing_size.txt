@@ -1,0 +1,18 @@
+marines blue rows 511282 engaged share 0.80 | team loss hp/s when engaged: mean 32, median 31 | last-quarter -> late engaged (<5 own alive): 22
+    marine sd(y) hp/s 20.7 | heal on/off with engagement, all 9 hp/s on this type: effect size 0.17 | half of it: 0.09 | share 9/(mean loss engaged): 0.28
+marines red rows 511282 engaged share 0.80 | team loss hp/s when engaged: mean 34, median 35 | last-quarter -> late engaged (<5 own alive): 27
+    marine sd(y) hp/s 25.0 | heal on/off with engagement, all 9 hp/s on this type: effect size 0.14 | half of it: 0.07 | share 9/(mean loss engaged): 0.26
+mixed blue rows 761077 engaged share 0.79 | team loss hp/s when engaged: mean 35, median 31 | last-quarter -> late engaged (<5 own alive): 25
+    marine sd(y) hp/s 15.7 | heal on/off with engagement, all 9 hp/s on this type: effect size 0.24 | half of it: 0.12 | share 9/(mean loss engaged): 0.26
+    marauder sd(y) hp/s 24.9 | heal on/off with engagement, all 9 hp/s on this type: effect size 0.15 | half of it: 0.07 | share 9/(mean loss engaged): 0.26
+mixed red rows 761077 engaged share 0.79 | team loss hp/s when engaged: mean 39, median 36 | last-quarter -> late engaged (<5 own alive): 33
+    marine sd(y) hp/s 19.0 | heal on/off with engagement, all 9 hp/s on this type: effect size 0.19 | half of it: 0.10 | share 9/(mean loss engaged): 0.23
+    marauder sd(y) hp/s 27.2 | heal on/off with engagement, all 9 hp/s on this type: effect size 0.14 | half of it: 0.07 | share 9/(mean loss engaged): 0.23
+triple blue rows 242510 engaged share 0.79 | team loss hp/s when engaged: mean 40, median 35 | last-quarter -> late engaged (<5 own alive): 28
+    marine sd(y) hp/s 11.2 | heal on/off with engagement, all 9 hp/s on this type: effect size 0.33 | half of it: 0.16 | share 9/(mean loss engaged): 0.22
+    marauder sd(y) hp/s 23.0 | heal on/off with engagement, all 9 hp/s on this type: effect size 0.16 | half of it: 0.08 | share 9/(mean loss engaged): 0.22
+    stalker sd(y) hp/s 26.7 | heal on/off with engagement, all 9 hp/s on this type: effect size 0.14 | half of it: 0.07 | share 9/(mean loss engaged): 0.22
+triple red rows 242510 engaged share 0.79 | team loss hp/s when engaged: mean 45, median 39 | last-quarter -> late engaged (<5 own alive): 36
+    marine sd(y) hp/s 13.3 | heal on/off with engagement, all 9 hp/s on this type: effect size 0.27 | half of it: 0.14 | share 9/(mean loss engaged): 0.20
+    marauder sd(y) hp/s 25.2 | heal on/off with engagement, all 9 hp/s on this type: effect size 0.14 | half of it: 0.07 | share 9/(mean loss engaged): 0.20
+    stalker sd(y) hp/s 29.2 | heal on/off with engagement, all 9 hp/s on this type: effect size 0.12 | half of it: 0.06 | share 9/(mean loss engaged): 0.20

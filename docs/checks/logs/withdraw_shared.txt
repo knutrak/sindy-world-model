@@ -1,0 +1,7 @@
+marines marine fire kept under wd 0.12 | effect size of Fire*wd 0.299 | STLSQ 0.15 picks ['Fire', 'Fire*wd']
+marauders marauder fire kept under wd 0.20 | effect size of Fire*wd 0.163 | STLSQ 0.15 picks ['Fire', 'Fire*wd']
+mixed marine fire kept under wd 0.16 | effect size of Fire*wd 0.177 | STLSQ 0.15 picks ['Fire', 'Fire*wd']
+mixed marauder fire kept under wd 0.19 | effect size of Fire*wd 0.139 | STLSQ 0.15 picks ['Fire']
+triple marine fire kept under wd 0.21 | effect size of Fire*wd 0.112 | STLSQ 0.15 picks ['Fire']
+triple marauder fire kept under wd 0.22 | effect size of Fire*wd 0.110 | STLSQ 0.15 picks ['Fire']
+triple stalker fire kept under wd 0.12 | effect size of Fire*wd 0.115 | STLSQ 0.15 picks ['Fire']

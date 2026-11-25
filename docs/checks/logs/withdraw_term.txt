@@ -1,0 +1,62 @@
+
+==== marines: 511282 rows, wd share 0.221; R under wd 1.36 units vs otherwise 3.99
+  marine firing per unit in reach, not withdrawing: 0.870;  marine firing per unit in reach, withdrawing: 0.081;
+  H_R^marine' thr 0.15: -0.186 R[marine]*s[marine]  +0.163 R[marine]*s[marine]*wd
+  H_R^marine' thr 0.1: -0.161 R[marine]*s[marine]  +0.180 R[marine]*s[marine]*wd  -0.019 A[marine]
+  H_R^marine' thr 0.05: -0.160 R[marine]*s[marine]  +0.180 R[marine]*s[marine]*wd  -0.016 A[marine]  -0.003 1
+  H_R^marine' thr 0.02: -0.160 R[marine]*s[marine]  +0.180 R[marine]*s[marine]*wd  -0.016 A[marine]  -0.003 1
+     forced LS marine->marine: k -0.186, kappa +0.163, kappa/k 0.88, effect size k 0.901 kappa 0.299
+     R2: no wd 0.6513  rule 0.7406  fitted 0.7425; k rule [-0.186]
+
+==== marauders: 207144 rows, wd share 0.204; R under wd 0.82 units vs otherwise 3.58
+  marauder firing per unit in reach, not withdrawing: 0.912;  marauder firing per unit in reach, withdrawing: 0.153;
+  H_R^marauder' thr 0.15: -0.126 R[marauder]*s[marauder]  +0.101 R[marauder]*s[marauder]*wd
+  H_R^marauder' thr 0.1: -0.126 R[marauder]*s[marauder]  +0.101 R[marauder]*s[marauder]*wd
+  H_R^marauder' thr 0.05: -0.106 R[marauder]*s[marauder]  +0.112 R[marauder]*s[marauder]*wd  -0.013 A[marauder]
+  H_R^marauder' thr 0.02: -0.106 R[marauder]*s[marauder]  +0.112 R[marauder]*s[marauder]*wd  -0.013 A[marauder]
+     forced LS marauder->marauder: k -0.126, kappa +0.101, kappa/k 0.80, effect size k 0.668 kappa 0.163
+     R2: no wd 0.3610  rule 0.3860  fitted 0.3877; k rule [-0.126]
+
+==== mixed: 761077 rows, wd share 0.215; R under wd 0.52 units vs otherwise 1.87
+  marine firing per unit in reach, not withdrawing: 0.906;  marine firing per unit in reach, withdrawing: 0.136;  marauder firing per unit in reach, not withdrawing: 0.904;  marauder firing per unit in reach, withdrawing: 0.095;
+  H_R^marine' thr 0.15: -0.184 R[marine]*s[marine]  -0.163 R[marauder]*s[marine]
+  H_R^marine' thr 0.1: -0.193 R[marine]*s[marine]  +0.220 R[marine]*s[marine]*wd  -0.163 R[marauder]*s[marine]
+  H_R^marine' thr 0.05: -0.166 R[marine]*s[marine]  +0.166 R[marine]*s[marine]*wd  -0.017 A[marine]  -0.156 R[marauder]*s[marine]  +0.188 R[marauder]*s[marine]*wd
+  H_R^marine' thr 0.02: -0.166 R[marine]*s[marine]  +0.166 R[marine]*s[marine]*wd  -0.017 A[marine]  -0.156 R[marauder]*s[marine]  +0.188 R[marauder]*s[marine]*wd
+     forced LS marine->marine: k -0.189, kappa +0.159, kappa/k 0.84, effect size k 0.608 kappa 0.119
+     forced LS marauder->marine: k -0.172, kappa +0.142, kappa/k 0.83, effect size k 0.361 kappa 0.083
+     R2: no wd 0.5922  rule 0.6225  fitted 0.6237; k rule [-0.189 -0.172]
+  H_R^marauder' thr 0.15: -0.060 R[marine]*s[marauder]  -0.112 R[marauder]*s[marauder]
+  H_R^marauder' thr 0.1: -0.058 R[marine]*s[marauder]  -0.118 R[marauder]*s[marauder]  +0.123 R[marauder]*s[marauder]*wd
+  H_R^marauder' thr 0.05: -0.056 R[marine]*s[marauder]  +0.045 R[marine]*s[marauder]*wd  -0.107 R[marauder]*s[marauder]  +0.114 R[marauder]*s[marauder]*wd  -0.009 A[marauder]
+  H_R^marauder' thr 0.02: -0.056 R[marine]*s[marauder]  +0.045 R[marine]*s[marauder]*wd  -0.107 R[marauder]*s[marauder]  +0.114 R[marauder]*s[marauder]*wd  -0.007 A[marauder]  -0.000 1
+     forced LS marine->marauder: k -0.060, kappa +0.043, kappa/k 0.72, effect size k 0.360 kappa 0.052
+     forced LS marauder->marauder: k -0.117, kappa +0.099, kappa/k 0.85, effect size k 0.528 kappa 0.107
+     R2: no wd 0.4955  rule 0.5142  fitted 0.5154; k rule [-0.06  -0.117]
+
+==== triple: 242510 rows, wd share 0.203; R under wd 0.29 units vs otherwise 1.26
+  marine firing per unit in reach, not withdrawing: 0.925;  marine firing per unit in reach, withdrawing: 0.166;  marauder firing per unit in reach, not withdrawing: 0.921;  marauder firing per unit in reach, withdrawing: 0.125;  stalker firing per unit in reach, not withdrawing: 0.929;  stalker firing per unit in reach, withdrawing: 0.163;
+  H_R^marine' thr 0.15: -0.187 R[marine]*s[marine]  -0.158 R[marauder]*s[marine]  -0.163 R[stalker]*s[marine]
+  H_R^marine' thr 0.1: -0.187 R[marine]*s[marine]  -0.158 R[marauder]*s[marine]  -0.163 R[stalker]*s[marine]
+  H_R^marine' thr 0.05: -0.171 R[marine]*s[marine]  +0.177 R[marine]*s[marine]*wd  -0.017 A[marine]  -0.151 R[marauder]*s[marine]  +0.156 R[marauder]*s[marine]*wd  -0.151 R[stalker]*s[marine]  +0.159 R[stalker]*s[marine]*wd
+  H_R^marine' thr 0.02: -0.171 R[marine]*s[marine]  +0.177 R[marine]*s[marine]*wd  -0.017 A[marine]  -0.151 R[marauder]*s[marine]  +0.156 R[marauder]*s[marine]*wd  -0.151 R[stalker]*s[marine]  +0.159 R[stalker]*s[marine]*wd
+     forced LS marine->marine: k -0.192, kappa +0.164, kappa/k 0.85, effect size k 0.356 kappa 0.058
+     forced LS marauder->marine: k -0.163, kappa +0.120, kappa/k 0.74, effect size k 0.301 kappa 0.044
+     forced LS stalker->marine: k -0.166, kappa +0.127, kappa/k 0.77, effect size k 0.285 kappa 0.041
+     R2: no wd 0.4394  rule 0.4511  fitted 0.4520; k rule [-0.192 -0.163 -0.166]
+  H_R^marauder' thr 0.15: -0.061 R[marine]*s[marauder]  -0.112 R[marauder]*s[marauder]  -0.087 R[stalker]*s[marauder]
+  H_R^marauder' thr 0.1: -0.061 R[marine]*s[marauder]  -0.112 R[marauder]*s[marauder]  -0.087 R[stalker]*s[marauder]
+  H_R^marauder' thr 0.05: -0.056 R[marine]*s[marauder]  -0.106 R[marauder]*s[marauder]  +0.150 R[marauder]*s[marauder]*wd  -0.009 A[marauder]  -0.082 R[stalker]*s[marauder]
+  H_R^marauder' thr 0.02: -0.057 R[marine]*s[marauder]  +0.047 R[marine]*s[marauder]*wd  -0.105 R[marauder]*s[marauder]  +0.112 R[marauder]*s[marauder]*wd  -0.009 A[marauder]  -0.083 R[stalker]*s[marauder]  +0.076 R[stalker]*s[marauder]*wd
+     forced LS marine->marauder: k -0.062, kappa +0.044, kappa/k 0.72, effect size k 0.215 kappa 0.026
+     forced LS marauder->marauder: k -0.116, kappa +0.096, kappa/k 0.83, effect size k 0.442 kappa 0.075
+     forced LS stalker->marauder: k -0.088, kappa +0.063, kappa/k 0.72, effect size k 0.294 kappa 0.037
+     R2: no wd 0.4521  rule 0.4634  fitted 0.4644; k rule [-0.062 -0.116 -0.088]
+  H_R^stalker' thr 0.15: -0.052 R[marine]*s[stalker]  -0.089 R[marauder]*s[stalker]  -0.070 R[stalker]*s[stalker]
+  H_R^stalker' thr 0.1: -0.052 R[marine]*s[stalker]  -0.089 R[marauder]*s[stalker]  -0.070 R[stalker]*s[stalker]
+  H_R^stalker' thr 0.05: -0.051 R[marine]*s[stalker]  -0.092 R[marauder]*s[stalker]  +0.098 R[marauder]*s[stalker]*wd  -0.072 R[stalker]*s[stalker]  +0.071 R[stalker]*s[stalker]*wd
+  H_R^stalker' thr 0.02: -0.051 R[marine]*s[stalker]  +0.036 R[marine]*s[stalker]*wd  -0.089 R[marauder]*s[stalker]  +0.092 R[marauder]*s[stalker]*wd  -0.070 R[stalker]*s[stalker]  +0.065 R[stalker]*s[stalker]*wd  -0.001 1
+     forced LS marine->stalker: k -0.052, kappa +0.034, kappa/k 0.66, effect size k 0.212 kappa 0.024
+     forced LS marauder->stalker: k -0.091, kappa +0.088, kappa/k 0.97, effect size k 0.361 kappa 0.066
+     forced LS stalker->stalker: k -0.072, kappa +0.063, kappa/k 0.89, effect size k 0.351 kappa 0.055
+     R2: no wd 0.4541  rule 0.4672  fitted 0.4675; k rule [-0.052 -0.091 -0.072]

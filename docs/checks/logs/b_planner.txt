@@ -1,0 +1,36 @@
+seconds 50
+                won  margin  wall_s
+policy                             
+model:h3      0.652   0.075   0.328
+modellabA:h3  0.650   0.071   0.169
+modellabB:h3  0.645   0.072   0.184
+modellabS:h3  0.642   0.076   0.264
+frozen rerun identical to recorded: 1.0
+modellabB:h3 - model:h3 -0.007 [-0.020, +0.003]
+modellabB:h3 - fixed:hold/focus -0.040 [-0.072, -0.007]
+modellabB:h3 - musigma:h3 -0.030 [-0.062, +0.005]
+modellabB:h3 - fixed:kite/nearest -0.323 [-0.367, -0.278]
+modellabB:h3 - oracle5-h3 -0.290 [-0.333, -0.245]
+modellabB:h3 - mlp:h3 +0.280 [+0.230, +0.333]
+modellabA:h3 - model:h3 -0.003 [-0.013, +0.005]
+modellabA:h3 - fixed:hold/focus -0.035 [-0.070, -0.003]
+modellabA:h3 - musigma:h3 -0.025 [-0.060, +0.007]
+modellabA:h3 - fixed:kite/nearest -0.318 [-0.363, -0.273]
+modellabA:h3 - oracle5-h3 -0.285 [-0.328, -0.242]
+modellabA:h3 - mlp:h3 +0.285 [+0.233, +0.335]
+modellabS:h3 - model:h3 -0.010 [-0.045, +0.025]
+modellabS:h3 - fixed:hold/focus -0.043 [-0.080, -0.005]
+modellabS:h3 - musigma:h3 -0.033 [-0.068, +0.003]
+modellabS:h3 - fixed:kite/nearest -0.325 [-0.372, -0.280]
+modellabS:h3 - oracle5-h3 -0.292 [-0.338, -0.250]
+modellabS:h3 - mlp:h3 +0.278 [+0.228, +0.328]
+B - A -0.005 [-0.015, +0.005] S - A -0.007 [-0.040, +0.025]
+policy                 model:h3  modellabA:h3  modellabB:h3  modellabS:h3
+pick_advance/nearest       0.02          0.02          0.01          0.12
+pick_advance/focus         0.61          0.60          0.64          0.62
+pick_hold/nearest          0.02          0.00          0.01          0.04
+pick_hold/focus            0.33          0.36          0.28          0.05
+pick_withdraw/nearest      0.03          0.02          0.06          0.17
+switches                   2.33          1.87          2.45          3.25
+seconds                    9.97          9.10         10.81         15.86
+margin                     0.08          0.07          0.07          0.08
