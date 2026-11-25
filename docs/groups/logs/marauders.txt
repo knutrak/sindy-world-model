@@ -1,0 +1,69 @@
+train windows 6815
+val windows 7777
+built 93 s
+
+### T: 211149 rows
+  H_blue^marauder' = -0.1250·R[marauder]*s[marauder]
+  H_red^marauder' = -0.1261·R[marauder]*s[marauder]
+  p {('blue', 'marauder'): (0.616, 0.0), ('red', 'marauder'): (0.536, 0.16)}
+  reach closure R2 {('blue', 'marauder'): 0.889, ('red', 'marauder'): 0.802}
+
+### FR-c: 211149 rows
+  H_blue^marauder_f' = -0.1350·R[marauder_f]*s[marauder_f]  -0.0939·R[marauder_r]*s[marauder_f]
+  H_blue^marauder_r' = -0.1067·R[marauder_f]*s[marauder_r]  -0.1126·R[marauder_r]*s[marauder_r]
+  H_red^marauder_f' = -0.1385·R[marauder_f]*s[marauder_f]  -0.0895·R[marauder_r]*s[marauder_f]
+  H_red^marauder_r' = -0.1104·R[marauder_f]*s[marauder_r]  -0.1170·R[marauder_r]*s[marauder_r]
+  p {('blue', 'marauder_f'): (0.5, 0.0), ('blue', 'marauder_r'): (0.236, 0.0), ('red', 'marauder_f'): (0.437, 0.124), ('red', 'marauder_r'): (0.249, 0.131)}
+  target choice b0,b1,b2 {('blue', 'marauder_f'): [-0.34, 1.21, 1.98], ('blue', 'marauder_r'): [-0.12, 1.29, 2.65], ('red', 'marauder_f'): [-0.38, 1.24, 2.18], ('red', 'marauder_r'): [-0.15, 1.27, 2.46]}
+  reach closure R2 {('blue', 'marauder_f'): 0.911, ('blue', 'marauder_r'): 0.785, ('red', 'marauder_f'): 0.848, ('red', 'marauder_r'): 0.717}
+
+### FR-r: 211149 rows
+  H_blue^marauder_f' = -0.1350·R[marauder_f]*s[marauder_f]  -0.0939·R[marauder_r]*s[marauder_f]
+  H_blue^marauder_r' = -0.1067·R[marauder_f]*s[marauder_r]  -0.1126·R[marauder_r]*s[marauder_r]
+  H_red^marauder_f' = -0.1385·R[marauder_f]*s[marauder_f]  -0.0895·R[marauder_r]*s[marauder_f]
+  H_red^marauder_r' = -0.1104·R[marauder_f]*s[marauder_r]  -0.1170·R[marauder_r]*s[marauder_r]
+  p {('blue', 'marauder_f'): (0.5, 0.0), ('blue', 'marauder_r'): (0.236, 0.0), ('red', 'marauder_f'): (0.437, 0.124), ('red', 'marauder_r'): (0.249, 0.131)}
+  reach closure R2 {('blue', 'marauder_f'): 0.911, ('blue', 'marauder_r'): 0.785, ('red', 'marauder_f'): 0.848, ('red', 'marauder_r'): 0.717}
+
+### P-c: 211149 rows
+  H_blue^marauder_f' = -0.1160·R[marauder_f]*s[marauder_f]  -0.1156·R[marauder_r]*s[marauder_f]
+  H_blue^marauder_r' = -0.1139·R[marauder_f]*s[marauder_r]  -0.1125·R[marauder_r]*s[marauder_r]
+  H_red^marauder_f' = -0.1167·R[marauder_f]*s[marauder_f]  -0.1162·R[marauder_r]*s[marauder_f]
+  H_red^marauder_r' = -0.1123·R[marauder_f]*s[marauder_r]  -0.1165·R[marauder_r]*s[marauder_r]
+  p {('blue', 'marauder_f'): (0.515, 0.0), ('blue', 'marauder_r'): (0.486, 0.0), ('red', 'marauder_f'): (0.456, 0.113), ('red', 'marauder_r'): (0.417, 0.12)}
+  target choice b0,b1,b2 {('blue', 'marauder_f'): [-0.02, 1.16, 1.95], ('blue', 'marauder_r'): [-0.0, 1.2, 1.92], ('red', 'marauder_f'): [-0.01, 1.13, 1.72], ('red', 'marauder_r'): [0.01, 1.17, 1.74]}
+  reach closure R2 {('blue', 'marauder_f'): 0.842, ('blue', 'marauder_r'): 0.837, ('red', 'marauder_f'): 0.758, ('red', 'marauder_r'): 0.766}
+
+         health_1s  alive_1s  mR2_1s  n_1s  health_2s  alive_2s  mR2_2s  n_2s  health_4s  alive_4s  mR2_4s  n_4s
+model                                                                                                          
+T          0.0118    0.3803  0.3578  7777     0.0204    0.4854  0.3421  7332     0.0387    0.7260  0.0880  6332
+FR-c       0.0117    0.3610  0.3608  7777     0.0198    0.4704  0.3458  7332     0.0382    0.7398  0.0329  6332
+FR-r       0.0118    0.3839  0.3723  7777     0.0197    0.5311  0.3883  7332     0.0370    0.8420  0.1937  6332
+P-c        0.0121    0.3776  0.3587  7777     0.0204    0.5026  0.3533  7332     0.0390    0.7765  0.0988  6332
+frozen     0.0118    0.3804  0.3585  7777     0.0203    0.4855  0.3436  7332     0.0386    0.7254  0.0907  6332
+
+health error, a - b (95% battle bootstrap)
+    a      b  h    mean      lo      hi
+FR-c      T  1 -0.0001 -0.0002 -0.0001
+FR-c      T  2 -0.0005 -0.0007 -0.0004
+FR-c      T  4 -0.0005 -0.0010  0.0000
+FR-c    P-c  1 -0.0004 -0.0005 -0.0004
+FR-c    P-c  2 -0.0006 -0.0007 -0.0005
+FR-c    P-c  4 -0.0008 -0.0011 -0.0004
+FR-r      T  1 -0.0000 -0.0001  0.0000
+FR-r      T  2 -0.0007 -0.0008 -0.0005
+FR-r      T  4 -0.0017 -0.0020 -0.0014
+ P-c      T  1  0.0003  0.0003  0.0004
+ P-c      T  2  0.0001 -0.0001  0.0002
+ P-c      T  4  0.0003 -0.0001  0.0006
+FR-c frozen  1 -0.0001 -0.0002 -0.0001
+FR-c frozen  2 -0.0005 -0.0006 -0.0003
+FR-c frozen  4 -0.0004 -0.0009  0.0002
+   T frozen  1  0.0000  0.0000  0.0000
+   T frozen  2  0.0000  0.0000  0.0001
+   T frozen  4  0.0001  0.0001  0.0001
+
+front's share of damage in 2 s (and its share of health at the start): {'blue': (np.float64(0.849), np.float64(0.502)), 'red': (np.float64(0.844), np.float64(0.496))}
+
+k / game: {'T': [np.float64(0.93), np.float64(0.93)], 'FR-c': [np.float64(1.0), np.float64(0.7), np.float64(0.79), np.float64(0.83), np.float64(1.03), np.float64(0.66), np.float64(0.82), np.float64(0.87)], 'FR-r': [np.float64(1.0), np.float64(0.7), np.float64(0.79), np.float64(0.83), np.float64(1.03), np.float64(0.66), np.float64(0.82), np.float64(0.87)], 'P-c': [np.float64(0.86), np.float64(0.86), np.float64(0.84), np.float64(0.83), np.float64(0.86), np.float64(0.86), np.float64(0.83), np.float64(0.86)]}
+total 246 s
