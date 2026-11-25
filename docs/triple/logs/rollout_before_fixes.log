@@ -1,0 +1,152 @@
+
+### 1 fuzz: 5,000 random states, 8 s; ordinary, then extreme
+marines   ordinary           clean
+marines   huge armies        clean
+marines   one unit           clean
+marines   distance 0-0.1     clean
+marines   distance 100-1000  {'distance > 40': 1000}
+marines   tiny fractions     clean
+marauders ordinary           clean
+marauders huge armies        clean
+marauders one unit           clean
+marauders distance 0-0.1     clean
+marauders distance 100-1000  {'distance > 40': 1000}
+marauders tiny fractions     clean
+mixed     ordinary           clean
+mixed     huge armies        clean
+mixed     one unit           clean
+mixed     distance 0-0.1     clean
+mixed     distance 100-1000  {'distance > 40': 1000}
+mixed     tiny fractions     clean
+triple    ordinary           clean
+triple    huge armies        clean
+triple    one unit           clean
+triple    distance 0-0.1     clean
+triple    distance 100-1000  {'distance > 40': 1000}
+triple    tiny fractions     clean
+stalkers  ordinary           clean
+stalkers  huge armies        clean
+stalkers  one unit           clean
+stalkers  distance 0-0.1     clean
+stalkers  distance 100-1000  {'distance > 40': 1000}
+stalkers  tiny fractions     clean
+
+### 2 long rollouts (90 s): does anything break late?
+marines clean | battle never decided in 90 s: not withdrawing 0.2%, withdrawing 6.5%
+marauders clean | battle never decided in 90 s: not withdrawing 0.1%, withdrawing 44.5%
+mixed clean | battle never decided in 90 s: not withdrawing 0.2%, withdrawing 41.0%
+triple clean | battle never decided in 90 s: not withdrawing 0.1%, withdrawing 67.0%
+stalkers clean | battle never decided in 90 s: not withdrawing 1.9%, withdrawing 80.0%
+
+### 3 purity: input unchanged, batch = one by one, repeat calls equal, state carried between calls
+marines input unchanged True | batch vs single max diff 0.0 | repeat equal True
+marauders input unchanged True | batch vs single max diff 0.0 | repeat equal True
+mixed input unchanged True | batch vs single max diff 0.0 | repeat equal True
+triple input unchanged True | batch vs single max diff 0.0 | repeat equal True
+stalkers input unchanged True | batch vs single max diff 0.0 | repeat equal True
+
+### 4 time splitting: 2 s + 2 s from the predicted state against 4 s in one go (reach offset restarts)
+marines health difference after 4 s: mean 0.0018 max 0.0269
+marauders health difference after 4 s: mean 0.0017 max 0.0186
+mixed health difference after 4 s: mean 0.0037 max 0.0303
+triple health difference after 4 s: mean 0.0047 max 0.025
+stalkers health difference after 4 s: mean 0.0016 max 0.0112
+
+### 5 NaN / inf in one element: does it stay in its own row?
+marines X0 nan: other rows unchanged True; bad row finite False
+marines X0 inf: other rows unchanged True; bad row finite False
+marines shape0 nan: other rows unchanged True; bad row finite False
+marines shape0 inf: other rows unchanged True; bad row finite False
+marines front0 nan: other rows unchanged True; bad row finite False
+marines front0 inf: other rows unchanged True; bad row finite True
+marines reach0 nan: other rows unchanged True; bad row finite False
+marines reach0 inf: other rows unchanged True; bad row finite True
+marines U nan: other rows unchanged True; bad row finite False
+marines U inf: other rows unchanged True; bad row finite False
+triple X0 nan: other rows unchanged True; bad row finite False
+triple X0 inf: other rows unchanged True; bad row finite False
+triple shape0 nan: other rows unchanged True; bad row finite False
+triple shape0 inf: other rows unchanged True; bad row finite False
+triple front0 nan: other rows unchanged True; bad row finite False
+triple front0 inf: other rows unchanged True; bad row finite True
+triple reach0 nan: other rows unchanged True; bad row finite False
+triple reach0 inf: other rows unchanged True; bad row finite True
+triple U nan: other rows unchanged True; bad row finite False
+triple U inf: other rows unchanged True; bad row finite False
+
+### 6 geometry: states under translation, rotation, reflection, relabelling, float32
+translate 1e3 1.4116485758108865e-13
+rotate 0.3 4.440892098500626e-15
+rotate 1.57 1.7763568394002505e-15
+rotate 2.0 3.552713678800501e-15
+reflect 0.0 | shuffled rows 0.0 | relabelled ids 2.1788126858268697e-15 | type order in the call n/a
+all units at one point: {'distance': 0.0, 'depth_blue': 0.0, 'reach_blue_marine': 0.3}
+a third type present but not asked for (types MARINE, MARAUDER): reach_blue_marine 0.2 health counted no stalker columns, no error
+
+### 7 reach at the boundary: exactly 6, 5.75, just inside / outside
+5.75 in reach 1.0 depth 0.0
+5.750000001 in reach 0.0 depth 0.0
+5.749999999 in reach 1.0 depth 0.0
+6.0 in reach 0.0 depth 0.0
+
+### 8 sensitivity: how much does the 2 s prediction move for a small change in the state?
+marines {'X0 ±0.01': 'mean 0.0082, 99.9% 0.030', 'shape0 ±0.1': 'mean 0.0019, 99.9% 0.051', 'front0 ±0.1': 'mean 0.0013, 99.9% 0.024', 'reach0 ±0.01': 'mean 0.0010, 99.9% 0.005'}
+marauders {'X0 ±0.01': 'mean 0.0088, 99.9% 0.027', 'shape0 ±0.1': 'mean 0.0016, 99.9% 0.030', 'front0 ±0.1': 'mean 0.0011, 99.9% 0.021', 'reach0 ±0.01': 'mean 0.0008, 99.9% 0.004'}
+mixed {'X0 ±0.01': 'mean 0.0264, 99.9% 0.082', 'shape0 ±0.1': 'mean 0.0030, 99.9% 0.049', 'front0 ±0.1': 'mean 0.0017, 99.9% 0.025', 'reach0 ±0.01': 'mean 0.0019, 99.9% 0.008'}
+triple {'X0 ±0.01': 'mean 0.0377, 99.9% 0.128', 'shape0 ±0.1': 'mean 0.0033, 99.9% 0.039', 'front0 ±0.1': 'mean 0.0017, 99.9% 0.026', 'reach0 ±0.01': 'mean 0.0025, 99.9% 0.009'}
+stalkers {'X0 ±0.01': 'mean 0.0094, 99.9% 0.025', 'shape0 ±0.1': 'mean 0.0010, 99.9% 0.022', 'front0 ±0.1': 'mean 0.0008, 99.9% 0.016', 'reach0 ±0.01': 'mean 0.0005, 99.9% 0.002'}
+
+### 9 intents that should and should not matter
+marines focus ever predicted worse than nearest (advance): 4.5% | withdraw/focus = withdraw/nearest: 100% | Red loses health while Blue withdraws: 0%
+marauders focus ever predicted worse than nearest (advance): 4.0% | withdraw/focus = withdraw/nearest: 100% | Red loses health while Blue withdraws: 0%
+mixed focus ever predicted worse than nearest (advance): 2.7% | withdraw/focus = withdraw/nearest: 100% | Red loses health while Blue withdraws: 0%
+triple focus ever predicted worse than nearest (advance): 1.8% | withdraw/focus = withdraw/nearest: 100% | Red loses health while Blue withdraws: 0%
+stalkers focus ever predicted worse than nearest (advance): 6.2% | withdraw/focus = withdraw/nearest: 100% | Red loses health while Blue withdraws: 0%
+
+### 10 world-model interface: hostile input
+baseline                               -> ACCEPTED [198.8, 192.6]
+hp above maximum (4500)                -> ACCEPTED [4653.6, 191.4]
+hp negative                            -> ACCEPTED [154.3, 198.7]
+hp inf                                 -> ACCEPTED [inf, 191.3]  [warns RuntimeWarning]
+hp NaN                                 -> ACCEPTED [154.3, 198.7]
+hp as text                             -> TypeError: '>' not supported between instances of 'str' and 'int'
+x inf                                  -> ACCEPTED [225.0, 225.0]  [warns RuntimeWarning]
+x None                                 -> ValueError: x, y, hp and shield of living units must be numbers
+shield on a marine (100)               -> ValueError: x, y, hp and shield of living units must be numbers
+shield negative                        -> ValueError: x, y, hp and shield of living units must be numbers
+alive False with hp 45                 -> ACCEPTED [154.3, 198.7]
+alive missing for the others (NaN)     -> ACCEPTED [198.8, 192.6]
+team 'Blue' (capital)                  -> ValueError: team must be one of ('blue', 'red')
+team NaN                               -> ValueError: team must be one of ('blue', 'red')
+unit_type None                         -> ValueError: model 'marines' knows ('marine',), not [nan]
+unit_type 'Marine'                     -> ACCEPTED [198.8, 192.6]
+extra column                           -> ACCEPTED [198.8, 192.6]
+same unit listed twice                 -> ACCEPTED [242.7, 185.9]
+empty list                             -> ValueError: units are missing the columns ['hp', 'team', 'unit_type', 'x', 'y']
+None                                   -> ValueError: units are missing the columns ['hp', 'team', 'unit_type', 'x', 'y']
+1 vs 1                                 -> ACCEPTED [44.2, 44.1]
+1 vs 200                               -> ACCEPTED [0.0, 8998.8]
+all at the same point                  -> ACCEPTED [153.0, 150.2]
+10,000 apart                           -> ACCEPTED [225.0, 225.0]
+horizon 0                              -> ValueError: 0 s is shorter than one model step (0.125 s)
+horizon negative                       -> ValueError: -1 s is shorter than one model step (0.125 s)
+horizon NaN                            -> ValueError: cannot convert float NaN to integer
+horizon inf                            -> OverflowError: cannot convert float infinity to integer
+horizon 0.2 (not a multiple)           -> ACCEPTED 0.25
+horizon 1000 s                         -> ACCEPTED 8001
+horizon as text                        -> TypeError: unsupported operand type(s) for /: 'str' and 'float'
+plan None                              -> TypeError: object of type 'NoneType' has no len()
+plan 5                                 -> TypeError: object of type 'int' has no len()
+plan ['hold', 'advance'] (2 intents?)  -> ValueError: unknown intent ['hold', 'advance']: use <movement>/<target> with movement in ('advance', 'hold', 'wi
+plan [('hold', -1)]                    -> ValueError: -1.0 s is shorter than one model step (0.125 s)
+plan [('hold', 'focus')] (typo)        -> TypeError: unsupported operand type(s) for /: 'str' and 'float'
+plan ('hold', 2.0)                     -> ValueError: too many values to unpack (expected 2)
+compare with no plans                  -> KeyError: 'margin'
+compare commit > horizon               -> ACCEPTED (5, 9)
+compare commit 0                       -> ValueError: 0 s is shorter than one model step (0.125 s)
+compare horizon 2.05, commit 2         -> ACCEPTED (5, 9)
+predict mutates the state?             -> ACCEPTED (True, True)
+state of another model                 -> ValueError: the state has types ('marine',), the model ('marine', 'marauder')
+a string instead of a state            -> AttributeError: 'str' object has no attribute 'types'
+DONE
+uv run --extra explore experiments/triple/stress_rollout.py  7.96s user 0.25s system 95% cpu 8.554 total

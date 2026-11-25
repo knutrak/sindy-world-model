@@ -1,0 +1,42 @@
+### 1 effect sizes: smallest real term (fitted alone with the other real terms) and largest spurious candidate (full library, step 1)
+marines   smallest real 0.943 (blue R[marine]*s[marine]) | largest spurious 0.089 ('red', 'marine', 'A[marine]')
+marauders smallest real 0.687 (blue R[marauder]*s[marauder]) | largest spurious 0.104 ('blue', 'marauder', 'A[marauder]')
+stalkers  smallest real 0.563 (blue R[stalker]*s[stalker]) | largest spurious 0.067 ('blue', 'stalker', '1')
+mixed     smallest real 0.323 (blue R[marine]*s[marauder]) | largest spurious 0.091 ('red', 'marine', 'A[marine]')
+triple    smallest real 0.162 (blue R[marine]*s[stalker]) | largest spurious 0.078 ('red', 'marine', 'A[marine]')
+
+### 2 exact structure in 60 battle bootstraps, by threshold: exact% (runs with a missing / with a spurious term)
+marines   0.05: 0% (0/60)  0.08: 0% (0/60)  0.10: 100% (0/0)  0.12: 100% (0/0)  0.14: 100% (0/0)  0.15: 100% (0/0)  0.16: 100% (0/0)  0.18: 100% (0/0)  0.20: 100% (0/0)  0.25: 100% (0/0)
+marauders 0.05: 0% (0/60)  0.08: 0% (0/60)  0.10: 17% (0/50)  0.12: 100% (0/0)  0.14: 100% (0/0)  0.15: 100% (0/0)  0.16: 100% (0/0)  0.18: 100% (0/0)  0.20: 100% (0/0)  0.25: 100% (0/0)
+stalkers  0.05: 0% (0/60)  0.08: 100% (0/0)  0.10: 100% (0/0)  0.12: 100% (0/0)  0.14: 100% (0/0)  0.15: 100% (0/0)  0.16: 100% (0/0)  0.18: 100% (0/0)  0.20: 100% (0/0)  0.25: 100% (0/0)
+mixed     0.05: 0% (0/60)  0.08: 0% (0/60)  0.10: 100% (0/0)  0.12: 100% (0/0)  0.14: 100% (0/0)  0.15: 100% (0/0)  0.16: 100% (0/0)  0.18: 100% (0/0)  0.20: 100% (0/0)  0.25: 100% (0/0)
+triple    0.05: 0% (0/60)  0.08: 68% (0/19)  0.10: 100% (0/0)  0.12: 100% (0/0)  0.14: 100% (0/0)  0.15: 65% (21/0)  0.16: 0% (60/0)  0.18: 0% (60/0)  0.20: 0% (60/0)  0.25: 0% (60/0)
+
+### 3 triple: the weakest term (blue stalker <- marine) by number of battles: effect size mean ± sd over 200 bootstraps, k mean ± sd, share kept at 0.15
+blue   190 battles: effect 0.161 ± 0.011; k -0.0484 ± 0.0029 (17 sd from 0); kept 53%
+blue   375 battles: effect 0.162 ± 0.008; k -0.0484 ± 0.0020 (25 sd from 0); kept 63%
+blue   750 battles: effect 0.161 ± 0.006; k -0.0484 ± 0.0014 (35 sd from 0); kept 61%
+blue  1500 battles: effect 0.162 ± 0.005; k -0.0485 ± 0.0010 (50 sd from 0); kept 70%
+blue  3000 battles: effect 0.162 ± 0.003; k -0.0485 ± 0.0007 (74 sd from 0); kept 80%  (resampled beyond the data: what more battles would give if these are typical)
+blue  6000 battles: effect 0.162 ± 0.002; k -0.0485 ± 0.0005 (101 sd from 0); kept 87%  (resampled beyond the data: what more battles would give if these are typical)
+red   190 battles: effect 0.212 ± 0.011; k -0.0523 ± 0.0017 (32 sd from 0); kept 100%
+red   375 battles: effect 0.212 ± 0.008; k -0.0523 ± 0.0012 (44 sd from 0); kept 100%
+red   750 battles: effect 0.212 ± 0.006; k -0.0522 ± 0.0007 (70 sd from 0); kept 100%
+red  1500 battles: effect 0.212 ± 0.004; k -0.0522 ± 0.0005 (96 sd from 0); kept 100%
+red  3000 battles: effect 0.211 ± 0.003; k -0.0522 ± 0.0004 (128 sd from 0); kept 100%  (resampled beyond the data: what more battles would give if these are typical)
+red  6000 battles: effect 0.211 ± 0.002; k -0.0522 ± 0.0003 (180 sd from 0); kept 100%  (resampled beyond the data: what more battles would give if these are typical)
+
+### 4 why the effect size is small: effect = |k| sd(x) / sd(y)
+marines  blue R[marine]*s[marine]      |k| 0.177  sd(x) 0.2453  mean(x) 0.3056  sd(y) 0.0460  effect 0.943
+mixed    blue R[marine]*s[marauder]    |k| 0.060  sd(x) 0.1072  mean(x) 0.0655  sd(y) 0.0199  effect 0.323
+triple   blue R[marine]*s[marauder]    |k| 0.065  sd(x) 0.0522  mean(x) 0.0209  sd(y) 0.0184  effect 0.184
+triple   blue R[marine]*s[stalker]     |k| 0.049  sd(x) 0.0556  mean(x) 0.0232  sd(y) 0.0167  effect 0.162
+triple   blue R[marauder]*s[stalker]   |k| 0.091  sd(x) 0.0684  mean(x) 0.0399  sd(y) 0.0167  effect 0.373
+
+### 5 out-of-sample cost of dropping the weakest term (triple, one-step R² on val, blue stalker)
+blue all three        val R² 0.3753  k [-0.049 -0.091 -0.07 ]
+blue without marine   val R² 0.3464  k [-0.101 -0.078]
+blue without stalker  val R² 0.2389  k [-0.08  -0.122]
+red all three        val R² 0.4758  k [-0.052 -0.091 -0.072]
+red without marine   val R² 0.4366  k [-0.109 -0.086]
+red without stalker  val R² 0.3690  k [-0.083 -0.12 ]

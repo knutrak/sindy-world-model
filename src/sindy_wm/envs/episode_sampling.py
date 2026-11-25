@@ -216,3 +216,43 @@ class RangeAsymmetrySampler(CloseBattleSampler):
         n_blue = max(1, round(n_red / self.marines_per_marauder))
         types = (("MARAUDER",) * n_blue, ("MARINE",) * n_red)
         return EpisodeSettings((n_blue, n_red), base.start_health, base.spawn, types)
+
+
+@dataclass(frozen=True)
+class TripleMixSampler(CloseBattleSampler):
+    """`CloseBattleSampler` with three unit types and the same mix on both sides (docs/triple/00_plan.md).
+
+    Unit counts, health fractions and the spawn are drawn exactly as by `CloseBattleSampler` (stream
+    `[seed, 2]`). Then, from `default_rng([seed, 6])`: one mix from `mixes`, applied to both sides (largest
+    remainder rounding, at least one unit of each type when the side has three or more), and a random order
+    of the units within each side's formation. `unit_size` should be the largest unit's diameter.
+    """
+
+    types: tuple[str, ...] = ("MARINE", "MARAUDER", "STALKER")
+    mixes: tuple[tuple[float, ...], ...] = (
+        (1 / 3, 1 / 3, 1 / 3),
+        (0.5, 0.25, 0.25),
+        (0.25, 0.5, 0.25),
+        (0.25, 0.25, 0.5),
+    )
+    unit_size: float = 1.25
+
+    def counts(self, n: int, mix: tuple[float, ...]) -> list[int]:
+        exact = n * np.array(mix)
+        k = np.floor(exact).astype(int)
+        for j in np.argsort(-(exact - k), kind="stable")[: n - k.sum()]:
+            k[j] += 1
+        while n >= len(k) and (k == 0).any():
+            k[int(np.argmin(k))] += 1
+            k[int(np.argmax(k))] -= 1
+        return [int(x) for x in k]
+
+    def sample(self, seed: int, bounds: tuple[float, float, float, float]) -> EpisodeSettings:
+        base = super().sample(seed, bounds)
+        rng = np.random.default_rng([seed, 6])
+        mix = self.mixes[int(rng.integers(len(self.mixes)))]
+        sides = []
+        for n in base.unit_counts:
+            side = [t for t, k in zip(self.types, self.counts(n, mix), strict=True) for _ in range(k)]
+            sides.append(tuple(str(t) for t in rng.permutation(side)))
+        return EpisodeSettings(base.unit_counts, base.start_health, base.spawn, (sides[0], sides[1]))

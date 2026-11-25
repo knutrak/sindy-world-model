@@ -60,6 +60,9 @@ def typed_states(
     actions within AGENT_TARGET_RANGE = 6, whatever the unit's attack range (docs/mixed/PROGRESS.md).
     The fire columns are unaffected (they come from the recorded targets).
     """
+    unknown = sorted(set(snapshots["unit_type"].unique()) - set(types))
+    if unknown:  # their positions would count in the geometry and reach, but not their health or fire
+        raise ValueError(f"the battle has unit types {unknown} that are not in types={types}")
     steps = pd.Index(sorted(snapshots["step"].unique()), name="step")
     alive = snapshots[snapshots["alive"]]
     out: dict[str, np.ndarray] = {}

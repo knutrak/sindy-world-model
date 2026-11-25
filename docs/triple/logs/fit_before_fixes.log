@@ -1,0 +1,98 @@
+
+### 1 constant term: can STLSQ keep it? (planted y = -0.18 R - c)
+planted constant -0.00: kept {'R[marine]*s[marine]': np.float64(-0.179)}
+planted constant -0.02: kept {'R[marine]*s[marine]': np.float64(-0.219)}
+planted constant -0.10: kept {'R[marine]*s[marine]': np.float64(-0.376)}
+planted constant -0.50: kept {'R[marine]*s[marine]': np.float64(-1.159)}
+planted constant -5.00: kept {'R[marine]*s[marine]': np.float64(-9.966)}
+
+### 2 planted truth: recover known laws from real features + residual-sized noise (mixed, 600 battles)
+as fitted                 exact support 20/20, worst relative coefficient error 0.074
+marauder term absent      exact support 20/20, worst relative coefficient error 0.063
+weak 5% cross term        exact support 0/20, worst relative coefficient error 0.088
+strong cross term         exact support 20/20, worst relative coefficient error 0.101
+alive instead of reach    exact support 20/20, worst relative coefficient error 0.073
+weak firepower 0.03       exact support 0/20, worst relative coefficient error 0.147
+
+### 3 null: health rates shuffled across rows / battles -> terms kept (20 shuffles, all equations)
+marines terms kept in 20 x all equations: 120
+mixed terms kept in 20 x all equations: 560
+triple terms kept in 20 x all equations: 1560
+
+### 4 symmetries: swap sides (withdraw steps removed), swap type order
+side swap: max difference of health coefficients 0.00e+00
+type order: health 1.11e-16 distance 0.00e+00 alive 1.67e-16
+determinism (same data twice): identical True
+row order shuffled: health 1.17e-15 distance 0.0003
+
+### 5 threshold (health) and smoothing window: spurious / missing terms
+marines threshold: {0.02: (2, 0), 0.05: (2, 0), 0.1: (0, 0), 0.15: (0, 0), 0.2: (0, 0), 0.25: (0, 0), 0.3: (0, 0), 0.4: (0, 0)}
+mixed threshold: {0.02: (6, 0), 0.05: (4, 0), 0.1: (0, 0), 0.15: (0, 0), 0.2: (0, 0), 0.25: (0, 0), 0.3: (0, 1), 0.4: (0, 3)}
+triple threshold: {0.02: (6, 0), 0.05: (3, 0), 0.1: (0, 0), 0.15: (0, 0), 0.2: (0, 3), 0.25: (0, 4), 0.3: (10, 8), 0.4: (50, 2)}
+marines window -> (spurious, missing, mean |k|): {3: (0, 0, 0.197), 5: (0, 0, 0.188), 9: (0, 0, 0.18), 17: (0, 0, 0.177), 33: (1, 0, 0.112), 65: (2, 0, 0.073)}
+mixed window -> (spurious, missing, mean |k|): {3: (0, 0, 0.143), 5: (0, 0, 0.137), 9: (0, 0, 0.131), 17: (0, 0, 0.127), 33: (2, 0, 0.09), 65: (4, 0, 0.059)}
+triple window -> (spurious, missing, mean |k|): {3: (0, 4, 0.148), 5: (0, 3, 0.133), 9: (0, 2, 0.12), 17: (0, 0, 0.105), 33: (1, 0, 0.089), 65: (4, 1, 0.059)}
+
+### 6 how many battles are needed (5 draws each): draws with exact structure, coefficient spread, crashes
+marines | 3: 2/5 exact, max dev 0.15, crashes 2 (RuntimeError: Optimal parameters not found: Number of calls to f) | 10: 4/5 exact, max dev 0.12 | 30: 5/5 exact, max dev 0.06 | 100: 5/5 exact, max dev 0.04 | 300: 5/5 exact, max dev 0.02 | 1000: 5/5 exact, max dev 0.01
+stalkers | 3: 5/5 exact, max dev 0.11 | 10: 5/5 exact, max dev 0.08 | 30: 5/5 exact, max dev 0.07 | 100: 5/5 exact, max dev 0.04 | 300: 5/5 exact, max dev 0.02 | 1000: 5/5 exact, max dev 0.01
+mixed | 3: 5/5 exact, max dev 0.38 | 10: 5/5 exact, max dev 0.25 | 30: 5/5 exact, max dev 0.10 | 100: 5/5 exact, max dev 0.10 | 300: 5/5 exact, max dev 0.06 | 1000: 5/5 exact, max dev 0.03
+triple | 3: 0/5 exact, max dev 1.01 | 10: 1/5 exact, max dev 0.41, crashes 1 (RuntimeError: Optimal parameters not found: Number of calls to f) | 30: 1/5 exact, max dev 0.25 | 100: 2/5 exact, max dev 0.16 | 300: 3/5 exact, max dev 0.16 | 1000: 3/5 exact, max dev 0.12
+
+### 7 movement gates: 12 random starting points each (do they agree?)
+marines advance pipeline: mse 0.355 v 6.05 c 7.4 | best random (0.355, np.float64(6.05), np.float64(7.4)) | median (0.355, np.float64(6.05), np.float64(7.4)) | worst (0.355, np.float64(6.05), np.float64(7.4))
+marines hold pipeline: mse 0.337 v 3.36 c 11.6 | best random (0.337, np.float64(3.36), np.float64(11.6)) | median (0.337, np.float64(3.36), np.float64(11.6)) | worst (0.337, np.float64(3.36), np.float64(11.6))
+   distance: {'walk_r*wd': np.float64(-0.41), 'danger*wd': np.float64(0.49), 'close*adv': np.float64(-6.05), 'close*hold*far': np.float64(-3.21), 'close*hold*contact': np.float64(-5.98)} walk speeds: ['marine']
+stalkers advance pipeline: mse 0.461 v 4.02 c 6.4 | best random (0.46, np.float64(3.95), np.float64(6.4)) | median (0.46, np.float64(3.95), np.float64(6.4)) | worst (0.46, np.float64(3.95), np.float64(6.4))
+stalkers hold pipeline: mse 0.326 v 4.03 c 17.5 | best random (0.326, np.float64(4.07), np.float64(17.5)) | median (0.326, np.float64(4.07), np.float64(17.5)) | worst (9.0, 'RuntimeError', 0)
+   distance: {'walk_r*wd': np.float64(-0.28), 'danger*wd': np.float64(1.08), 'close*adv': np.float64(-4.02), 'close*hold*far': np.float64(-4.03), 'close*hold*contact': np.float64(-3.71)} walk speeds: ['stalker']
+mixed advance pipeline: mse 0.399 v 5.35 c 7.9 | best random (0.399, np.float64(5.33), np.float64(7.9)) | median (0.399, np.float64(5.33), np.float64(7.9)) | worst (0.399, np.float64(5.34), np.float64(7.9))
+mixed hold pipeline: mse 0.325 v 3.28 c 16.2 | best random (0.325, np.float64(3.28), np.float64(16.2)) | median (0.325, np.float64(3.28), np.float64(16.2)) | worst (0.325, np.float64(3.28), np.float64(16.2))
+   distance: {'walk_r*wd': np.float64(-0.24), 'danger*wd': np.float64(0.63), 'close*adv': np.float64(-5.35), 'close*hold*far': np.float64(-3.11), 'close*hold*contact': np.float64(-5.11)} walk speeds: ['marine', 'marauder']
+triple advance pipeline: mse 0.38 v 5.37 c 7.7 | best random (0.379, np.float64(5.39), np.float64(7.7)) | median (0.379, np.float64(5.39), np.float64(7.7)) | worst (0.379, np.float64(5.4), np.float64(7.7))
+triple hold pipeline: mse 0.314 v 3.45 c 19.1 | best random (0.314, np.float64(3.46), np.float64(19.1)) | median (0.314, np.float64(3.46), np.float64(19.2)) | worst (0.314, np.float64(3.46), np.float64(19.2))
+   distance: {'walk_r*wd': np.float64(-0.27), 'danger*wd': np.float64(0.8), 'close*adv': np.float64(-5.37), 'close*hold*far': np.float64(-3.19), 'close*hold*contact': np.float64(-5.07)} walk speeds: ['marine', 'marauder', 'stalker']
+
+### 8 missing or one-sided data
+no withdraw                    fits; spurious/missing (0, 0), non-finite False, max dev 0.018, p_focus [0.0, 0.0, 0.15, 0.19], distance {'close*adv': -5.5, 'close*hold*far': -3.0, 'close*hold*contact': -5.2}
+no hold                        RAISES KeyError: 'hold'
+no advance                     RAISES KeyError: 'advance'
+only advance                   RAISES KeyError: 'hold'
+no focus                       fits; spurious/missing (0, 0), non-finite False, max dev 0.043, p_focus [0.0, 0.0, 0.0, 0.0], distance {'walk_r*wd': -0.3, 'danger*wd': 0.7, 'close*adv': -5.5, 'close*hold*far': -3.1, 'close*hold*contact': -4.8}
+always focus                   fits; spurious/missing (0, 0), non-finite False, max dev 0.055, p_focus [0.0, 0.0, 0.33, 0.28], distance {'walk_r*wd': -0.4, 'danger*wd': 0.6, 'close*adv': -5.6, 'close*hold*far': -3.0, 'close*hold*contact': -5.6}
+only far (no unit in reach)    RAISES ValueError: `ydata` must not be empty!
+NaN in one health rate         RAISES LinAlgError: SVD did not converge in Linear Least Squares
+inf in distance                RAISES ValueError: array must not contain infs or NaNs
+NaN in one reach               RAISES ValueError: array must not contain infs or NaNs
+every row twice                fits; spurious/missing (0, 0), non-finite False, max dev 0.000, p_focus [0.0, 0.0, 0.15, 0.19], distance {'walk_r*wd': -0.3, 'danger*wd': 0.7, 'close*adv': -5.5, 'close*hold*far': -3.0, 'close*hold*contact': -5.2}
+marauders absent on Red        RAISES ValueError: `ydata` must not be empty!
+empty table                    RAISES ValueError: `ydata` must not be empty!
+float32                        fits; spurious/missing (0, 0), non-finite False, max dev 0.000, p_focus [0.0, 0.0, 0.15, 0.19], distance {'walk_r*wd': -0.3, 'danger*wd': 0.7, 'close*adv': -5.5, 'close*hold*far': -3.0, 'close*hold*contact': -5.2}
+
+### 9 measurement noise on the states before differentiation (mixed, 400 battles)
+health noise sd 0.0: spurious/missing (0, 0), coefficient ratio 1.00-1.00, p [0.61, 0.44, 0.5, 0.36]
+health noise sd 0.002: spurious/missing (0, 0), coefficient ratio 1.00-1.00, p [0.61, 0.44, 0.5, 0.36]
+health noise sd 0.005: spurious/missing (0, 0), coefficient ratio 0.99-1.00, p [0.61, 0.44, 0.5, 0.36]
+health noise sd 0.01: spurious/missing (0, 0), coefficient ratio 0.99-1.01, p [0.61, 0.44, 0.5, 0.36]
+health noise sd 0.02: spurious/missing (0, 1), coefficient ratio 0.96-1.27, p [0.6, 0.44, 0.49, 0.37]
+health noise sd 0.05: spurious/missing (10, 2), coefficient ratio 0.83-1.47, p [0.57, 0.41, 0.47, 0.33]
+reach noise sd 0.02 (= 0.2 units): spurious/missing (0, 0), coefficient ratio 0.98-1.00
+reach noise sd 0.05 (= 0.5 units): spurious/missing (0, 0), coefficient ratio 0.93-1.02
+reach noise sd 0.1 (= 1.0 units): spurious/missing (0, 0), coefficient ratio 0.81-1.03
+
+### 10 wrong time step: every second recorded step kept (dt 0.25 instead of 0.125)
+dt 0.125 k [np.float64(-0.176), np.float64(-0.184)] health error labelled 1 s / 2 s: 0.0159 0.0275
+dt 0.25 k [np.float64(-0.175), np.float64(-0.182)] health error labelled 1 s / 2 s: 0.0592 0.1026
+
+### 11 duplicate episode ids: two battles merged under one id
+separate dict_values([np.float64(-0.1756285687640326), np.float64(-0.18264522026709043)]) {('blue', 'marine'): (0.6614282878021309, 0.0), ('red', 'marine'): (0.5668803276783766, 0.26433441398559376)} | merged dict_values([np.float64(-0.13614950169507772), np.float64(-0.14293468055091785)]) {('blue', 'marine'): (0.7094274621251158, 0.0), ('red', 'marine'): (0.6307130665360574, 0.2793928042433468)}
+
+### 12 battles dropped silently by the smoothing window, and health that rises
+marines: battles 6000, dropped (<= 9 steps) 0 | blue marine rises in 0.0% of steps | red marine rises in 0.0% of steps
+stalkers: battles 1500, dropped (<= 9 steps) 0 | blue stalker rises in 40.5% of steps | red stalker rises in 43.8% of steps
+mixed: battles 6000, dropped (<= 9 steps) 0 | blue marine rises in 0.0% of steps | red marine rises in 0.0% of steps | blue marauder rises in 0.0% of steps | red marauder rises in 0.0% of steps
+triple: battles 1500, dropped (<= 9 steps) 0 | blue marine rises in 0.0% of steps | red marine rises in 0.0% of steps | blue marauder rises in 0.0% of steps | red marauder rises in 0.0% of steps | blue stalker rises in 33.8% of steps | red stalker rises in 36.4% of steps
+
+DONE
+** On entry to DLASCL, parameter number  4 had an illegal value
+uv run --extra explore experiments/triple/stress_fit.py  283.85s user 3.00s system 99% cpu 4:47.45 total

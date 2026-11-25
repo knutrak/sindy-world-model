@@ -78,18 +78,22 @@ def stlsq(theta: np.ndarray, y: np.ndarray, threshold: float, alpha: float = 1e-
 
     Features and target are standardised first, so `threshold` is an effect size (a
     coefficient in standard-deviation units) and one value suits equations of different
-    scale. Returns coefficients in the original units.
+    scale. A constant column has no spread; it is scaled by its size, so its effect size is the constant
+    itself (docs/triple/04_stress.md). Returns coefficients in the original units, all zero if no term
+    reaches the threshold.
     """
-    scale = theta.std(axis=0) + 1e-12
+    size = np.abs(theta).max(axis=0)
+    sd = theta.std(axis=0)
+    scale = np.where((sd <= 1e-9 * size) & (size > 0), size, sd + 1e-12)
     T, yscale = theta / scale, y.std()
     keep = np.ones(T.shape[1], bool)
     coef = np.zeros(T.shape[1])
     for _ in range(max_iter):
+        coef[:] = 0
         if not keep.any():
             break
         A = T[:, keep]
         c = np.linalg.solve(A.T @ A + alpha * len(A) * np.eye(A.shape[1]), A.T @ y)
-        coef[:] = 0
         coef[keep] = c
         new = np.abs(coef) >= threshold * yscale
         if (new == keep).all():

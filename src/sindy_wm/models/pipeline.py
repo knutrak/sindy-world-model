@@ -110,6 +110,7 @@ class Layout:
         `ctrl`: the control columns of U (default CTRL; the kite variant adds "kite", docs/planning/32)."""
         keys = ["X0", "U", "Y", "shape0", "front0", "reach0", "ep", "k0"]
         out = {k: [] for k in keys}
+        check_steps(states)
         for ep, g in states.groupby(level=0, sort=False):
             S, C = g[self.x_cols].to_numpy(float), g[ctrl or CTRL].to_numpy(float)
             Sh, Fr, R = (
@@ -125,6 +126,8 @@ class Layout:
                 u[: m - 1] = C[k0 : k0 + m - 1]
                 for key, v in zip(keys, [S[k0], u, y, Sh[k0], Fr[k0], R[k0], ep, k0], strict=True):
                     out[key].append(v)
+        if not out["X0"]:
+            raise ValueError("no battle is long enough for a start point")
         B = {k: np.array(v) for k, v in out.items()}
         B["front0"] = np.nan_to_num(B["front0"])
         n = self.n
@@ -150,8 +153,55 @@ class Layout:
 
 
 # ------------------------------------------------------------------------------------------- data
+def check_steps(states: pd.DataFrame) -> None:
+    """Refuse tables the models would silently misread: another time step than DT, or two battles under one
+    id (docs/triple/04_stress.md). Needs the `t` column (seconds); without it nothing is checked."""
+    if "t" not in states or len(states) < 2:
+        return
+    ids = states.index.get_level_values(0)
+    same = ids[1:] == ids[:-1]
+    if (~same).sum() + 1 != ids.nunique():
+        raise ValueError(
+            "rows of one episode id are not together: two battles share an id, or rows are unsorted"
+        )
+    dt = np.diff(states["t"].to_numpy(float))[same]
+    if len(dt) and not np.allclose(dt, DT, rtol=0, atol=1e-6):
+        raise ValueError(
+            f"consecutive steps of a battle must be {DT} s apart, found {dt.min():g} to {dt.max():g} s "
+            "(another step_mul, dropped steps, unsorted rows, or two battles sharing an episode id)"
+        )
+
+
+def check_rows(rows: pd.DataFrame, layout: Layout, movements=("advance", "hold")) -> None:
+    """Clear errors for data `Pipeline.fit` cannot use (they used to fail deep inside curve_fit or lstsq)."""
+    if rows.empty:
+        raise ValueError("no rows to fit on")
+    for m in movements:
+        if not (rows["movement"] == m).any():
+            raise ValueError(
+                f"no steps with movement {m!r}: the distance equation needs advance and hold steps"
+            )
+    for s in SIDES:
+        for t in layout.types:
+            if not (rows[f"alive_{s}_{t}"] > 0).any():
+                raise ValueError(f"{s} never has a living {t}: fit without that type")
+            if not (rows[f"reach_{s}_{t}"] > 0).any():
+                raise ValueError(f"no {s} {t} ever has an enemy in reach: nothing to learn firepower from")
+    cols = [
+        *layout.x_cols,
+        *layout.r_cols,
+        *SHAPE,
+        "d_distance",
+        *(f"d_{k}_{s}_{t}" for k in ("health", "alive") for s in SIDES for t in layout.types),
+    ]
+    bad = [c for c in cols if not np.isfinite(rows[c].to_numpy(float)).all()]
+    if bad:
+        raise ValueError(f"missing or infinite values in {bad}")
+
+
 def prepare(states: pd.DataFrame, layout: Layout, window: int = 9) -> pd.DataFrame:
     """Controls and SG rates (per battle) for the typed columns and distance; steps with both sides alive."""
+    check_steps(states)
     s = add_controls(states)
     cols = [*layout.x_cols]
     r = add_rates(s, cols=tuple(cols), window=window)
@@ -407,8 +457,8 @@ class Pipeline:
         self.movement_wd, self.withdraw_radius = movement_wd, withdraw_radius
         if withdraw not in ("rule", "fitted"):
             raise ValueError(withdraw)
-        if len(types) > 2:
-            raise NotImplementedError("target choice is defined for one or two unit types")
+        if len(types) > 2 and alloc != "rule":
+            raise NotImplementedError("the fitted target choice is defined for one or two unit types")
         self.L = Layout(tuple(t.lower() for t in types))
         self.withdraw, self.alloc = withdraw, alloc
         self.thr_health, self.thr_distance, self.max_reach = thr_health, thr_distance, max_reach
@@ -425,7 +475,18 @@ class Pipeline:
         tt = self.L.types
         if len(tt) == 1:
             return {(tt[0], tt[0]): np.ones(len(rows))}
-        s, t0, t1 = OTHER[o], tt[0], tt[1]
+        s = OTHER[o]
+        if len(tt) > 2:  # docs/triple/00: measured share of fire per target type, proportional without fire
+            al = np.column_stack([rows[f"alive_{s}_{t}"].to_numpy(float) for t in tt])
+            sig = {}
+            for a in tt:
+                f = np.column_stack([rows[f"fire_{o}_{a}_{t}"].to_numpy(float) for t in tt])
+                w = np.where(f.sum(1, keepdims=True) > 0, f, al)
+                tot = w.sum(1, keepdims=True)
+                w = np.divide(w, tot, out=np.zeros_like(w), where=tot > 0)
+                sig |= {(a, t): w[:, j] for j, t in enumerate(tt)}
+            return sig
+        t0, t1 = tt
         tot = rows[f"alive_{s}_{t0}"] + rows[f"alive_{s}_{t1}"]
         prop = np.divide(rows[f"alive_{s}_{t1}"], tot, out=np.zeros(len(rows)), where=tot > 0)
         sig = {}
@@ -455,6 +516,7 @@ class Pipeline:
     def fit(self, rows: pd.DataFrame) -> Pipeline:
         """`rows`: from `prepare` (typed columns, rates, controls, both sides alive)."""
         tt = self.L.types
+        check_rows(rows, self.L)
         self.share, self.share_r2, self.alloc_b, self.coef, self.p = {}, {}, {}, {}, {}
         n_opp = {s: 10 * sum(rows[f"alive_{OTHER[s]}_{t}"] for t in tt) for s in SIDES}
         for s in SIDES:
@@ -655,6 +717,11 @@ class Pipeline:
                 o = OTHER[s]
                 if len(tt) == 1:
                     sig = {(tt[0], tt[0]): np.ones(len(X))}
+                elif len(tt) > 2:
+                    al = np.column_stack([A[(s, t)] for t in tt])
+                    tot = al.sum(1, keepdims=True)
+                    al = np.divide(al, tot, out=np.zeros_like(al), where=tot > 0)
+                    sig = {(a, t): al[:, j] for a in tt for j, t in enumerate(tt)}
                 else:
                     t0, t1 = tt
                     tot = A[(s, t0)] + A[(s, t1)]

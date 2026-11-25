@@ -1,0 +1,50 @@
+
+### A do the two defects change the real fits? (all train battles)
+marines   blue marine   same terms True | max rel diff 0.0000 | intercept if added by hand -0.0075 (effect size 0.164, threshold 0.15), k changes -8.5%
+marines   red  marine   same terms True | max rel diff 0.0000 | intercept if added by hand -0.0094 (effect size 0.168, threshold 0.15), k changes -8.8%
+marauders blue marauder same terms True | max rel diff 0.0000 | intercept if added by hand -0.0074 (effect size 0.187, threshold 0.15), k changes -13.3%
+marauders red  marauder same terms True | max rel diff 0.0000 | intercept if added by hand -0.0058 (effect size 0.128, threshold 0.15), k changes -9.2%
+stalkers  blue stalker  same terms True | max rel diff 0.0000 | intercept if added by hand -0.0036 (effect size 0.130, threshold 0.15), k changes -11.4%
+stalkers  red  stalker  same terms True | max rel diff 0.0000 | intercept if added by hand -0.0017 (effect size 0.051, threshold 0.15), k changes -4.4%
+mixed     blue marine   same terms True | max rel diff 0.0000 | intercept if added by hand -0.0044 (effect size 0.127, threshold 0.15), k changes -5.0%, -11.0%
+mixed     blue marauder same terms True | max rel diff 0.0000 | intercept if added by hand -0.0023 (effect size 0.117, threshold 0.15), k changes -9.0%, -7.6%
+mixed     red  marine   same terms True | max rel diff 0.0000 | intercept if added by hand -0.0050 (effect size 0.119, threshold 0.15), k changes -4.7%, -9.8%
+mixed     red  marauder same terms True | max rel diff 0.0000 | intercept if added by hand -0.0021 (effect size 0.096, threshold 0.15), k changes -7.5%, -5.3%
+triple    blue marine   same terms True | max rel diff 0.0000 | intercept if added by hand -0.0025 (effect size 0.100, threshold 0.15), k changes -4.0%, -7.2%, -7.1%
+triple    blue marauder same terms True | max rel diff 0.0000 | intercept if added by hand -0.0019 (effect size 0.103, threshold 0.15), k changes -7.4%, -5.4%, -9.2%
+triple    blue stalker  same terms True | max rel diff 0.0000 | intercept if added by hand -0.0012 (effect size 0.073, threshold 0.15), k changes -5.0%, -5.0%, -6.1%
+triple    red  marine   same terms True | max rel diff 0.0000 | intercept if added by hand -0.0029 (effect size 0.098, threshold 0.15), k changes -3.1%, -6.5%, -6.9%
+triple    red  marauder same terms True | max rel diff 0.0000 | intercept if added by hand -0.0017 (effect size 0.086, threshold 0.15), k changes -6.6%, -4.2%, -7.1%
+triple    red  stalker  same terms True | max rel diff 0.0000 | intercept if added by hand -0.0007 (effect size 0.038, threshold 0.15), k changes -2.6%, -2.5%, -2.7%
+
+### B bootstrap of the term selection by battle (60 resamples): share of resamples keeping each term
+marines   exact structure in 60/60; terms kept in < 100%: none; spurious: none
+marauders exact structure in 60/60; terms kept in < 100%: none; spurious: none
+stalkers  exact structure in 60/60; terms kept in < 100%: none; spurious: none
+mixed     exact structure in 60/60; terms kept in < 100%: none; spurious: none
+triple    exact structure in 41/60; terms kept in < 100%: {('blue', 'stalker', 'R[marine]*s[stalker]'): 0.68}; spurious: none
+
+### C effect size of each kept term (|coef| sd(x) / sd(y); the threshold is 0.15)
+mixed {'blue R[marine]*s[marauder]': np.float64(0.323), 'red R[marauder]*s[marine]': np.float64(0.362), 'red R[marine]*s[marauder]': np.float64(0.362), 'blue R[marauder]*s[marine]': np.float64(0.426), 'red R[marauder]*s[marauder]': np.float64(0.533), 'blue R[marauder]*s[marauder]': np.float64(0.542), 'blue R[marine]*s[marine]': np.float64(0.552), 'red R[marine]*s[marine]': np.float64(0.607)}
+triple {'blue R[marine]*s[stalker]': np.float64(0.162), 'blue R[marine]*s[marauder]': np.float64(0.184), 'red R[marine]*s[stalker]': np.float64(0.211), 'red R[marine]*s[marauder]': np.float64(0.214), 'red R[stalker]*s[marine]': np.float64(0.283), 'red R[stalker]*s[marauder]': np.float64(0.294), 'red R[marauder]*s[marine]': np.float64(0.299), 'blue R[marine]*s[marine]': np.float64(0.302), 'blue R[stalker]*s[marauder]': np.float64(0.319), 'blue R[marauder]*s[marine]': np.float64(0.325), 'blue R[stalker]*s[marine]': np.float64(0.328), 'red R[stalker]*s[stalker]': np.float64(0.351), 'red R[marine]*s[marine]': np.float64(0.352), 'blue R[stalker]*s[stalker]': np.float64(0.362), 'red R[marauder]*s[stalker]': np.float64(0.362), 'blue R[marauder]*s[stalker]': np.float64(0.373), 'blue R[marauder]*s[marauder]': np.float64(0.426), 'red R[marauder]*s[marauder]': np.float64(0.441)}
+
+### D closing speed under advance by distance (mean d' of battles' steps, map units / s)
+marines 2 x walk speed 6.3 {'(0, 5]': (np.float64(0.06), 13798), '(5, 6]': (np.float64(-0.11), 158052), '(6, 7]': (np.float64(-0.61), 56792), '(7, 8]': (np.float64(-2.66), 8672), '(8, 9]': (np.float64(-4.6), 3164), '(9, 10]': (np.float64(-5.89), 2219), '(10, 12]': (np.float64(-6.17), 3017), '(12, 14]': (np.float64(-5.93), 1521), '(14, 18]': (np.float64(-5.91), 531)}
+marauders 2 x walk speed 6.3 {'(0, 5]': (np.float64(0.04), 3301), '(5, 6]': (np.float64(-0.1), 30182), '(6, 7]': (np.float64(-0.2), 51685), '(7, 8]': (np.float64(-1.03), 11099), '(8, 9]': (np.float64(-2.6), 3289), '(9, 10]': (np.float64(-3.01), 1523), '(10, 12]': (np.float64(-5.32), 748), '(12, 14]': (np.float64(-6.23), 330), '(14, 18]': (np.float64(-6.12), 119)}
+stalkers 2 x walk speed 8.26 {'(0, 5]': (np.float64(-0.04), 12042), '(5, 6]': (np.float64(-0.08), 53784), '(6, 7]': (np.float64(-0.16), 85634), '(7, 8]': (np.float64(-1.01), 17859), '(8, 9]': (np.float64(-3.22), 4596), '(9, 10]': (np.float64(-3.26), 2680), '(10, 12]': (np.float64(-4.61), 1203), '(12, 14]': (np.float64(-8.38), 281), '(14, 18]': (np.float64(-8.44), 103)}
+triple 2 x walk speed 0 {'(0, 5]': (np.float64(-0.04), 5628), '(5, 6]': (np.float64(-0.09), 42886), '(6, 7]': (np.float64(-0.21), 56561), '(7, 8]': (np.float64(-1.29), 9138), '(8, 9]': (np.float64(-2.78), 2659), '(9, 10]': (np.float64(-3.61), 1024), '(10, 12]': (np.float64(-5.84), 607), '(12, 14]': (np.float64(-6.07), 343), '(14, 18]': (np.float64(-5.95), 134)}
+
+### E the same at the unit level: do both sides walk at full speed? (exp07, 100 battles, distance > 10, advance)
+exp06_intents walk speed 3.15 {'blue': (np.float64(3.12), np.float64(0.98), 340), 'red': (np.float64(3.14), np.float64(1.0), 332)} (mean speed, share at full speed, unit-steps)
+exp07_stalkers walk speed 4.13 {'blue': (np.float64(2.74), np.float64(0.56), 359), 'red': (np.float64(3.49), np.float64(0.65), 431)} (mean speed, share at full speed, unit-steps)
+
+### F shield regeneration: when does stalker health rise, and an own-alive term
+stalkers blue rises: before the side's first damage 3%; after 97% | health gained / lost over battles 9.4% (of which after first damage 8.8%)
+stalkers red rises: before the side's first damage 6%; after 94% | health gained / lost over battles 8.9% (of which after first damage 7.6%)
+   own alive as candidate kept: False | by hand -0.0043 (game while regenerating 0.0125), firepower changes [-0.099]
+   own alive as candidate kept: False | by hand -0.0009 (game while regenerating 0.0125), firepower changes [-0.017]
+triple blue rises: before the side's first damage 22%; after 78% | health gained / lost over battles 8.1% (of which after first damage 5.7%)
+triple red rises: before the side's first damage 25%; after 75% | health gained / lost over battles 7.8% (of which after first damage 5.0%)
+   own alive as candidate kept: False | by hand -0.0042 (game while regenerating 0.0125), firepower changes [-0.059 -0.036 -0.07 ]
+   own alive as candidate kept: False | by hand -0.0017 (game while regenerating 0.0125), firepower changes [-0.016 -0.013 -0.023]
+DONE
