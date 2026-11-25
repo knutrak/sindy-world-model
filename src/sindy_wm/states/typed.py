@@ -22,8 +22,8 @@ from functools import cache
 
 import numpy as np
 import pandas as pd
-from smaclite.env.units.unit_type import StandardUnit
 
+from sindy_wm.envs import units as unit_types
 from sindy_wm.io import storage
 from sindy_wm.states.geometry import REF_UNITS
 
@@ -32,7 +32,7 @@ SIDES = ("blue", "red")
 
 @cache
 def unit_stats(name: str) -> dict:
-    s = StandardUnit[name].stats
+    s = unit_types.stats(name)
     return {
         "hp": float(s.hp),
         "shield": float(getattr(s, "shield", 0) or 0),

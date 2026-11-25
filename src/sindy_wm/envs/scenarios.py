@@ -19,11 +19,14 @@ from smaclite.env.units.unit import TICKS_PER_SECOND
 from smaclite.env.units.unit_type import StandardUnit
 from smaclite.env.util.faction import Faction
 
+from sindy_wm.envs import units as unit_types_module
 from sindy_wm.envs.spawn_sampling import SpawnSample
 
 # src/sindy_wm/envs/scenarios.py -> parents[3] is the project root
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SCENARIO_DIR = PROJECT_ROOT / "configs" / "scenarios"
+
+unit_types_module.register()  # so scenario files can use the units in configs/units/
 
 
 def builtin_scenarios() -> list[str]:

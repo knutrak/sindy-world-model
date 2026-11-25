@@ -24,6 +24,8 @@ makes the unit walk towards it. Use target_in_range for "engaged".
 
 import pandas as pd
 
+from sindy_wm.envs.units import unit_name
+
 NO_TARGET = -1
 
 
@@ -42,7 +44,7 @@ class SnapshotLogger:
         """Call right after env.reset(). Records the roster and returns step 0."""
         self.roster = {
             (team, uid): {
-                "unit_type": getattr(u.type, "name", str(u.type)),
+                "unit_type": unit_name(u.type),
                 "max_hp": float(u.max_hp),
                 "max_shield": float(u.max_shield),
             }
