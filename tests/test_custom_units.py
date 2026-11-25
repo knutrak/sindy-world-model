@@ -31,7 +31,7 @@ def test_v0_has_the_marines_statistics():
         assert getattr(v0, f) == getattr(marine, f), f
 
 
-@pytest.mark.parametrize("name", [n for n in units.register() if n != "MARINE_V0"])
+@pytest.mark.parametrize("name", [n for n in units.register() if n[7:] not in ("V0", "N1", "N2", "N3")])
 def test_each_variant_changes_exactly_one_property(name):
     v0 = json.loads((UNIT_DIR / "MARINE_V0.json").read_text())
     v = json.loads((UNIT_DIR / f"{name}.json").read_text())

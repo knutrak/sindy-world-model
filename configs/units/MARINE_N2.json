@@ -1,0 +1,17 @@
+{
+    "hp": 45,
+    "armor": 0,
+    "damage": 6,
+    "cooldown": 0.61,
+    "speed": 2.6,
+    "attack_range": 4.5,
+    "size": 0.75,
+    "attributes": [
+        "LIGHT",
+        "BIOLOGICAL"
+    ],
+    "valid_targets": [
+        "GROUND",
+        "AIR"
+    ]
+}
