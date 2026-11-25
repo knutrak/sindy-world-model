@@ -13,6 +13,7 @@ notebooks are their sources (percent format); rebuild a notebook with
 | `03_final_exploration/` | the final marine model (A\*-2k) as claims with caveats, with A, A\*, B, S | `final_01_model_showcase` |
 | `04_marauders_mixed/` | marauders alone and mixed marine + marauder armies; SMAClite's range limit of 6 | `mixed_01_marauders` |
 | `05_generalisation/` | one equation-discovery pipeline across marines, marauders, mixed and uneven armies; the held-out test | `generalisation_01` |
-| `lib/` | helper modules imported by notebooks, scripts and `sindy_wm.evaluation.harness_models`: `sindyc_07_lab.py` (parameter-dict simulator), `weak_sindy.py` (weak-form fitting) | — |
+| `06_research_questions/` | one notebook per research question of the project description (RQ1-RQ5): the evidence, its status and caveats, with the answer left to write; held-out results are read from the recorded files, never recomputed | `rq1_identification` |
+| `lib/` | helper modules imported by notebooks, scripts and `sindy_wm.evaluation.harness_models`: `sindyc_07_lab.py` (parameter-dict simulator), `weak_sindy.py` (weak-form fitting), `rq.py` (helpers of the research-question notebooks) | — |
 
 Notes and reports that go with them are in `docs/` (`final_exploration/`, `mixed/`, `generalisation/`).
