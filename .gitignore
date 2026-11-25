@@ -22,3 +22,6 @@ wheels/
 
 #Plots and figures
 /docs/figures/
+
+# Overleaf project (its own git repository)
+/report/
