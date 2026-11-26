@@ -74,5 +74,28 @@ does not fit stalkers (23–26% worse in the pool, about 45% when left out). The
   in 4 of 5 scenarios; scores correlate 0.96 with the truth but agree with the perfect model only 56%. Close calls flip on
   small damage errors.
 
-Open check (not run, val only, no spent data): roll out B1 with measured share, measured alive, and both, to split its
-error into share, alive and damage.
+## Check: B1 with measured share and alive (26 Nov, val, exploratory)
+
+Script `experiments/checks/b1_measured.py`, output `docs/checks/logs/b1_measured.txt` and `.csv`. B1 all, first 300 val battles
+per army (2,700–8,800 start points), not pre-registered, val read before. The copied rollout reproduces `Param.rollout` exactly
+(checked in the script). "Measured share": units in reach / alive from the battle at every step, times the model's alive.
+"Measured alive": alive from the battle at every step; health stays modelled. Both are upper bounds, since they use the future.
+
+Health error at 4 s (change against own closures):
+
+| army | own closures | measured share | measured alive | both |
+|---|---|---|---|---|
+| marines | 0.0534 | 0.0312 (−42%) | 0.0545 (+2%) | 0.0290 (−46%) |
+| marauders | 0.0372 | 0.0261 (−30%) | 0.0390 (+5%) | 0.0267 (−28%) |
+| stalkers | 0.0254 | 0.0164 (−35%) | 0.0258 (+2%) | 0.0161 (−37%) |
+| mixed | 0.0600 | 0.0423 (−30%) | 0.0614 (+2%) | 0.0399 (−34%) |
+| triple | 0.0766 | 0.0570 (−26%) | 0.0781 (+2%) | 0.0533 (−30%) |
+
+Margin R² at 4 s: own 0.14–0.33; measured share 0.67–0.71; measured alive 0.25–0.43; both 0.74–0.85.
+
+- **Share in reach is the bottleneck of the two:** 26–42% of the 4 s health error, in every army. At 2 s it is 15–29%.
+- **Alive is not a bottleneck for health:** measured alive leaves the health error unchanged (0–5% worse), although B1's alive
+  is off by about half a unit at 2 s. It does raise margin R² (marines 0.16 → 0.43), so its errors hit both sides alike.
+- **Most of the error is left with both measured:** 54–70% of the 4 s health error (0.029 marines to 0.053 triple). That is
+  the damage equation (one η per side × game rate, split by σ) plus what no smooth model can follow.
+- Measured share makes the distance error 1–3% worse: the distance equation was fitted on the closure's share.
